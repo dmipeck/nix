@@ -6,11 +6,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1788029732,
-        "narHash": "sha256-9qMhHtBc75KrpLBMXW2KPYJyb+EyG6BN6rcAZz/C6pM=",
+        "lastModified": 1788032113,
+        "narHash": "sha256-O60pLexchr3DhwQ86MABJu69h+tieMMJol/jYx4XVEI=",
         "owner": "dmipeck",
         "repo": "agents",
-        "rev": "99bec2c25973d87d5da9e30cff26d4d675832718",
+        "rev": "2df90e038c3b752f2839eccc90342f4d44c3e630",
         "type": "github"
       },
       "original": {
