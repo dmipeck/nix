@@ -129,6 +129,13 @@ in
 
         programs.opencode.settings = {
           mcp = mcp;
+
+          # Enable LSP servers and formatters. Both are disabled by default;
+          # `true` turns on every built-in server/formatter, starting one when a
+          # matching file extension is opened and the required command is found.
+          lsp = true;
+          formatter = true;
+
           permission =
             (lib.genAttrs allowedMcpTools (_: "allow"))
             // (lib.genAttrs askMcpTools (_: "ask"))
