@@ -1,5 +1,10 @@
-{ config, ... }:
-
+{ config, ... }@flakeArgs:
+let
+  # Skill/plugin packages are owned by the dmipeck/agents repo. `config` here
+  # is flake-parts state (agents.nix imports inputs.agents.flakeModules.agents);
+  # captured once so the home-manager module below can reference the packages.
+  skills = flakeArgs.config.agents.skills;
+in
 {
   flake.homeModules.claude =
     {
@@ -11,10 +16,11 @@
     let
       cfg = config.programs.claude-code;
 
-      # Neutral MCP servers + skill packages + per-user instance options live
-      # in modules/homeModules/agents.nix; this module is a thin adapter that
-      # maps them onto Claude Code's config dialect and renders the Claude
-      # permission allowlist from the shared per-server tool lists.
+      # Neutral MCP server configs + per-user instance options live in
+      # homeModules/agents.nix; skill packages come from the dmipeck/agents
+      # flakeModule (`skills`, captured above). This module is a thin adapter
+      # that maps them onto Claude Code's config dialect and renders the
+      # Claude permission allowlist from the shared per-server tool lists.
       mcpServers = config.agents.mcpServers;
 
       # Claude derives the MCP tool namespace from the synthesized home-manager
@@ -73,19 +79,20 @@
 
           # Global context written to ~/.claude/CLAUDE.md, applied across every
           # Claude Code session. Content lives once in config.agents.context
-          # (agents.nix), shared with opencode.
+          # (homeModules/agents.nix), shared with opencode.
           context = config.agents.context;
           plugins = {
-            mcp-server-dev = config.agents.skills.mcp-server-dev;
-            skill-creator = config.agents.skills.skill-creator;
-            grafana-core = config.agents.skills.grafana-core;
-            grafana-lgtm = config.agents.skills.grafana-lgtm;
-            grafana-datasources = config.agents.skills.grafana-datasources;
-            stop-slop = config.agents.skills.stop-slop;
-            handoff = config.agents.skills.handoff;
-            grill-me = config.agents.skills.grill-me;
-            caveman = config.agents.skills.caveman;
-            skill-optimizer = config.agents.skills.skill-optimizer;
+            mcp-server-dev = skills.mcp-server-dev;
+            skill-creator = skills.skill-creator;
+            grafana-core = skills.grafana-core;
+            grafana-lgtm = skills.grafana-lgtm;
+            grafana-datasources = skills.grafana-datasources;
+            stop-slop = skills.stop-slop;
+            handoff = skills.handoff;
+            grill-me = skills.grill-me;
+            caveman = skills.caveman;
+            skill-optimizer = skills.skill-optimizer;
+            git-workflow = skills.git-workflow;
           };
           commands.set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
