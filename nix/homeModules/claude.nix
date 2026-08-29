@@ -1,8 +1,8 @@
 { config, ... }@flakeArgs:
 let
-  # Skill/plugin packages are owned by the dmipeck/agents repo. `config` here
-  # is flake-parts state (agents.nix imports inputs.agents.flakeModules.agents);
-  # captured once so the home-manager module below can reference the packages.
+  # Skill/plugin packages are owned by nix/agents/ (skills/*.nix). `config`
+  # here is flake-parts state (auto-imported under nix/); captured once so the
+  # home-manager module below can reference the packages.
   skills = flakeArgs.config.agents.skills;
 in
 {
@@ -17,10 +17,10 @@ in
       cfg = config.programs.claude-code;
 
       # Neutral MCP server configs + per-user instance options live in
-      # homeModules/agents.nix; skill packages come from the dmipeck/agents
-      # flakeModule (`skills`, captured above). This module is a thin adapter
-      # that maps them onto Claude Code's config dialect and renders the
-      # Claude permission allowlist from the shared per-server tool lists.
+      # homeModules/agents.nix; skill packages come from nix/agents/
+      # (`skills`, captured above). This module is a thin adapter that maps
+      # them onto Claude Code's config dialect and renders the Claude
+      # permission allowlist from the shared per-server tool lists.
       mcpServers = config.agents.mcpServers;
 
       # Claude derives the MCP tool namespace from the synthesized home-manager
