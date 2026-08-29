@@ -39,12 +39,15 @@ flakes. `CLAUDE.md` is a symlink to this file.
 
 ## AI-tools layering
 
-- `nix/homeModules/agents.nix` is the home-manager config layer: MCP server
-  wiring, `agents` instance options, global context. Skill/plugin packages
-  live in the **dmipeck/agents** repo (`flakeModules.agents` → `agents.skills`,
-  `agents.mcps`, `agents.commands`), imported here as a flake input and
-  surfaced by the `claude.nix`/`opencode.nix` adapters. Add an MCP server →
-  edit agents.nix; add a skill → edit dmipeck/agents.
+- `nix/homeModules/agents.nix` is the home-manager config layer: per-user
+  `agents.instance` options, global context, and the overlay of instance
+  values (grafana URL/token file, gitlab URL) onto the shared MCP server
+  definitions. MCP servers and skill/plugin packages live in the
+  **dmipeck/agents** repo (`flakeModules.agents` → `agents.mcpServers`,
+  `agents.skills`, `agents.mcps`, `agents.commands`), imported here as a flake
+  input and surfaced by the `claude.nix`/`opencode.nix` adapters. Add an
+  instance option → edit agents.nix; add a server or skill → edit
+  dmipeck/agents.
 - `opencode.nix` renders permission allow/ask lists from
   `mcpServers.<srv>.readOnlyTools/writableTools`; `claude.nix` remaps them to
   the `mpc__plugin_hm_<server>__<tool>` namespace.

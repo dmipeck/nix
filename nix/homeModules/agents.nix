@@ -1,27 +1,29 @@
-{ inputs, ... }@flakeArgs:
-
+{ inputs, config, ... }@flakeArgs:
+let
+  # Shared MCP server configs (neutral model + concrete servers) live once in
+  # the dmipeck/agents repo; captured here from flake-parts state so the
+  # home-manager module can overlay the per-user instance values.
+  baseMcpServers = flakeArgs.config.agents.mcpServers;
+in
 {
   # flake-parts level: import the dmipeck/agents flakeModule so this flake's
-  # eval exposes its `agents` options (skills, mcps, commands). The claude and
-  # opencode adapters read `config.agents.skills` from here; the home-manager
-  # module below owns the nix-repo-specific wiring (MCP server configs,
-  # per-user instance options, global context).
+  # eval exposes its `agents` options (skills, mcps, commands, mcpServers).
+  # The claude and opencode adapters read `config.agents.skills` from here;
+  # the home-manager module below owns the per-user wiring (instance options,
+  # global context) on top of the shared MCP server and skill definitions.
   imports = [
     inputs.agents.flakeModules.agents
   ];
 
   # Home-manager config layer for the tool-agnostic "AI coding assistant"
-  # core. Declares the MCP servers both Claude Code and opencode consume, plus
-  # the per-user instance options (grafana / gitlab).
-  #
-  # Skill/plugin packages no longer live here — they're packaged in the
-  # dmipeck/agents repo (`config.agents.skills`, see claude.nix / opencode.nix
-  # which capture them from this flake's eval). Add a new MCP server here; add
-  # a new skill over in dmipeck/agents.
+  # core. Declares the per-user instance options (grafana / gitlab) and the
+  # global context; the MCP servers and skill/plugin packages are defined in
+  # the dmipeck/agents repo. This module overlays instance-specific values
+  # (grafana URL/token file, gitlab URL) onto the shared server definitions.
+  # Add an instance option here; add a server or skill over in dmipeck/agents.
   flake.homeModules.agents =
     {
       lib,
-      pkgs,
       config,
       ...
     }:
@@ -86,50 +88,11 @@
         };
 
         mcpServers = lib.mkOption {
-          type = lib.types.attrsOf (
-            lib.types.submodule {
-              # Neutral MCP server model. Each consumer adapter re-shapes this
-              # into its own dialect; `*Tools` lists drive permission allowlists.
-              options = {
-                type = lib.mkOption {
-                  type = lib.types.enum [
-                    "local"
-                    "remote"
-                  ];
-                };
-                command = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                };
-                args = lib.mkOption {
-                  type = lib.types.listOf lib.types.str;
-                  default = [ ];
-                };
-                env = lib.mkOption {
-                  type = lib.types.attrsOf lib.types.str;
-                  default = { };
-                };
-                url = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                };
-                headers = lib.mkOption {
-                  type = lib.types.attrsOf lib.types.str;
-                  default = { };
-                };
-                readOnlyTools = lib.mkOption {
-                  type = lib.types.listOf lib.types.str;
-                  default = [ ];
-                  description = "Read-only tools to allow without prompting.";
-                };
-                writableTools = lib.mkOption {
-                  type = lib.types.listOf lib.types.str;
-                  default = [ ];
-                  description = "Mutating tools, to prompt/ask before running.";
-                };
-              };
-            }
-          );
+          # The neutral submodule type is defined once in the dmipeck/agents
+          # repo (`agents.mcpServers`); this option just passes the final
+          # merged attrs through to the adapters.
+          type = lib.types.attrsOf lib.types.anything;
+          description = "Neutral MCP server configs (defined in dmipeck/agents).";
         };
       };
 
@@ -164,149 +127,31 @@
           ```
         '';
 
+        # Base server definitions (commands, args, tool lists) come from the
+        # dmipeck/agents repo; only the per-user instance values are overlaid
+        # here.
         mcpServers = {
-          nixos = {
-            type = "local";
-            command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
-            readOnlyTools = [ ];
-          };
-          playwright = {
-            type = "local";
-            command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
-            readOnlyTools = [ ];
-          };
-          kubernetes = {
-            type = "local";
-            command = "${pkgs.mcp-k8s-go}/bin/mcp-k8s-go";
-            readOnlyTools = [
-              "get-k8s-pod-logs"
-              "get-k8s-resource"
-              "list-k8s-contexts"
-              "list-k8s-events"
-              "list-k8s-namespaces"
-              "list-k8s-nodes"
-              "list-k8s-resources"
-            ];
-          };
-          grafana = {
-            type = "local";
-            command = "${pkgs.mcp-grafana}/bin/mcp-grafana";
-            args = [
-              "-t"
-              "stdio"
-              # Block dashboard/alerting/etc create-update tools, leaving only
-              # inspection.
-              "-disable-write"
-            ];
-            env = {
+          nixos = baseMcpServers.nixos;
+          playwright = baseMcpServers.playwright;
+          kubernetes = baseMcpServers.kubernetes;
+          grafana = baseMcpServers.grafana // {
+            env = baseMcpServers.grafana.env // {
               GRAFANA_URL = instance.grafana.url;
-              # Points the server at the sops-decrypted secret *file* rather than
-              # the token value itself, so the token never lands in the Nix store
-              # or this repo. Left empty when unset, e.g. for anonymous access.
+              # Points the server at the sops-decrypted secret *file* rather
+              # than the token value itself, so the token never lands in the
+              # Nix store or this repo. Left empty when unset, e.g. for
+              # anonymous access.
               GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE =
                 if instance.grafana.serviceAccountTokenSopsKey != null then
                   config.sops.secrets.${instance.grafana.serviceAccountTokenSopsKey}.path
                 else
                   "";
             };
-            # mcp-grafana is started with -disable-write, so every tool it exposes
-            # is read-only (readOnlyHint: true); the full set is allow-listed.
-            readOnlyTools = [
-              "alerting_manage_routing"
-              "alerting_manage_rules"
-              "analyze_loki_labels"
-              "check_datasources_health"
-              "generate_deeplink"
-              "get_alert_group"
-              "get_annotation_tags"
-              "get_annotations"
-              "get_assertions"
-              "get_current_oncall_users"
-              "get_dashboard_by_uid"
-              "get_dashboard_panel_queries"
-              "get_dashboard_property"
-              "get_dashboard_summary"
-              "get_datasource"
-              "get_incident"
-              "get_oncall_shift"
-              "get_panel_image"
-              "get_plugin"
-              "get_sift_analysis"
-              "get_sift_investigation"
-              "get_snapshot"
-              "grafana_api_request"
-              "list_alert_groups"
-              "list_datasources"
-              "list_incidents"
-              "list_loki_label_names"
-              "list_loki_label_values"
-              "list_oncall_schedules"
-              "list_oncall_teams"
-              "list_oncall_users"
-              "list_prometheus_label_names"
-              "list_prometheus_label_values"
-              "list_prometheus_metric_metadata"
-              "list_prometheus_metric_names"
-              "list_provisioning_repositories"
-              "list_pyroscope_label_names"
-              "list_pyroscope_label_values"
-              "list_pyroscope_profile_types"
-              "list_sift_investigations"
-              "list_snapshots"
-              "query_loki_logs"
-              "query_loki_patterns"
-              "query_loki_stats"
-              "query_prometheus"
-              "query_prometheus_histogram"
-              "query_pyroscope"
-              "search_dashboards"
-              "search_folders"
-              "search_plugin_information"
-              "suggest_loki_alloy_label_config"
-              "validate_provisioning_file"
-            ];
           };
         }
         // lib.optionalAttrs instance.gitlab.enable {
-          gitlab = {
-            type = "remote";
+          gitlab = baseMcpServers.gitlab // {
             url = "${instance.gitlab.url}/api/v4/mcp";
-            # gitlab exposes both read and write tools with no read-only flag of
-            # its own, so only the individually-verified read-only tools are
-            # allow-listed; the write tools are explicit `ask`/prompt candidates.
-            readOnlyTools = [
-              "get_mcp_server_version"
-              "get_issue"
-              "get_merge_request"
-              "list_merge_requests"
-              "get_merge_request_commits"
-              "get_merge_request_diffs"
-              "get_merge_request_conflicts"
-              "get_merge_request_pipelines"
-              "get_merge_request_notes"
-              "get_repository_file"
-              "get_pipeline"
-              "get_pipeline_jobs"
-              "get_job_log"
-              "list_pipelines"
-              "get_workitem_notes"
-              "get_work_item_types"
-              "get_saved_view_work_items"
-              "search"
-              "search_labels"
-              "list_wiki_pages"
-              "semantic_code_search"
-            ];
-            writableTools = [
-              "create_issue"
-              "create_merge_request"
-              "create_merge_request_note"
-              "add_branch"
-              "manage_pipeline"
-              "create_workitem_note"
-              "link_work_items"
-              "attach_scan_profile"
-            ];
           };
         };
       };
