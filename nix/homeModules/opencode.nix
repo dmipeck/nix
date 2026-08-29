@@ -1,8 +1,8 @@
 { config, ... }@flakeArgs:
 let
-  # Skill/plugin packages are owned by the dmipeck/agents repo. `config` here
-  # is flake-parts state (agents.nix imports inputs.agents.flakeModules.agents);
-  # captured once so the home-manager module below can reference the packages.
+  # Skill/plugin packages are owned by nix/agents/ (skills/*.nix). `config`
+  # here is flake-parts state (auto-imported under nix/); captured once so the
+  # home-manager module below can reference the packages.
   agentSkills = flakeArgs.config.agents.skills;
 in
 {
@@ -14,10 +14,10 @@ in
     }:
     let
       # Neutral MCP server configs + per-user instance options live in
-      # homeModules/agents.nix; skill packages come from the dmipeck/agents
-      # flakeModule (`agentSkills`, captured above). This module is a thin
-      # adapter that maps them onto opencode's config dialect and renders
-      # opencode's permission rules from the shared per-server tool lists.
+      # homeModules/agents.nix; skill packages come from nix/agents/
+      # (`agentSkills`, captured above). This module is a thin adapter that
+      # maps them onto opencode's config dialect and renders opencode's
+      # permission rules from the shared per-server tool lists.
       mcpServers = config.agents.mcpServers;
 
       # opencode namespaces every MCP tool as `<server>_<tool>`. It allows

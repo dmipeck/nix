@@ -1,19 +1,12 @@
-{ inputs, config, ... }@flakeArgs:
+{ config, ... }@flakeArgs:
 let
-  # Shared MCP server configs (neutral model + concrete servers) live once in
-  # the dmipeck/agents repo; captured here from flake-parts state so the
-  # home-manager module can overlay the per-user instance values.
+  # Shared MCP server configs (neutral model + concrete servers) live in
+  # nix/agents/ (option model in agents.nix, per-server configs in mcps/);
+  # captured here from flake-parts state so the home-manager module can
+  # overlay the per-user instance values.
   baseMcpServers = flakeArgs.config.agents.mcpServers;
 in
 {
-  # flake-parts level: import the dmipeck/agents flakeModule so this flake's
-  # eval exposes its `agents` options (skills, mcps, commands, mcpServers).
-  # The claude and opencode adapters read `config.agents.skills` from here;
-  # the home-manager module below owns the per-user wiring (instance options,
-  # global context) on top of the shared MCP server and skill definitions.
-  imports = [
-    inputs.agents.flakeModules.agents
-  ];
 
   # Home-manager config layer for the tool-agnostic "AI coding assistant"
   # core. Declares the per-user instance options (grafana / gitlab) and the
@@ -88,11 +81,11 @@ in
         };
 
         mcpServers = lib.mkOption {
-          # The neutral submodule type is defined once in the dmipeck/agents
-          # repo (`agents.mcpServers`); this option just passes the final
-          # merged attrs through to the adapters.
+          # The neutral submodule type is defined once in nix/agents/agents.nix
+          # (`agents.mcpServers`); this option just passes the final merged
+          # attrs through to the adapters.
           type = lib.types.attrsOf lib.types.anything;
-          description = "Neutral MCP server configs (defined in dmipeck/agents).";
+          description = "Neutral MCP server configs (defined in nix/agents/).";
         };
       };
 
@@ -100,7 +93,7 @@ in
         # Global agent instructions, shared by both tools (written to
         # ~/.config/opencode/AGENTS.md and ~/.claude/CLAUDE.md). The
         # git-workflow and caveman skills it references are installed from the
-        # dmipeck/agents skill set, so the loads resolve.
+        # nix/agents/ skill set, so the loads resolve.
         context = ''
           # Global Agent Instructions
 
@@ -127,9 +120,9 @@ in
           ```
         '';
 
-        # Base server definitions (commands, args, tool lists) come from the
-        # dmipeck/agents repo; only the per-user instance values are overlaid
-        # here.
+        # Base server definitions (commands, args, tool lists) come from
+        # nix/agents/ (mcps/*.nix); only the per-user instance values are
+        # overlaid here.
         mcpServers = {
           nixos = baseMcpServers.nixos;
           playwright = baseMcpServers.playwright;

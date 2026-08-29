@@ -39,15 +39,20 @@ flakes. `CLAUDE.md` is a symlink to this file.
 
 ## AI-tools layering
 
+- `nix/agents/` is the flakeModule machinery for the AI-agent stack: the
+  neutral `agents.mcpServers` option model (`nix/agents/agents.nix`),
+  per-server configs (`nix/agents/mcps/*.nix`), and upstream skill/plugin
+  derivations (`nix/agents/skills/*.nix`). Auto-imported as flake-parts
+  modules like everything else under `nix/`. Local skills/commands
+  (`git-workflow` skill, `scaffold-project` command) are built by the
+  **dmipeck/agents** flake (a devshell + derivations repo) and referenced here
+  via `inputs.agents.packages.x86_64-linux.<name>`.
 - `nix/homeModules/agents.nix` is the home-manager config layer: per-user
   `agents.instance` options, global context, and the overlay of instance
   values (grafana URL/token file, gitlab URL) onto the shared MCP server
-  definitions. MCP servers and skill/plugin packages live in the
-  **dmipeck/agents** repo (`flakeModules.agents` → `agents.mcpServers`,
-  `agents.skills`, `agents.mcps`, `agents.commands`), imported here as a flake
-  input and surfaced by the `claude.nix`/`opencode.nix` adapters. Add an
-  instance option → edit agents.nix; add a server or skill → edit
-  dmipeck/agents.
+  definitions. It reads `config.agents.mcpServers` from the auto-imported
+  `nix/agents/` modules. Add an instance option → edit agents.nix; add a
+  server or skill → edit nix/agents/.
 - `opencode.nix` renders permission allow/ask lists from
   `mcpServers.<srv>.readOnlyTools/writableTools`; `claude.nix` remaps them to
   the `mpc__plugin_hm_<server>__<tool>` namespace.
