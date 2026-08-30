@@ -9,6 +9,7 @@ in
   flake.homeModules.opencode =
     {
       lib,
+      pkgs,
       config,
       ...
     }:
@@ -52,6 +53,22 @@ in
           // lib.optionalAttrs (srv.env != { }) { environment = srv.env; };
 
       mcp = lib.mapAttrs toMcp mcpServers;
+
+      # The workspaces feature (`/warp`, `/workspaces`) is env-var gated by
+      # OPENCODE_EXPERIMENTAL_WORKSPACES. Wrap the default binary with the var
+      # set so the flag is on for both the TUI and the server it spawns.
+      # home-manager reads package.meta/version to wire tui.json and the web
+      # service, so both are preserved on the wrapper.
+      wrappedOpencode = pkgs.symlinkJoin {
+        name = "opencode-workspaces-${pkgs.opencode.version}";
+        paths = [ pkgs.opencode ];
+        inherit (pkgs.opencode) meta version;
+        preferLocalBuild = true;
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          wrapProgram $out/bin/opencode --set OPENCODE_EXPERIMENTAL_WORKSPACES 1
+        '';
+      };
 
       # Skill/plugin packages expose $out/skills/<name>/SKILL.md; opencode
       # wants each skill referenced by its directory path. git-workflow is
@@ -120,8 +137,18 @@ in
     {
       options.opencode.enable = lib.mkEnableOption "Enable opencode AI coding agent";
 
+      options.opencode.experimental.workspaces = {
+        enable = lib.mkEnableOption ''
+          the experimental opencode workspaces feature (`/warp`, `/workspaces`).
+          Wraps the opencode binary with `OPENCODE_EXPERIMENTAL_WORKSPACES=1`.
+        '';
+      };
+
       config = lib.mkIf config.opencode.enable {
         programs.opencode.enable = true;
+
+        # Workspaces is env-var gated; enable it by wrapping the binary.
+        programs.opencode.package = lib.mkIf config.opencode.experimental.workspaces.enable wrappedOpencode;
 
         # Global context written to ~/.config/opencode/AGENTS.md, applied
         # across every opencode session. Content lives once in
