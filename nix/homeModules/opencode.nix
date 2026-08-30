@@ -302,7 +302,7 @@ in
           };
         };
 
-        programs.opencode.tui.theme = "vitesse-dark";
+        programs.opencode.tui.theme = "royg";
 
         programs.opencode.settings = {
           mcp = mcp;
