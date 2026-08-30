@@ -93,6 +93,15 @@ in
             caveman = skills.caveman;
             skill-optimizer = skills.skill-optimizer;
             git-workflow = skills.git-workflow;
+            golang-api = "${skills.golang-api}/skills/golang-api";
+            golang-cli = "${skills.golang-cli}/skills/golang-cli";
+            golang-database = "${skills.golang-database}/skills/golang-database";
+            golang-decoupling = "${skills.golang-decoupling}/skills/golang-decoupling";
+            golang-layout = "${skills.golang-layout}/skills/golang-layout";
+            golang-migration = "${skills.golang-migration}/skills/golang-migration";
+            golang-query = "${skills.golang-query}/skills/golang-query";
+            golang-testing = "${skills.golang-testing}/skills/golang-testing";
+            postgres = "${skills.postgres}/skills/postgres";
           };
           commands.set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship

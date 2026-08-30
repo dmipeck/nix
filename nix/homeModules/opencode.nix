@@ -103,6 +103,15 @@ in
           "skill-miner" = agentSkills.skill-optimizer;
           "skill-personalizer" = agentSkills.skill-optimizer;
           "skill-generalizer" = agentSkills.skill-optimizer;
+          "golang-api" = agentSkills.golang-api;
+          "golang-cli" = agentSkills.golang-cli;
+          "golang-database" = agentSkills.golang-database;
+          "golang-decoupling" = agentSkills.golang-decoupling;
+          "golang-layout" = agentSkills.golang-layout;
+          "golang-migration" = agentSkills.golang-migration;
+          "golang-query" = agentSkills.golang-query;
+          "golang-testing" = agentSkills.golang-testing;
+          "postgres" = agentSkills.postgres;
         }
         // {
           "git-workflow" = "${agentSkills.git-workflow}";
