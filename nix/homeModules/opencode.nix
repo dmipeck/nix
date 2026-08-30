@@ -132,6 +132,91 @@ in
 
         programs.opencode.themes = {
           vitesse-dark = ./opencode-themes/vitesse-dark.json;
+
+          # Minimal dark theme, defined in Nix.
+          # Warm low-blue-light palette: dark warm background, warm foreground,
+          # hues at or below green energy (ROYG), no blue/indigo/violet.
+          royg = {
+            "$schema" = "https://opencode.ai/theme.json";
+            defs = {
+              foreground = "#d4cfbf";
+              background = "#1c1917";
+              comment = "#758575";
+              string = "#d48372";
+              literal = "#d19a66";
+              keyword = "#4d9375";
+              function = "#e5c07b";
+              deleted = "#a14f55";
+              class = "#98c379";
+              builtin = "#d19a66";
+              property = "#d19a66";
+              namespace = "#e5c07b";
+              punctuation = "#8a8578";
+              decorator = "#bd8f8f";
+              number = "#d19a66";
+              boolean = "#4d9375";
+              variable = "#c2b36e";
+              regex = "#ab5e3f";
+              panel = "#28241f";
+              border = "#413c35";
+              border_active = "#4d9375";
+              muted = "#6f6a60";
+              diffAddedBg = "#2a3a2a";
+              diffRemovedBg = "#3a2a2a";
+            };
+            theme = {
+              primary = "class";
+              secondary = "keyword";
+              accent = "literal";
+              error = "deleted";
+              warning = "builtin";
+              success = "keyword";
+              info = "class";
+              text = "foreground";
+              textMuted = "muted";
+              background = "background";
+              backgroundPanel = "panel";
+              backgroundElement = "panel";
+              border = "border";
+              borderActive = "border_active";
+              borderSubtle = "border";
+              diffAdded = "keyword";
+              diffRemoved = "deleted";
+              diffContext = "comment";
+              diffHunkHeader = "comment";
+              diffHighlightAdded = "function";
+              diffHighlightRemoved = "string";
+              diffAddedBg = "diffAddedBg";
+              diffRemovedBg = "diffRemovedBg";
+              diffContextBg = "panel";
+              diffLineNumber = "punctuation";
+              diffAddedLineNumberBg = "diffAddedBg";
+              diffRemovedLineNumberBg = "diffRemovedBg";
+              markdownText = "foreground";
+              markdownHeading = "keyword";
+              markdownLink = "class";
+              markdownLinkText = "literal";
+              markdownCode = "string";
+              markdownBlockQuote = "comment";
+              markdownEmph = "property";
+              markdownStrong = "builtin";
+              markdownHorizontalRule = "punctuation";
+              markdownListItem = "keyword";
+              markdownListEnumeration = "literal";
+              markdownImage = "class";
+              markdownImageText = "literal";
+              markdownCodeBlock = "foreground";
+              syntaxComment = "comment";
+              syntaxKeyword = "keyword";
+              syntaxFunction = "function";
+              syntaxVariable = "variable";
+              syntaxString = "string";
+              syntaxNumber = "number";
+              syntaxType = "class";
+              syntaxOperator = "keyword";
+              syntaxPunctuation = "punctuation";
+            };
+          };
         };
 
         programs.opencode.tui.theme = "vitesse-dark";
