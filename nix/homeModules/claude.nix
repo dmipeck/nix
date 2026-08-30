@@ -33,6 +33,7 @@ in
         "kubernetes"
         "grafana"
         "gitlab"
+        "github"
       ];
       allowedMcpTools = lib.concatLists (
         map (
