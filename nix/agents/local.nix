@@ -43,11 +43,11 @@ in
     test = bareSkill "test";
     whole-tree = wholeTree;
 
-    # scaffold-project is a single command file, not a dir; the package output
+    # scaffold is a single command file, not a dir; the package output
     # is the file itself.
-    scaffold-project = pkgs.runCommand "agents-scaffold-project" { } ''
+    scaffold = pkgs.runCommand "agents-scaffold" { } ''
       mkdir -p "$(dirname "$out")"
-      cp ${ai}/commands/scaffold-project.md "$out"
+      cp ${ai}/commands/scaffold.md "$out"
     '';
   };
 }

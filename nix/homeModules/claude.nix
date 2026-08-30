@@ -109,9 +109,9 @@ in
           };
           commands = {
             set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
-            # scaffold-project command file, built by dmipeck/agents and passed
+            # scaffold command file, built by dmipeck/agents and passed
             # through config.agents.commands (agents.nix).
-            scaffold-project = config.agents.commands.scaffold-project;
+            scaffold = config.agents.commands.scaffold;
           };
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),

@@ -46,7 +46,7 @@ flakes. `CLAUDE.md` is a symlink to this file.
   bare-dir skill packages (`git-workflow`, `commit`, `test`, `thrifty`,
   `conventional-commits`), the whole-tree `agents` package (skills + commands +
   agents, sliced by the adapters via `$out/skills/<name>` /
-  `$out/agents/<name>.md`), and the `scaffold-project` command file.
+  `$out/agents/<name>.md`), and the `scaffold` command file.
 - `nix/agents/` is the flakeModule machinery for the AI-agent stack: the
   neutral `agents.mcpServers` option model (`nix/agents/agents.nix`),
   per-server configs (`nix/agents/mcps/*.nix`), upstream skill/plugin

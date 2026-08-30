@@ -12,8 +12,8 @@ let
   # rules file.
   rules = flakeArgs.config.agents.rules;
 
-  # Agent command files (nix/agents/commands/*.nix), e.g. the scaffold-project
-  # slash command built by dmipeck/agents (commands/scaffold-project.md);
+  # Agent command files (nix/agents/commands/*.nix), e.g. the scaffold
+  # slash command built by dmipeck/agents (commands/scaffold.md);
   # passed through here so the home-manager module can hand them to each AI
   # tool's custom command set.
   commands = flakeArgs.config.agents.commands;

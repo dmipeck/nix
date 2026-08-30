@@ -224,8 +224,8 @@ in
           test = subagents.test;
         };
 
-        # Custom slash commands, e.g. scaffold-project (built by dmipeck/agents
-        # from commands/scaffold-project.md, passed through config.agents.commands).
+        # Custom slash commands, e.g. scaffold (built by dmipeck/agents
+        # from commands/scaffold.md, passed through config.agents.commands).
         # home-manager maps each name to opencode/commands/<name>.md — but its
         # commands option only routes `lib.isPath` values to `source`; a
         # derivation (the command package) lands in `text` and fails the string
