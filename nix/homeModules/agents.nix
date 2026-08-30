@@ -5,6 +5,12 @@ let
   # captured here from flake-parts state so the home-manager module can
   # overlay the per-user instance values.
   baseMcpServers = flakeArgs.config.agents.mcpServers;
+
+  # Global agent rules (nix/agents/rules.nix) are owned by dmipeck/agents
+  # (rules/rules.md) and passed through here; the home-manager module uses them
+  # as the default for the shared `context` written to each AI tool's global
+  # rules file.
+  rules = flakeArgs.config.agents.rules;
 in
 {
 
@@ -26,16 +32,19 @@ in
     in
     {
       options.agents = {
-        # Shared global context (instructing the agent to load the git-workflow
-        # and caveman skills) written to each AI tool's global rules file —
+        # Shared global context written to each AI tool's global rules file —
         # ~/.config/opencode/AGENTS.md for opencode, ~/.claude/CLAUDE.md for
-        # Claude Code. Declared once here so both adapters stay in sync.
+        # Claude Code. Defaults to the dmipeck/agents `agents.rules` content
+        # (rules/rules.md, instructing the agent to load the git-workflow and
+        # caveman skills), passed through via nix/agents/rules.nix; overridable
+        # per profile.
         context = lib.mkOption {
           type = lib.types.lines;
           description = ''
             Global agent instructions, applied across every session of each AI
-            tool. Loads the git-workflow skill before working on a git repo and
-            the caveman skill for terse communication.
+            tool. Defaults to the dmipeck/agents global rules (loads the
+            git-workflow and caveman skills); override for per-profile
+            instructions.
           '';
         };
 
@@ -152,34 +161,11 @@ in
 
       config.agents = {
         # Global agent instructions, shared by both tools (written to
-        # ~/.config/opencode/AGENTS.md and ~/.claude/CLAUDE.md). The
-        # git-workflow and caveman skills it references are installed from the
-        # nix/agents/ skill set, so the loads resolve.
-        context = ''
-          # Global Agent Instructions
-
-          ## Git repositories
-
-          Before starting any work in a git repository, load the `git-workflow` skill:
-
-          ```
-          skill: git-workflow
-          ```
-
-          The skill contains the workflow and commit conventions that must be followed
-          for every change taken from "about to start" to "merged". Load it before
-          writing code, running commits, or opening pull requests.
-
-          ## Communication style
-
-          Load the `caveman` skill at the start of every session — always use
-          ultra-compressed `caveman` communication mode unless the user explicitly
-          requests otherwise:
-
-          ```
-          skill: caveman
-          ```
-        '';
+        # ~/.config/opencode/AGENTS.md and ~/.claude/CLAUDE.md). The content is
+        # owned once by dmipeck/agents (rules/rules.md) and passed through via
+        # `agents.rules` (nix/agents/rules.nix); declared as a default here so a
+        # profile can still override it with its own instructions.
+        context = lib.mkDefault rules;
 
         # Base server definitions (commands, args, tool lists) come from
         # nix/agents/ (mcps/*.nix); only the per-user instance values are

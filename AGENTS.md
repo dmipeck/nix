@@ -41,9 +41,11 @@ flakes. `CLAUDE.md` is a symlink to this file.
 
 - `nix/agents/` is the flakeModule machinery for the AI-agent stack: the
   neutral `agents.mcpServers` option model (`nix/agents/agents.nix`),
-  per-server configs (`nix/agents/mcps/*.nix`), and upstream skill/plugin
-  derivations (`nix/agents/skills/*.nix`). Auto-imported as flake-parts
-  modules like everything else under `nix/`. Local skills/commands
+  per-server configs (`nix/agents/mcps/*.nix`), upstream skill/plugin
+  derivations (`nix/agents/skills/*.nix`), and the global agent rules
+  (`nix/agents/rules.nix`, sourced from dmipeck/agents `rules/rules.md`).
+  Auto-imported as flake-parts modules like everything else under `nix/`.
+  Local skills/commands
   (`git-workflow` skill, `golang-*` + `postgres` skill set, `scaffold-project`
   command) are built by the **dmipeck/agents** flake (a devshell + derivations
   repo) and referenced here via `inputs.agents.packages.x86_64-linux.<name>`.
@@ -51,11 +53,12 @@ flakes. `CLAUDE.md` is a symlink to this file.
   (`nix/agents/skills/golang.nix`), so the adapters slice them out via
   `$out/skills/<name>`.
 - `nix/homeModules/agents.nix` is the home-manager config layer: per-user
-  `agents.instance` options, global context, and the overlay of instance
+  `agents.instance` options, the shared global context (defaulting to the
+  dmipeck/agents `agents.rules` content), and the overlay of instance
   values (grafana URL/token file, gitlab URL) onto the shared MCP server
-  definitions. It reads `config.agents.mcpServers` from the auto-imported
-  `nix/agents/` modules. Add an instance option → edit agents.nix; add a
-  server or skill → edit nix/agents/.
+  definitions. It reads `config.agents.mcpServers` and `config.agents.rules`
+  from the auto-imported `nix/agents/` modules. Add an instance option → edit
+  agents.nix; add a server or skill → edit nix/agents/.
 - `opencode.nix` renders permission allow/ask lists from
   `mcpServers.<srv>.readOnlyTools/writableTools`; `claude.nix` remaps them to
   the `mpc__plugin_hm_<server>__<tool>` namespace.
