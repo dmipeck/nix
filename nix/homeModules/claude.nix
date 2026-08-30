@@ -95,6 +95,8 @@ in
             caveman = skills.caveman;
             skill-optimizer = skills.skill-optimizer;
             git-workflow = skills.git-workflow;
+            committer = skills.committer;
+            tester = skills.tester;
             golang-api = "${skills.golang-api}/skills/golang-api";
             golang-cli = "${skills.golang-cli}/skills/golang-cli";
             golang-database = "${skills.golang-database}/skills/golang-database";

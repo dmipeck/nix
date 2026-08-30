@@ -4,6 +4,7 @@ let
   # here is flake-parts state (auto-imported under nix/); captured once so the
   # home-manager module below can reference the packages.
   agentSkills = flakeArgs.config.agents.skills;
+  subagents = flakeArgs.config.agents.subagents;
 in
 {
   flake.homeModules.opencode =
@@ -132,6 +133,8 @@ in
         }
         // {
           "git-workflow" = "${agentSkills.git-workflow}";
+          "committer" = "${agentSkills.committer}";
+          "tester" = "${agentSkills.tester}";
         };
 
       # Both themes share the opencode theme schema and mapping; only the
@@ -212,6 +215,14 @@ in
         programs.opencode.context = config.agents.context;
 
         programs.opencode.skills = skills;
+
+        # Delegate-to-subagent skills (committer, tester) reference their
+        # subagent by name; the definitions come from dmipeck/agents via
+        # config.agents.subagents (nix/agents/skills/committer-tester.nix).
+        programs.opencode.agents = {
+          committer = subagents.committer;
+          tester = subagents.tester;
+        };
 
         # Custom slash commands, e.g. scaffold-project (built by dmipeck/agents
         # from commands/scaffold-project.md, passed through config.agents.commands).
