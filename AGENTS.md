@@ -79,3 +79,18 @@ pkgs: { extensions = ...; }`, consumed via `_module.args.vscodeModules`).
   (`GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE`), never inlined. Never
   inline tokens in module code; gitleaks enforces this.
 - `.envrc` is `use flake` (direnv).
+
+## Local development with dmipeck/agents
+
+This flake's `agents` input points at the locked GitHub ref of `dmipeck/agents`.
+To test against a local sibling checkout instead, use
+`scripts/with-local-agents.sh`, which runs any `nix` command with
+`--override-input agents ../agents` appended. `flake.lock` stays untouched.
+
+```bash
+./scripts/with-local-agents.sh flake check
+./scripts/with-local-agents.sh eval .#homeModules.agents
+```
+
+Iterate by editing tracked files in `../agents` (`git add` new files — untracked
+files are not picked up). Publishing still requires the normal bump flow.
