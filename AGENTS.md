@@ -56,9 +56,10 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `agents.instance` options, the shared global context (defaulting to the
   dmipeck/agents `agents.rules` content), and the overlay of instance
   values (grafana URL/token file, gitlab URL) onto the shared MCP server
-  definitions. It reads `config.agents.mcpServers` and `config.agents.rules`
-  from the auto-imported `nix/agents/` modules. Add an instance option → edit
-  agents.nix; add a server or skill → edit nix/agents/.
+  definitions. It reads `config.agents.mcpServers`, `config.agents.rules`
+  and `config.agents.commands` from the auto-imported `nix/agents/` modules.
+  Add an instance option → edit agents.nix; add a server, skill or command →
+  edit nix/agents/.
 - `opencode.nix` renders permission allow/ask lists from
   `mcpServers.<srv>.readOnlyTools/writableTools`; `claude.nix` remaps them to
   the `mpc__plugin_hm_<server>__<tool>` namespace.

@@ -11,15 +11,22 @@ let
   # as the default for the shared `context` written to each AI tool's global
   # rules file.
   rules = flakeArgs.config.agents.rules;
+
+  # Agent command files (nix/agents/commands/*.nix), e.g. the scaffold-project
+  # slash command built by dmipeck/agents (commands/scaffold-project.md);
+  # passed through here so the home-manager module can hand them to each AI
+  # tool's custom command set.
+  commands = flakeArgs.config.agents.commands;
 in
 {
 
   # Home-manager config layer for the tool-agnostic "AI coding assistant"
   # core. Declares the per-user instance options (grafana / gitlab) and the
-  # global context; the MCP servers and skill/plugin packages are defined in
+  # shared context; the MCP servers, skills and command files are defined in
   # the dmipeck/agents repo. This module overlays instance-specific values
   # (grafana URL/token file, gitlab URL) onto the shared server definitions.
-  # Add an instance option here; add a server or skill over in dmipeck/agents.
+  # Add an instance option here; add a server, skill or command over in
+  # dmipeck/agents.
   flake.homeModules.agents =
     {
       lib,
@@ -157,6 +164,15 @@ in
           type = lib.types.attrsOf lib.types.anything;
           description = "Neutral MCP server configs (defined in nix/agents/).";
         };
+
+        commands = lib.mkOption {
+          # Each command is a package (a single markdown command file) defined
+          # in nix/agents/commands/*.nix and built by dmipeck/agents; passed
+          # through to the adapters, which map it onto each tool's custom
+          # command slot.
+          type = lib.types.attrsOf lib.types.anything;
+          description = "Agent command files (defined in nix/agents/commands/).";
+        };
       };
 
       config.agents = {
@@ -249,6 +265,10 @@ in
             };
           };
         };
+
+        # Agent command files (defined in nix/agents/commands/*.nix) passed
+        # straight through to each AI tool's custom command set.
+        commands = commands;
       };
     };
 }

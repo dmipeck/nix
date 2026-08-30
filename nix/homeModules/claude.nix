@@ -105,7 +105,12 @@ in
             golang-testing = "${skills.golang-testing}/skills/golang-testing";
             postgres = "${skills.postgres}/skills/postgres";
           };
-          commands.set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
+          commands = {
+            set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
+            # scaffold-project command file, built by dmipeck/agents and passed
+            # through config.agents.commands (agents.nix).
+            scaffold-project = config.agents.commands.scaffold-project;
+          };
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
           # so their lspServers config in marketplace.json never actually
