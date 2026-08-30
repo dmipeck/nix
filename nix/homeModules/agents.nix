@@ -56,6 +56,30 @@ in
               '';
             };
           };
+          argocd = {
+            url = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                ArgoCD base URL passed as ARGOCD_BASE_URL to the argocd-mcp
+                server. Leave as null to inherit ARGOCD_BASE_URL from the shell
+                environment instead.
+              '';
+            };
+            tokenSopsKey = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                Name of the sops-nix secret holding the ArgoCD API token.
+                argocd-mcp reads the token value from ARGOCD_API_TOKEN (no
+                token-file env exists), so the server is wrapped in a small
+                bash shim that reads the sops-decrypted file into that env var
+                at startup — the token value itself never lands in the Nix
+                store or this repo. Leave as null to inherit ARGOCD_API_TOKEN
+                from the shell environment instead.
+              '';
+            };
+          };
           gitlab = {
             enable = lib.mkOption {
               type = lib.types.bool;
@@ -177,6 +201,39 @@ in
                 else
                   "";
             };
+          };
+        }
+        // lib.optionalAttrs (instance.argocd.url != null || instance.argocd.tokenSopsKey != null) {
+          argocd = baseMcpServers.argocd // {
+            # argocd-mcp reads the API token from ARGOCD_API_TOKEN (no
+            # token-file env exists), so wrap the binary in a bash shim that
+            # reads the sops-decrypted file into that env var at startup —
+            # the token value itself never lands in the Nix store or this repo.
+            command =
+              if instance.argocd.tokenSopsKey != null then
+                "${pkgs.bash}/bin/bash"
+              else
+                baseMcpServers.argocd.command;
+            args =
+              if instance.argocd.tokenSopsKey != null then
+                [
+                  "-c"
+                  ''
+                    set -e
+                    ARGOCD_API_TOKEN="$(<"$ARGOCD_API_TOKEN_FILE")" \
+                      exec ${baseMcpServers.argocd.command} ${lib.concatStringsSep " " (map lib.escapeShellArg baseMcpServers.argocd.args)}
+                  ''
+                ]
+              else
+                baseMcpServers.argocd.args;
+            env =
+              baseMcpServers.argocd.env
+              // lib.optionalAttrs (instance.argocd.url != null) {
+                ARGOCD_BASE_URL = instance.argocd.url;
+              }
+              // lib.optionalAttrs (instance.argocd.tokenSopsKey != null) {
+                ARGOCD_API_TOKEN_FILE = config.sops.secrets.${instance.argocd.tokenSopsKey}.path;
+              };
           };
         }
         // lib.optionalAttrs instance.gitlab.enable {

@@ -61,4 +61,32 @@ in
   };
 
   config.agents.mcps."argocd-mcp" = lib.mkDefault argocdMcp;
+
+  config.agents.mcpServers.argocd = {
+    type = "local";
+    command = "${argocdMcp}/bin/argocd-mcp";
+    args = [ "stdio" ];
+    # API token and base URL are per-user placeholders; the consumer's
+    # home-manager config wraps the server so the token is read from a
+    # sops-decrypted file at startup (see dmipeck/nix homeModules/agents.nix).
+    env = {
+      MCP_READ_ONLY = "true";
+      ARGOCD_BASE_URL = "";
+      ARGOCD_API_TOKEN = "";
+    };
+    # Mirrors the "never make changes directly to the cluster" principle:
+    # block create/update/delete/sync/run-action tools, leaving only
+    # inspection. Cluster changes still flow through ./kustomize and ArgoCD.
+    readOnlyTools = [
+      "list_clusters"
+      "get_appproject"
+      "list_applications"
+      "get_application"
+      "get_application_resource_tree"
+      "get_application_managed_resources"
+      "get_application_workload_logs"
+      "get_resource_events"
+      "get_resource_actions"
+    ];
+  };
 }
