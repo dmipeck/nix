@@ -31,6 +31,7 @@ in
       # the rendered settings.json stays byte-stable.
       allowOrder = [
         "kubernetes"
+        "argocd"
         "grafana"
         "gitlab"
         "github"
