@@ -135,6 +135,7 @@ in
           "git-workflow" = "${agentSkills.git-workflow}";
           "commit" = "${agentSkills.commit}";
           "test" = "${agentSkills.test}";
+          "comments" = "${agentSkills.comments}";
         };
 
       # Both themes share the opencode theme schema and mapping; only the

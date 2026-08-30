@@ -41,6 +41,7 @@ in
     thrifty = bareSkill "thrifty";
     commit = bareSkill "commit";
     test = bareSkill "test";
+    comments = bareSkill "comments";
     whole-tree = wholeTree;
 
     # scaffold is a single command file, not a dir; the package output

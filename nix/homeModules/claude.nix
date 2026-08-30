@@ -97,6 +97,7 @@ in
             git-workflow = skills.git-workflow;
             commit = skills.commit;
             test = skills.test;
+            comments = skills.comments;
             golang-api = "${skills.golang-api}/skills/golang-api";
             golang-cli = "${skills.golang-cli}/skills/golang-cli";
             golang-database = "${skills.golang-database}/skills/golang-database";
