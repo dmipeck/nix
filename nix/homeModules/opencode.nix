@@ -116,6 +116,62 @@ in
         // {
           "git-workflow" = "${agentSkills.git-workflow}";
         };
+
+      # Both themes share the opencode theme schema and mapping; only the
+      # `defs` palette differs.
+      themeSchema = "https://opencode.ai/theme.json";
+      themeMapping = {
+        primary = "keyword";
+        secondary = "class";
+        accent = "literal";
+        error = "deleted";
+        warning = "builtin";
+        success = "keyword";
+        info = "class";
+        text = "foreground";
+        textMuted = "muted";
+        background = "background";
+        backgroundPanel = "panel";
+        backgroundElement = "panel";
+        border = "border";
+        borderActive = "border_active";
+        borderSubtle = "border";
+        diffAdded = "keyword";
+        diffRemoved = "deleted";
+        diffContext = "comment";
+        diffHunkHeader = "comment";
+        diffHighlightAdded = "function";
+        diffHighlightRemoved = "string";
+        diffAddedBg = "diffAddedBg";
+        diffRemovedBg = "diffRemovedBg";
+        diffContextBg = "panel";
+        diffLineNumber = "punctuation";
+        diffAddedLineNumberBg = "diffAddedBg";
+        diffRemovedLineNumberBg = "diffRemovedBg";
+        markdownText = "foreground";
+        markdownHeading = "keyword";
+        markdownLink = "class";
+        markdownLinkText = "literal";
+        markdownCode = "string";
+        markdownBlockQuote = "comment";
+        markdownEmph = "property";
+        markdownStrong = "builtin";
+        markdownHorizontalRule = "punctuation";
+        markdownListItem = "keyword";
+        markdownListEnumeration = "literal";
+        markdownImage = "class";
+        markdownImageText = "literal";
+        markdownCodeBlock = "foreground";
+        syntaxComment = "comment";
+        syntaxKeyword = "keyword";
+        syntaxFunction = "function";
+        syntaxVariable = "variable";
+        syntaxString = "string";
+        syntaxNumber = "number";
+        syntaxType = "class";
+        syntaxOperator = "keyword";
+        syntaxPunctuation = "punctuation";
+      };
     in
     {
       options.opencode.enable = lib.mkEnableOption "Enable opencode AI coding agent";
@@ -131,13 +187,42 @@ in
         programs.opencode.skills = skills;
 
         programs.opencode.themes = {
-          vitesse-dark = ./opencode-themes/vitesse-dark.json;
+          vitesse-dark = {
+            "$schema" = themeSchema;
+            defs = {
+              foreground = "#d4cfbf";
+              background = "#1e1e1e";
+              comment = "#758575";
+              string = "#d48372";
+              literal = "#429988";
+              keyword = "#4d9375";
+              function = "#a1b567";
+              deleted = "#a14f55";
+              class = "#54b1bf";
+              builtin = "#e0a569";
+              property = "#dd8e6e";
+              namespace = "#db889a";
+              punctuation = "#858585";
+              decorator = "#bd8f8f";
+              number = "#6394bf";
+              boolean = "#1c6b48";
+              variable = "#c2b36e";
+              regex = "#ab5e3f";
+              panel = "#252525";
+              border = "#3a3a3a";
+              border_active = "#4d9375";
+              muted = "#6e6e6e";
+              diffAddedBg = "#2a3a2a";
+              diffRemovedBg = "#3a2a2a";
+            };
+            theme = themeMapping;
+          };
 
           # Minimal dark theme, defined in Nix.
           # Warm low-blue-light palette: dark warm background, warm foreground,
           # hues at or below green energy (ROYG), no blue/indigo/violet.
           royg = {
-            "$schema" = "https://opencode.ai/theme.json";
+            "$schema" = themeSchema;
             defs = {
               foreground = "#d4cfbf";
               background = "#1c1917";
@@ -164,57 +249,9 @@ in
               diffAddedBg = "#2a3a2a";
               diffRemovedBg = "#3a2a2a";
             };
-            theme = {
+            theme = themeMapping // {
               primary = "class";
               secondary = "keyword";
-              accent = "literal";
-              error = "deleted";
-              warning = "builtin";
-              success = "keyword";
-              info = "class";
-              text = "foreground";
-              textMuted = "muted";
-              background = "background";
-              backgroundPanel = "panel";
-              backgroundElement = "panel";
-              border = "border";
-              borderActive = "border_active";
-              borderSubtle = "border";
-              diffAdded = "keyword";
-              diffRemoved = "deleted";
-              diffContext = "comment";
-              diffHunkHeader = "comment";
-              diffHighlightAdded = "function";
-              diffHighlightRemoved = "string";
-              diffAddedBg = "diffAddedBg";
-              diffRemovedBg = "diffRemovedBg";
-              diffContextBg = "panel";
-              diffLineNumber = "punctuation";
-              diffAddedLineNumberBg = "diffAddedBg";
-              diffRemovedLineNumberBg = "diffRemovedBg";
-              markdownText = "foreground";
-              markdownHeading = "keyword";
-              markdownLink = "class";
-              markdownLinkText = "literal";
-              markdownCode = "string";
-              markdownBlockQuote = "comment";
-              markdownEmph = "property";
-              markdownStrong = "builtin";
-              markdownHorizontalRule = "punctuation";
-              markdownListItem = "keyword";
-              markdownListEnumeration = "literal";
-              markdownImage = "class";
-              markdownImageText = "literal";
-              markdownCodeBlock = "foreground";
-              syntaxComment = "comment";
-              syntaxKeyword = "keyword";
-              syntaxFunction = "function";
-              syntaxVariable = "variable";
-              syntaxString = "string";
-              syntaxNumber = "number";
-              syntaxType = "class";
-              syntaxOperator = "keyword";
-              syntaxPunctuation = "punctuation";
             };
           };
         };
