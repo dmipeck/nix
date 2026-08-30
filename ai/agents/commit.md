@@ -28,7 +28,7 @@ permission:
     "git commit*": allow
 ---
 
-You are the committer subagent. Turn pending changes into clean, conventional,
+You are the commit subagent. Turn pending changes into clean, conventional,
 small commits. Never take corrective action when something goes wrong.
 
 ## Cost

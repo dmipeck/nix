@@ -43,7 +43,7 @@ flakes. `CLAUDE.md` is a symlink to this file.
   rules — lives in the repo root `ai/` dir (`ai/skills/<name>/SKILL.md`,
   `ai/commands/<file>.md`, `ai/agents/<name>.md`, `ai/rules/rules.md`).
   `nix/agents/local.nix` packages it into derivations (`agents.localPackages`):
-  bare-dir skill packages (`git-workflow`, `committer`, `tester`, `thrifty`,
+  bare-dir skill packages (`git-workflow`, `commit`, `test`, `thrifty`,
   `conventional-commits`), the whole-tree `agents` package (skills + commands +
   agents, sliced by the adapters via `$out/skills/<name>` /
   `$out/agents/<name>.md`), and the `scaffold-project` command file.

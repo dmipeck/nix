@@ -133,8 +133,8 @@ in
         }
         // {
           "git-workflow" = "${agentSkills.git-workflow}";
-          "committer" = "${agentSkills.committer}";
-          "tester" = "${agentSkills.tester}";
+          "commit" = "${agentSkills.commit}";
+          "test" = "${agentSkills.test}";
         };
 
       # Both themes share the opencode theme schema and mapping; only the
@@ -216,12 +216,12 @@ in
 
         programs.opencode.skills = skills;
 
-        # Delegate-to-subagent skills (committer, tester) reference their
+        # Delegate-to-subagent skills (commit, test) reference their
         # subagent by name; the definitions come from dmipeck/agents via
-        # config.agents.subagents (nix/agents/skills/committer-tester.nix).
+        # config.agents.subagents (nix/agents/skills/commit-test.nix).
         programs.opencode.agents = {
-          committer = subagents.committer;
-          tester = subagents.tester;
+          commit = subagents.commit;
+          test = subagents.test;
         };
 
         # Custom slash commands, e.g. scaffold-project (built by dmipeck/agents

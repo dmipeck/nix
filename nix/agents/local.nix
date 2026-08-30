@@ -11,7 +11,7 @@ let
 
   # Copy a whole skill dir (SKILL.md + references/) to $out root as a bare
   # dir, matching the historical per-skill package shape consumed by opencode
-  # and claude (git-workflow, committer, tester, thrifty, conventional-commits).
+  # and claude (git-workflow, commit, test, thrifty, conventional-commits).
   bareSkill =
     name:
     pkgs.runCommand "agents-${name}" { } ''
@@ -20,7 +20,7 @@ let
     '';
 
   # The whole ai content tree (skills/ + commands/ + agents/) in one package;
-  # the golang/postgres skills and the committer/tester subagents are sliced
+  # the golang/postgres skills and the commit/test subagents are sliced
   # out by the adapters via $out/skills/<name> / $out/agents/<name>.md.
   wholeTree = pkgs.runCommand "agents" { } ''
     mkdir -p $out
@@ -39,8 +39,8 @@ in
     git-workflow = bareSkill "git-workflow";
     conventional-commits = bareSkill "conventional-commits";
     thrifty = bareSkill "thrifty";
-    committer = bareSkill "committer";
-    tester = bareSkill "tester";
+    commit = bareSkill "commit";
+    test = bareSkill "test";
     whole-tree = wholeTree;
 
     # scaffold-project is a single command file, not a dir; the package output
