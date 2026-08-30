@@ -44,9 +44,12 @@ flakes. `CLAUDE.md` is a symlink to this file.
   per-server configs (`nix/agents/mcps/*.nix`), and upstream skill/plugin
   derivations (`nix/agents/skills/*.nix`). Auto-imported as flake-parts
   modules like everything else under `nix/`. Local skills/commands
-  (`git-workflow` skill, `scaffold-project` command) are built by the
-  **dmipeck/agents** flake (a devshell + derivations repo) and referenced here
-  via `inputs.agents.packages.x86_64-linux.<name>`.
+  (`git-workflow` skill, `golang-*` + `postgres` skill set, `scaffold-project`
+  command) are built by the **dmipeck/agents** flake (a devshell + derivations
+  repo) and referenced here via `inputs.agents.packages.x86_64-linux.<name>`.
+  The golang/postgres skills live inside the whole-tree `agents` package
+  (`nix/agents/skills/golang.nix`), so the adapters slice them out via
+  `$out/skills/<name>`.
 - `nix/homeModules/agents.nix` is the home-manager config layer: per-user
   `agents.instance` options, global context, and the overlay of instance
   values (grafana URL/token file, gitlab URL) onto the shared MCP server
