@@ -215,8 +215,22 @@ in
 
         # Custom slash commands, e.g. scaffold-project (built by dmipeck/agents
         # from commands/scaffold-project.md, passed through config.agents.commands).
-        # home-manager maps each name to opencode/commands/<name>.md.
-        programs.opencode.commands = config.agents.commands;
+        # home-manager maps each name to opencode/commands/<name>.md — but its
+        # commands option only routes `lib.isPath` values to `source`; a
+        # derivation (the command package) lands in `text` and fails the string
+        # type check. Derivation-backed commands are therefore wired through
+        # xdg.configFile directly (its `source` accepts derivations, same as
+        # claude-code's mkSourceEntry), while plain text/path commands keep the
+        # normal programs.opencode.commands path.
+        programs.opencode.commands = lib.filterAttrs (_: c: !lib.isDerivation c) config.agents.commands;
+
+        xdg.configFile =
+          lib.mkIf (lib.filterAttrs (_: c: lib.isDerivation c) config.agents.commands != { })
+            (
+              lib.mapAttrs' (name: drv: lib.nameValuePair "opencode/commands/${name}.md" { source = drv; }) (
+                lib.filterAttrs (_: c: lib.isDerivation c) config.agents.commands
+              )
+            );
 
         programs.opencode.themes = {
           vitesse-dark = {
