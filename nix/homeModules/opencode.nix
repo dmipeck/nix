@@ -213,6 +213,11 @@ in
 
         programs.opencode.skills = skills;
 
+        # Custom slash commands, e.g. scaffold-project (built by dmipeck/agents
+        # from commands/scaffold-project.md, passed through config.agents.commands).
+        # home-manager maps each name to opencode/commands/<name>.md.
+        programs.opencode.commands = config.agents.commands;
+
         programs.opencode.themes = {
           vitesse-dark = {
             "$schema" = themeSchema;
