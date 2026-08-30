@@ -39,27 +39,34 @@ flakes. `CLAUDE.md` is a symlink to this file.
 
 ## AI-tools layering
 
+- Local AI content — skills, commands, agent (subagent) definitions and global
+  rules — lives in the repo root `ai/` dir (`ai/skills/<name>/SKILL.md`,
+  `ai/commands/<file>.md`, `ai/agents/<name>.md`, `ai/rules/rules.md`).
+  `nix/agents/local.nix` packages it into derivations (`agents.localPackages`):
+  bare-dir skill packages (`git-workflow`, `committer`, `tester`, `thrifty`,
+  `conventional-commits`), the whole-tree `agents` package (skills + commands +
+  agents, sliced by the adapters via `$out/skills/<name>` /
+  `$out/agents/<name>.md`), and the `scaffold-project` command file.
 - `nix/agents/` is the flakeModule machinery for the AI-agent stack: the
   neutral `agents.mcpServers` option model (`nix/agents/agents.nix`),
   per-server configs (`nix/agents/mcps/*.nix`), upstream skill/plugin
   derivations (`nix/agents/skills/*.nix`), and the global agent rules
-  (`nix/agents/rules.nix`, sourced from dmipeck/agents `rules/rules.md`).
+  (`nix/agents/rules.nix`, read from `ai/rules/rules.md`).
   Auto-imported as flake-parts modules like everything else under `nix/`.
-  Local skills/commands
-  (`git-workflow` skill, `golang-*` + `postgres` skill set, `scaffold-project`
-  command) are built by the **dmipeck/agents** flake (a devshell + derivations
-  repo) and referenced here via `inputs.agents.packages.x86_64-linux.<name>`.
+  The local skill/command packages referenced by `nix/agents/skills/*.nix` and
+  `nix/agents/commands/*.nix` are built from `ai/` by `nix/agents/local.nix`.
   The golang/postgres skills live inside the whole-tree `agents` package
   (`nix/agents/skills/golang.nix`), so the adapters slice them out via
   `$out/skills/<name>`.
 - `nix/homeModules/agents.nix` is the home-manager config layer: per-user
   `agents.instance` options, the shared global context (defaulting to the
-  dmipeck/agents `agents.rules` content), and the overlay of instance
-  values (grafana URL/token file, gitlab URL) onto the shared MCP server
-  definitions. It reads `config.agents.mcpServers`, `config.agents.rules`
-  and `config.agents.commands` from the auto-imported `nix/agents/` modules.
+  `agents.rules` content from `ai/rules/rules.md`), and the overlay of
+  instance values (grafana URL/token file, gitlab URL) onto the shared MCP
+  server definitions. It reads `config.agents.mcpServers`,
+  `config.agents.rules` and `config.agents.commands` from the auto-imported
+  `nix/agents/` modules.
   Add an instance option → edit agents.nix; add a server, skill or command →
-  edit nix/agents/.
+  edit nix/agents/ (content goes in `ai/`).
 - `opencode.nix` renders permission allow/ask lists from
   `mcpServers.<srv>.readOnlyTools/writableTools`; `claude.nix` remaps them to
   the `mpc__plugin_hm_<server>__<tool>` namespace.
