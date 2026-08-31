@@ -231,7 +231,7 @@ in
             explore-git = exploreGitAgent;
             git = gitAgent;
           }
-          // lib.optionalAttrs config.dotagents.instance.github.enable {
+          // lib.optionalAttrs config.dotagents.mcps.github.enable {
             explore-github = exploreGithubAgent;
             github = githubAgent;
           };

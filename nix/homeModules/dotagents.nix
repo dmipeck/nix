@@ -35,7 +35,7 @@ in
       ...
     }:
     let
-      instance = config.dotagents.instance;
+      mcps = config.dotagents.mcps;
     in
     {
       options.dotagents = {
@@ -55,7 +55,7 @@ in
           '';
         };
 
-        instance = {
+        mcps = {
           grafana = {
             url = lib.mkOption {
               type = lib.types.str;
@@ -103,7 +103,7 @@ in
               description = ''
                 Whether to add the gitlab MCP server to the AI tool's config.
                 Off by default since not every profile has a GitLab instance to
-                point it at; set to true and provide `dotagents.instance.gitlab.url`
+                point it at; set to true and provide `dotagents.mcps.gitlab.url`
                 to enable it.
               '';
             };
@@ -115,7 +115,7 @@ in
                 to. The server itself is remote HTTP (served by GitLab at
                 "''${url}/api/v4/mcp") and authenticates interactively via OAuth
                 2.0 on first use — no sops secret is needed here. Only read when
-                `dotagents.instance.gitlab.enable` is true.
+                `dotagents.mcps.gitlab.enable` is true.
               '';
             };
           };
@@ -126,7 +126,7 @@ in
               description = ''
                 Whether to add the github MCP server to the AI tool's config.
                 Off by default since not every profile needs GitHub access; set
-                to true and provide `dotagents.instance.github.tokenSopsKey` to
+                to true and provide `dotagents.mcps.github.tokenSopsKey` to
                 enable it.
               '';
             };
@@ -192,32 +192,29 @@ in
           kubernetes = baseMcpServers.kubernetes;
           grafana = baseMcpServers.grafana // {
             env = baseMcpServers.grafana.env // {
-              GRAFANA_URL = instance.grafana.url;
+              GRAFANA_URL = mcps.grafana.url;
               # Points the server at the sops-decrypted secret *file* rather
               # than the token value itself, so the token never lands in the
               # Nix store or this repo. Left empty when unset, e.g. for
               # anonymous access.
               GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE =
-                if instance.grafana.serviceAccountTokenSopsKey != null then
-                  config.sops.secrets.${instance.grafana.serviceAccountTokenSopsKey}.path
+                if mcps.grafana.serviceAccountTokenSopsKey != null then
+                  config.sops.secrets.${mcps.grafana.serviceAccountTokenSopsKey}.path
                 else
                   "";
             };
           };
         }
-        // lib.optionalAttrs (instance.argocd.url != null || instance.argocd.tokenSopsKey != null) {
+        // lib.optionalAttrs (mcps.argocd.url != null || mcps.argocd.tokenSopsKey != null) {
           argocd = baseMcpServers.argocd // {
             # argocd-mcp reads the API token from ARGOCD_API_TOKEN (no
             # token-file env exists), so wrap the binary in a bash shim that
             # reads the sops-decrypted file into that env var at startup —
             # the token value itself never lands in the Nix store or this repo.
             command =
-              if instance.argocd.tokenSopsKey != null then
-                "${pkgs.bash}/bin/bash"
-              else
-                baseMcpServers.argocd.command;
+              if mcps.argocd.tokenSopsKey != null then "${pkgs.bash}/bin/bash" else baseMcpServers.argocd.command;
             args =
-              if instance.argocd.tokenSopsKey != null then
+              if mcps.argocd.tokenSopsKey != null then
                 [
                   "-c"
                   ''
@@ -230,20 +227,20 @@ in
                 baseMcpServers.argocd.args;
             env =
               baseMcpServers.argocd.env
-              // lib.optionalAttrs (instance.argocd.url != null) {
-                ARGOCD_BASE_URL = instance.argocd.url;
+              // lib.optionalAttrs (mcps.argocd.url != null) {
+                ARGOCD_BASE_URL = mcps.argocd.url;
               }
-              // lib.optionalAttrs (instance.argocd.tokenSopsKey != null) {
-                ARGOCD_API_TOKEN_FILE = config.sops.secrets.${instance.argocd.tokenSopsKey}.path;
+              // lib.optionalAttrs (mcps.argocd.tokenSopsKey != null) {
+                ARGOCD_API_TOKEN_FILE = config.sops.secrets.${mcps.argocd.tokenSopsKey}.path;
               };
           };
         }
-        // lib.optionalAttrs instance.gitlab.enable {
+        // lib.optionalAttrs mcps.gitlab.enable {
           gitlab = baseMcpServers.gitlab // {
-            url = "${instance.gitlab.url}/api/v4/mcp";
+            url = "${mcps.gitlab.url}/api/v4/mcp";
           };
         }
-        // lib.optionalAttrs instance.github.enable {
+        // lib.optionalAttrs mcps.github.enable {
           github = baseMcpServers.github // {
             # github-mcp-server has no token-file env var, so wrap the binary
             # in a bash shim that reads the sops-decrypted PAT file into
@@ -261,7 +258,7 @@ in
               ''
             ];
             env = baseMcpServers.github.env // {
-              GITHUB_PERSONAL_ACCESS_TOKEN_FILE = config.sops.secrets.${instance.github.tokenSopsKey}.path;
+              GITHUB_PERSONAL_ACCESS_TOKEN_FILE = config.sops.secrets.${mcps.github.tokenSopsKey}.path;
             };
           };
         };

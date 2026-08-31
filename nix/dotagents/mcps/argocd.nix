@@ -55,12 +55,12 @@ let
   });
 in
 {
-  options.dotagents.mcps."argocd-mcp" = lib.mkOption {
+  options.dotagents.mcpPackages."argocd-mcp" = lib.mkOption {
     type = lib.types.package;
     description = "argocd-mcp MCP server package.";
   };
 
-  config.dotagents.mcps."argocd-mcp" = lib.mkDefault argocdMcp;
+  config.dotagents.mcpPackages."argocd-mcp" = lib.mkDefault argocdMcp;
 
   config.dotagents.mcpServers.argocd = {
     type = "local";
