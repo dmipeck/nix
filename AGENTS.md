@@ -49,7 +49,10 @@ flakes. `CLAUDE.md` is a symlink to this file.
   uniform contracts: `config.dotagents.skills` (attrsOf package, layout
   `$out/skills/<name>/SKILL.md`), `config.dotagents.agents` (attrsOf path to
   `agent.md`), `config.dotagents.commands` (attrsOf package, `$out` = the
-  command file). Auto values are `lib.mkOptionDefault` (priority 1500, same as
+  command file), plus `config.dotagents.skillLayouts` (attrsOf
+  `"skill" | "collection"`, default `"skill"`) — per-key layout metadata
+  telling adapters whether a skill key is a plain skill or a whole bundle.
+  Auto values are `lib.mkOptionDefault` (priority 1500, same as
   an option default) so a profile can still override them;
   `config.dotagents.localPackages.whole-tree` is the whole content tree in one
   store path.
@@ -66,7 +69,10 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `dotagents/agents/<name>/agent.md` files, not per-name nix modules. The
   `skills`/`agents`/`commands` option parents are submodules with a
   `freeformType = attrsOf ...`, so auto-discovered and upstream-emitted keys
-  share one type — there are no per-name option declarations.
+  share one type — there are no per-name option declarations. Skill keys with
+  layout `"collection"` (grafana-core, grafana-lgtm, grafana-datasources,
+  mcp-server-dev, skill-optimizer) are whole bundles whose `$out/skills/`
+  holds many constituent skills, not a `$out/skills/<name>/SKILL.md` entry.
 - `nix/homeModules/dotagents.nix` is the home-manager config layer: per-user
   `dotagents.mcps` options, the shared global context (defaulting to the
   `dotagents.rules` content from `dotagents/agents.md`), and the overlay of
@@ -80,7 +86,10 @@ flakes. `CLAUDE.md` is a symlink to this file.
   iterates `config.dotagents.skills`, `config.dotagents.agents` and
   `config.dotagents.commands` generically and maps them onto the tool's config
   dialect. Every skill becomes a `$out/skills/<name>` entry (opencode `skills`,
-  claude `plugins`); every agent is rendered from its `agent.md` — opencode
+  claude `plugins`); a collection key (layout `"collection"`) is a whole bundle
+  — claude renders the package root as a plugin, opencode skips it (its
+  constituents are registered as separate keys already); every agent is
+  rendered from its `agent.md` — opencode
   passes the files through, claude re-renders them with a generic renderer plus
   a per-agent override map (e.g. `nix`, `explore-github` and `github` carry
   inline `mcpServers` blocks); commands pass straight through to each tool's

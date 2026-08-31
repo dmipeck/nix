@@ -6,6 +6,7 @@ let
   # (auto-imported under nix/); captured once so the home-manager module below
   # can reference the packages.
   skills = flakeArgs.config.dotagents.skills;
+  skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
 in
 {
@@ -201,8 +202,15 @@ in
           # skill, referenced by its $out/skills/<name> directory. The package
           # values coerce to paths, so no hand-curated name→package map lives
           # here — dropping a new skill into dotagents/skills/ needs no adapter
-          # edit.
-          plugins = lib.mapAttrs' (name: pkg: lib.nameValuePair name "${pkg}/skills/${name}") skills;
+          # edit. Collection keys (layout "collection") are whole bundles
+          # ($out/skills/ holds many constituent skills): they're rendered as
+          # the package root (a whole plugin), not $out/skills/<name>.
+          plugins = lib.mapAttrs' (
+            name: pkg:
+            lib.nameValuePair name (
+              if (skillLayouts.${name} or "skill") == "collection" then pkg else "${pkg}/skills/${name}"
+            )
+          ) skills;
           commands = {
             set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
           }

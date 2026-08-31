@@ -21,16 +21,21 @@ let
     '';
 in
 {
-  # Each mcp-server-dev plugin skill is exposed by its own name. The plugin
-  # key itself (mcp-server-dev) is NOT exposed: the package has no
-  # $out/skills/mcp-server-dev dir, and every config.dotagents.skills key is
-  # rendered as $out/skills/<name> by the adapters. skill-creator's plugin dir
-  # carries skills/skill-creator, so its exposed name is the plugin key itself.
+  # Each mcp-server-dev plugin skill is exposed by its own name, and the
+  # plugin key itself (mcp-server-dev) is exposed as a whole bundle marked
+  # layout "collection": its package $out/skills/ contains the constituent
+  # skills, so adapters render the package root (claude: whole plugin) or
+  # skip it (opencode: no single-skill form). skill-creator's plugin dir
+  # carries skills/skill-creator, so its exposed name is the plugin key
+  # itself, a plain "skill".
   config.dotagents.skills =
     lib.genAttrs [
       "build-mcp-app"
       "build-mcp-server"
       "build-mcpb"
+      "mcp-server-dev"
     ] (_: mkPlugin "mcp-server-dev")
     // lib.genAttrs [ "skill-creator" ] (_: mkPlugin "skill-creator");
+
+  config.dotagents.skillLayouts."mcp-server-dev" = "collection";
 }
