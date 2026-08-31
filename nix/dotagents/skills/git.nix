@@ -5,6 +5,10 @@ let
   # It has read/write access to git: it runs any `git` command via bash to do
   # the git task asked of it.
   local = config.dotagents.localPackages;
+
+  # `outPath` is a string in Nix 2.34; `/. +` rebuilds it as a true path so
+  # home-manager's `agents` option copies the file via `source` (lib.isPath).
+  store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
   options.dotagents.subagents.git = lib.mkOption {
@@ -12,5 +16,5 @@ in
     description = "opencode subagent definition for git (built from ../dotagents/agents/git/agent.md).";
   };
 
-  config.dotagents.subagents.git = lib.mkDefault "${local.whole-tree}/agents/git/agent.md";
+  config.dotagents.subagents.git = lib.mkDefault (store + "/agents/git/agent.md");
 }

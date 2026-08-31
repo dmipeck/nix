@@ -6,6 +6,11 @@ let
   # opencode default — so it has no tools of its own and delegates every task
   # through `task`.
   local = config.dotagents.localPackages;
+
+  # `outPath` is a string in Nix 2.34; `/. +` rebuilds it as a true path so
+  # home-manager's `agents` option (lib.isPath) copies the file via `source`
+  # instead of writing the path text as the agent definition.
+  store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
   options.dotagents.subagents.orchestrate = lib.mkOption {
@@ -13,5 +18,5 @@ in
     description = "opencode agent definition for orchestrate (built from ../dotagents/agents/orchestrate/agent.md).";
   };
 
-  config.dotagents.subagents.orchestrate = lib.mkDefault "${local.whole-tree}/agents/orchestrate/agent.md";
+  config.dotagents.subagents.orchestrate = lib.mkDefault (store + "/agents/orchestrate/agent.md");
 }
