@@ -73,6 +73,16 @@ in
             };
           };
           argocd = {
+            enable = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
+                Whether to add the argocd MCP server to the AI tool's config.
+                Off by default since not every profile has an ArgoCD instance to
+                point it at; set to true and provide `dotagents.mcps.argocd.url`
+                and/or `dotagents.mcps.argocd.tokenSopsKey` to configure it.
+              '';
+            };
             url = lib.mkOption {
               type = lib.types.nullOr lib.types.str;
               default = null;
@@ -205,7 +215,7 @@ in
             };
           };
         }
-        // lib.optionalAttrs (mcps.argocd.url != null || mcps.argocd.tokenSopsKey != null) {
+        // lib.optionalAttrs mcps.argocd.enable {
           argocd = baseMcpServers.argocd // {
             # argocd-mcp reads the API token from ARGOCD_API_TOKEN (no
             # token-file env exists), so wrap the binary in a bash shim that
