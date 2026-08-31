@@ -213,12 +213,17 @@ in
         # Delegate-to-subagent skills (commit, test, nix) reference their
         # subagent by name; the definitions come from dmipeck/agents via
         # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix and
-        # nix.nix). nix re-enables the nixos MCP tools via `tools` in its agent
-        # definition.
+        # nix.nix). nix re-enables the nixos MCP tools and git the github MCP
+        # tools via `tools` in their agent definitions. git only speaks the
+        # github server, so it's registered only when the per-user github
+        # instance is enabled.
         programs.opencode.agents = {
           commit = subagents.commit;
           test = subagents.test;
           nix = subagents.nix;
+        }
+        // lib.optionalAttrs config.dotagents.instance.github.enable {
+          git = subagents.git;
         };
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents

@@ -54,6 +54,44 @@ in
                   } > "$out"
       '';
 
+      # The git subagent, rendered for Claude Code's dialect with the github
+      # MCP server scoped inline. It reuses the per-user instance config from
+      # config.dotagents.mcpServers.github (dotagents.nix wraps the server so
+      # the PAT is read from a sops-decrypted file at startup), so it only
+      # exists when the github instance is enabled. The frontmatter is
+      # generated with toYAML because command/args/env are instance-derived.
+      gitServer = config.dotagents.mcpServers.github;
+      gitAgent =
+        let
+          # toYAML because command/args/env are instance-derived; the args
+          # carry shell-quoted shim text, so the frontmatter is written as a
+          # store file and cat'd, never shell-interpolated.
+          frontmatter = pkgs.writeText "dotagents-git-agent-frontmatter" (
+            lib.generators.toYAML { } {
+              name = "git";
+              description = "Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server's git tools. Read-only: reports, never mutates.";
+              tools = "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
+              mcpServers = [
+                {
+                  github = {
+                    type = "stdio";
+                    inherit (gitServer) command args env;
+                  };
+                }
+              ];
+            }
+          );
+        in
+        pkgs.runCommand "dotagents-git-agent-claude" { } ''
+          mkdir -p "$(dirname "$out")"
+          {
+            echo '---'
+            cat ${frontmatter}
+            echo '---'
+            awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${subagents.git}
+          } > "$out"
+        '';
+
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
       # field that plugins have no mechanism to declare, so it's wired in
@@ -121,10 +159,15 @@ in
             scaffold = config.dotagents.commands.scaffold;
           };
           # The nix subagent, re-rendered for Claude Code's agent dialect with
-          # the nixos MCP server scoped inline (see nixAgent above). The
-          # home-manager/claude-code module writes it to ~/.claude/agents/nix.md.
+          # the nixos MCP server scoped inline (see nixAgent above), plus the
+          # git subagent with the github server scoped inline (see gitAgent;
+          # only when the github instance is enabled). The
+          # home-manager/claude-code module writes them to ~/.claude/agents/.
           agents = {
             nix = nixAgent;
+          }
+          // lib.optionalAttrs config.dotagents.instance.github.enable {
+            git = gitAgent;
           };
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
