@@ -22,18 +22,13 @@ in
       # permission rules from the shared per-server tool lists.
       mcpServers = config.agents.mcpServers;
 
-      # opencode namespaces every MCP tool as `<server>_<tool>`. It allows
-      # everything by default, so the allow-lists are explicit defence-in-depth
-      # on top of the read-only MCP servers (grafana); the gitlab write
-      # tools (which claude prompts on) and the bash denies preserve claude's
-      # "prompt on anything not explicitly allowed" behaviour in opencode's
-      # permissive model.
-      allowedMcpTools = lib.concatLists (
-        lib.mapAttrsToList (name: srv: map (tool: "${name}_${tool}") srv.readOnlyTools) mcpServers
-      );
-      askMcpTools = lib.concatLists (
-        lib.mapAttrsToList (name: srv: map (tool: "${name}_${tool}") srv.writableTools) mcpServers
-      );
+      # opencode namespaces every MCP tool as `<server>_<tool>`. By default the
+      # whole MCP set is denied for every session (via the top-level `tools`
+      # map below), so the schemas of all those tools never enter the main
+      # session's context. A subagent that needs a server opts back in with
+      # `tools: { "<server>_*": true }` in its agent definition — the
+      # documented "enable per agent, disable globally" MCP pattern.
+      deniedMcpTools = lib.genAttrs (map (name: "${name}_*") (lib.attrNames mcpServers)) (_: false);
 
       # A local stdio server (command array + optional env) or a remote HTTP
       # server, matching the v1 `mcp` shape opencode's home-manager module and
@@ -319,26 +314,28 @@ in
         programs.opencode.settings = {
           mcp = mcp;
 
+          # MCP servers stay registered (`mcp` above) but their tools are
+          # denied for every session by default, keeping their schemas out of
+          # the main context. Subagents re-enable servers per-agent later.
+          tools = deniedMcpTools;
+
           # Enable LSP servers and formatters. Both are disabled by default;
           # `true` turns on every built-in server/formatter, starting one when a
           # matching file extension is opened and the required command is found.
           lsp = true;
           formatter = true;
 
-          permission =
-            (lib.genAttrs allowedMcpTools (_: "allow"))
-            // (lib.genAttrs askMcpTools (_: "ask"))
-            // {
-              bash = {
-                "awk *" = "deny";
-                "sed *" = "deny";
-                "kubectl *" = "deny";
-              };
-              external_directory = {
-                "/nix/store/**" = "allow";
-                "~/.config/**" = "allow";
-              };
+          permission = {
+            bash = {
+              "awk *" = "deny";
+              "sed *" = "deny";
+              "kubectl *" = "deny";
             };
+            external_directory = {
+              "/nix/store/**" = "allow";
+              "~/.config/**" = "allow";
+            };
+          };
         };
       };
     };

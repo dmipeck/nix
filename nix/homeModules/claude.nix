@@ -19,32 +19,12 @@ in
       # Neutral MCP server configs + per-user instance options live in
       # homeModules/agents.nix; skill packages come from nix/agents/
       # (`skills`, captured above). This module is a thin adapter that maps
-      # them onto Claude Code's config dialect and renders the Claude
-      # permission allowlist from the shared per-server tool lists.
+      # them onto Claude Code's config dialect. No MCP servers are registered
+      # for the main session (see `mcpServers = {}` below), so their tool
+      # descriptions never consume main-context; a subagent opts a server back
+      # in with `mcpServers:` inline definitions in its agent file, which
+      # connect only while that subagent runs.
       mcpServers = config.agents.mcpServers;
-
-      # Claude derives the MCP tool namespace from the synthesized home-manager
-      # plugin name, i.e. mpc__plugin_hm_<server>__<tool> (verified live via
-      # `claude mcp list`) — not mcp__<server>__<tool>. Only home-manager-plugin
-      # servers (those exposing a tool list) appear in the allowlist. Iterated
-      # in the historical declaration order (kubernetes, grafana, gitlab) so
-      # the rendered settings.json stays byte-stable.
-      allowOrder = [
-        "kubernetes"
-        "argocd"
-        "grafana"
-        "gitlab"
-        "github"
-      ];
-      allowedMcpTools = lib.concatLists (
-        map (
-          name:
-          let
-            srv = mcpServers.${name} or { };
-          in
-          map (tool: "mpc__plugin_hm_${name}__${tool}") (srv.readOnlyTools or [ ])
-        ) allowOrder
-      );
 
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
@@ -166,29 +146,17 @@ in
               command = "${claudeStatusline}/bin/claude-statusline";
               padding = 0;
             };
-            permissions.allow = allowedMcpTools;
             permissions.deny = [
               "Bash(awk:*)"
               "Bash(sed:*)"
               "Bash(kubectl:*)"
             ];
           };
-          mcpServers = lib.mapAttrs (
-            name: srv:
-            if srv.type == "remote" then
-              {
-                type = "http";
-                url = srv.url;
-              }
-              // lib.optionalAttrs (srv.headers != { }) { inherit (srv) headers; }
-            else
-              {
-                type = "stdio";
-                command = srv.command;
-                inherit (srv) args;
-                inherit (srv) env;
-              }
-          ) mcpServers;
+          # No MCP servers in the main conversation. The shared server set
+          # (config.agents.mcpServers, kept for reference above) is served to
+          # subagents via inline `mcpServers:` frontmatter in their agent
+          # files instead, so main-context stays free of MCP tool schemas.
+          mcpServers = { };
         };
 
         # After every `home-manager switch`, replace the read-only
