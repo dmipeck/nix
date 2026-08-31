@@ -4,6 +4,10 @@ let
   # $out/agents/nix/agent.md, built from ../dotagents by
   # nix/dotagents/local.nix.
   local = config.dotagents.localPackages;
+
+  # `outPath` is a string in Nix 2.34; `/. +` rebuilds it as a true path so
+  # home-manager's `agents` option copies the file via `source` (lib.isPath).
+  store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
   options.dotagents.subagents.nix = lib.mkOption {
@@ -11,5 +15,5 @@ in
     description = "opencode subagent definition for nix (built from ../dotagents/agents/nix/agent.md).";
   };
 
-  config.dotagents.subagents.nix = lib.mkDefault "${local.whole-tree}/agents/nix/agent.md";
+  config.dotagents.subagents.nix = lib.mkDefault (store + "/agents/nix/agent.md");
 }

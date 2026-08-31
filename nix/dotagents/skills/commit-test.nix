@@ -4,6 +4,10 @@ let
   # package at $out/agents/<name>/agent.md, built from ../dotagents by
   # nix/dotagents/local.nix.
   local = config.dotagents.localPackages;
+
+  # `outPath` is a string in Nix 2.34; `/. +` rebuilds it as a true path so
+  # home-manager's `agents` option copies the file via `source` (lib.isPath).
+  store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
   options.dotagents.subagents = {
@@ -18,7 +22,7 @@ in
   };
 
   config = {
-    dotagents.subagents.commit = lib.mkDefault "${local.whole-tree}/agents/commit/agent.md";
-    dotagents.subagents.test = lib.mkDefault "${local.whole-tree}/agents/test/agent.md";
+    dotagents.subagents.commit = lib.mkDefault (store + "/agents/commit/agent.md");
+    dotagents.subagents.test = lib.mkDefault (store + "/agents/test/agent.md");
   };
 }
