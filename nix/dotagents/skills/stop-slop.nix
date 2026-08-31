@@ -15,13 +15,13 @@ let
   };
 in
 {
-  options.agents.skills."stop-slop" = lib.mkOption {
+  options.dotagents.skills."stop-slop" = lib.mkOption {
     type = lib.types.package;
     description = "opencode skill package for stop-slop ($out/skills/stop-slop/SKILL.md).";
   };
 
-  config.agents.skills."stop-slop" = lib.mkDefault (
-    pkgs.runCommand "agents-stop-slop" { } ''
+  config.dotagents.skills."stop-slop" = lib.mkDefault (
+    pkgs.runCommand "dotagents-stop-slop" { } ''
       mkdir -p $out/skills/stop-slop
       cp -rL ${stopSlopSrc}/. $out/skills/stop-slop/
     ''

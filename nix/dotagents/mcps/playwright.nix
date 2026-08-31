@@ -7,7 +7,7 @@ let
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 in
 {
-  config.agents.mcpServers.playwright = {
+  config.dotagents.mcpServers.playwright = {
     type = "local";
     command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
     readOnlyTools = [ ];

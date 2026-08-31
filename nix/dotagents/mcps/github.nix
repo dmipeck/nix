@@ -62,7 +62,7 @@ let
   ];
 in
 {
-  config.agents.mcpServers.github = {
+  config.dotagents.mcpServers.github = {
     type = "local";
     command = "${pkgs.github-mcp-server}/bin/github-mcp-server";
     args = [
@@ -74,7 +74,7 @@ in
     ];
     # GITHUB_PERSONAL_ACCESS_TOKEN is a per-user secret placeholder; the
     # consumer's home-manager config wraps the server so the PAT is read from
-    # a sops-decrypted file at startup (see dmipeck/nix homeModules/agents.nix).
+    # a sops-decrypted file at startup (see dmipeck/nix homeModules/dotagents.nix).
     env = {
       GITHUB_PERSONAL_ACCESS_TOKEN = "";
     };

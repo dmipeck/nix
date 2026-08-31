@@ -6,36 +6,37 @@ let
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 
   # Local AI content (skills/, commands/, agents/, rules/) lives in the repo
-  # root ai/ dir; this module packages it into derivations for the adapters.
-  ai = ../../ai;
+  # root dotagents/ dir; this module packages it into derivations for the
+  # adapters.
+  dotagents = ../../dotagents;
 
   # Copy a whole skill dir (SKILL.md + references/) to $out root as a bare
   # dir, matching the historical per-skill package shape consumed by opencode
   # and claude (git-workflow, commit, test, thrifty, conventional-commits).
   bareSkill =
     name:
-    pkgs.runCommand "agents-${name}" { } ''
+    pkgs.runCommand "dotagents-${name}" { } ''
       mkdir -p $out
-      cp -rL ${ai}/skills/${name}/. $out/
+      cp -rL ${dotagents}/skills/${name}/. $out/
     '';
 
-  # The whole ai content tree (skills/ + commands/ + agents/) in one package;
-  # the golang/postgres skills and the commit/test subagents are sliced
-  # out by the adapters via $out/skills/<name> / $out/agents/<name>.md.
-  wholeTree = pkgs.runCommand "agents" { } ''
+  # The whole dotagents content tree (skills/ + commands/ + agents/) in one
+  # package; the golang/postgres skills and the commit/test subagents are
+  # sliced out by the adapters via $out/skills/<name> / $out/agents/<name>.md.
+  wholeTree = pkgs.runCommand "dotagents" { } ''
     mkdir -p $out
-    cp -r ${ai}/skills $out/skills
-    cp -r ${ai}/commands $out/commands
-    cp -r ${ai}/agents $out/agents
+    cp -r ${dotagents}/skills $out/skills
+    cp -r ${dotagents}/commands $out/commands
+    cp -r ${dotagents}/agents $out/agents
   '';
 in
 {
-  options.agents.localPackages = lib.mkOption {
+  options.dotagents.localPackages = lib.mkOption {
     type = lib.types.attrsOf lib.types.package;
-    description = "Local AI content packages built from ../ai (skills/, commands/, agents/).";
+    description = "Local AI content packages built from ../dotagents (skills/, commands/, agents/).";
   };
 
-  config.agents.localPackages = {
+  config.dotagents.localPackages = {
     git-workflow = bareSkill "git-workflow";
     conventional-commits = bareSkill "conventional-commits";
     thrifty = bareSkill "thrifty";
@@ -46,9 +47,9 @@ in
 
     # scaffold is a single command file, not a dir; the package output
     # is the file itself.
-    scaffold = pkgs.runCommand "agents-scaffold" { } ''
+    scaffold = pkgs.runCommand "dotagents-scaffold" { } ''
       mkdir -p "$(dirname "$out")"
-      cp ${ai}/commands/scaffold.md "$out"
+      cp ${dotagents}/commands/scaffold.md "$out"
     '';
   };
 }

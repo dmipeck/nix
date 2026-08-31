@@ -18,13 +18,13 @@ let
   # read.
   mkSkill =
     { name, subdir }:
-    pkgs.runCommand "agents-${name}" { } ''
+    pkgs.runCommand "dotagents-${name}" { } ''
       mkdir -p $out/skills/${name}
       cp -rL ${mattpocockSkillsSrc}/${subdir}/. $out/skills/${name}/
     '';
 in
 {
-  options.agents.skills = {
+  options.dotagents.skills = {
     "handoff" = lib.mkOption {
       type = lib.types.package;
       description = "opencode skill package for handoff ($out/skills/handoff/SKILL.md).";
@@ -35,7 +35,7 @@ in
     };
   };
 
-  config.agents.skills = {
+  config.dotagents.skills = {
     "handoff" = lib.mkDefault (mkSkill {
       name = "handoff";
       subdir = "skills/productivity/handoff";

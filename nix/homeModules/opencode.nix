@@ -1,10 +1,10 @@
 { config, ... }@flakeArgs:
 let
-  # Skill/plugin packages are owned by nix/agents/ (skills/*.nix). `config`
+  # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix). `config`
   # here is flake-parts state (auto-imported under nix/); captured once so the
   # home-manager module below can reference the packages.
-  agentSkills = flakeArgs.config.agents.skills;
-  subagents = flakeArgs.config.agents.subagents;
+  agentSkills = flakeArgs.config.dotagents.skills;
+  subagents = flakeArgs.config.dotagents.subagents;
 in
 {
   flake.homeModules.opencode =
@@ -16,11 +16,11 @@ in
     }:
     let
       # Neutral MCP server configs + per-user instance options live in
-      # homeModules/agents.nix; skill packages come from nix/agents/
+      # homeModules/dotagents.nix; skill packages come from nix/dotagents/
       # (`agentSkills`, captured above). This module is a thin adapter that
       # maps them onto opencode's config dialect and renders opencode's
       # permission rules from the shared per-server tool lists.
-      mcpServers = config.agents.mcpServers;
+      mcpServers = config.dotagents.mcpServers;
 
       # opencode namespaces every MCP tool as `<server>_<tool>`. By default the
       # whole MCP set is denied for every session (via the top-level `tools`
@@ -207,21 +207,21 @@ in
 
         # Global context written to ~/.config/opencode/AGENTS.md, applied
         # across every opencode session. Content lives once in
-        # config.agents.context (agents.nix), shared with Claude Code.
-        programs.opencode.context = config.agents.context;
+        # config.dotagents.context (dotagents.nix), shared with Claude Code.
+        programs.opencode.context = config.dotagents.context;
 
         programs.opencode.skills = skills;
 
         # Delegate-to-subagent skills (commit, test) reference their
         # subagent by name; the definitions come from dmipeck/agents via
-        # config.agents.subagents (nix/agents/skills/commit-test.nix).
+        # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix).
         programs.opencode.agents = {
           commit = subagents.commit;
           test = subagents.test;
         };
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents
-        # from commands/scaffold.md, passed through config.agents.commands).
+        # from commands/scaffold.md, passed through config.dotagents.commands).
         # home-manager maps each name to opencode/commands/<name>.md — but its
         # commands option only routes `lib.isPath` values to `source`; a
         # derivation (the command package) lands in `text` and fails the string
@@ -229,13 +229,13 @@ in
         # xdg.configFile directly (its `source` accepts derivations, same as
         # claude-code's mkSourceEntry), while plain text/path commands keep the
         # normal programs.opencode.commands path.
-        programs.opencode.commands = lib.filterAttrs (_: c: !lib.isDerivation c) config.agents.commands;
+        programs.opencode.commands = lib.filterAttrs (_: c: !lib.isDerivation c) config.dotagents.commands;
 
         xdg.configFile =
-          lib.mkIf (lib.filterAttrs (_: c: lib.isDerivation c) config.agents.commands != { })
+          lib.mkIf (lib.filterAttrs (_: c: lib.isDerivation c) config.dotagents.commands != { })
             (
               lib.mapAttrs' (name: drv: lib.nameValuePair "opencode/commands/${name}.md" { source = drv; }) (
-                lib.filterAttrs (_: c: lib.isDerivation c) config.agents.commands
+                lib.filterAttrs (_: c: lib.isDerivation c) config.dotagents.commands
               )
             );
 

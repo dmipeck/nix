@@ -16,12 +16,12 @@ let
   # and opencode's skills/<name> lookup.
   mkPlugin =
     name:
-    pkgs.runCommand "agents-plugin-${name}" { } ''
+    pkgs.runCommand "dotagents-plugin-${name}" { } ''
       cp -rL ${claudePluginsOfficial}/plugins/${name} $out
     '';
 in
 {
-  options.agents.skills = {
+  options.dotagents.skills = {
     "mcp-server-dev" = lib.mkOption {
       type = lib.types.package;
       description = "opencode skill package for mcp-server-dev ($out/skills/mcp-server-dev/SKILL.md).";
@@ -32,7 +32,7 @@ in
     };
   };
 
-  config.agents.skills = {
+  config.dotagents.skills = {
     "mcp-server-dev" = lib.mkDefault (mkPlugin "mcp-server-dev");
     "skill-creator" = lib.mkDefault (mkPlugin "skill-creator");
   };
