@@ -7,7 +7,7 @@ let
   baseMcpServers = flakeArgs.config.dotagents.mcpServers;
 
   # Global agent rules (nix/dotagents/rules.nix) are owned by dmipeck/agents
-  # (rules/rules.md) and passed through here; the home-manager module uses them
+  # (agents.md) and passed through here; the home-manager module uses them
   # as the default for the shared `context` written to each AI tool's global
   # rules file.
   rules = flakeArgs.config.dotagents.rules;
@@ -42,7 +42,7 @@ in
         # Shared global context written to each AI tool's global rules file —
         # ~/.config/opencode/AGENTS.md for opencode, ~/.claude/CLAUDE.md for
         # Claude Code. Defaults to the dmipeck/agents `dotagents.rules` content
-        # (rules/rules.md, instructing the agent to load the git-workflow and
+        # (agents.md, instructing the agent to load the git-workflow and
         # caveman skills), passed through via nix/dotagents/rules.nix; overridable
         # per profile.
         context = lib.mkOption {
@@ -178,7 +178,7 @@ in
       config.dotagents = {
         # Global agent instructions, shared by both tools (written to
         # ~/.config/opencode/AGENTS.md and ~/.claude/CLAUDE.md). The content is
-        # owned once by dmipeck/agents (rules/rules.md) and passed through via
+        # owned once by dmipeck/agents (agents.md) and passed through via
         # `dotagents.rules` (nix/dotagents/rules.nix); declared as a default here so a
         # profile can still override it with its own instructions.
         context = lib.mkDefault rules;
