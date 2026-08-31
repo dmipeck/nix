@@ -30,6 +30,11 @@ in
       # connect only while that subagent runs.
       mcpServers = config.dotagents.mcpServers;
 
+      # YAML single-quoted scalar: descriptions contain `: ` (mapping
+      # separator in plain scalars), so quote every value and double any
+      # internal single quote (YAML single-quote escape).
+      yamlQuote = s: "'${lib.replaceStrings [ "'" ] [ "''" ] s}'";
+
       # Render an opencode agent (dotagents/agents/<name>/agent.md) into Claude
       # Code's dialect: a `name`/`description`/`tools` allowlist frontmatter
       # over the shared system-prompt body (the opencode
@@ -43,8 +48,8 @@ in
             [
               "---"
               "name: ${name}"
-              "description: ${description}"
-              "tools: ${tools}"
+              "description: ${yamlQuote description}"
+              "tools: ${yamlQuote tools}"
             ]
             ++ lib.optional (extra != "") extra
             ++ [ "---" ]
@@ -98,14 +103,12 @@ in
           '';
         };
         github = {
-          # Single-quoted YAML scalar: the description contains `: ` which a
-          # plain scalar would misparse as a mapping separator.
-          description = "'Full GitHub development assistant — reads repos, commits, branches and code; creates and updates pull requests, issues and discussions; triggers and inspects Actions runs and logs. Write-capable: performs the GitHub operations asked of it.'";
+          description = "Full GitHub development assistant — reads repos, commits, branches and code; creates and updates pull requests, issues and discussions; triggers and inspects Actions runs and logs. Write-capable: performs the GitHub operations asked of it.";
           tools = "mcp__github__*";
           extraFrontmatter = githubMcpBlock;
         };
         "explore-github" = {
-          description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s git tools. Read-only: reports, never mutates.'";
+          description = "Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server's git tools. Read-only: reports, never mutates.";
           tools = "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
           extraFrontmatter = githubMcpBlock;
         };
