@@ -213,8 +213,8 @@ in
         # Delegate-to-subagent skills (commit, test, nix) reference their
         # subagent by name; the definitions come from dmipeck/agents via
         # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix,
-        # nix.nix and orchestrator.nix). nix re-enables the
-        # nixos MCP tools via `tools` in its agent definition. orchestrator is
+        # nix.nix and orchestrate.nix). nix re-enables the
+        # nixos MCP tools via `tools` in its agent definition. orchestrate is
         # a primary agent (mode: primary) that has no tools of its own and
         # delegates everything through `task`; it is the default agent.
         # explore-github and github re-enable the github MCP tools via `tools`
@@ -226,7 +226,7 @@ in
           commit = subagents.commit;
           test = subagents.test;
           nix = subagents.nix;
-          orchestrator = subagents.orchestrator;
+          orchestrate = subagents.orchestrate;
           explore-git = subagents."explore-git";
           git = subagents.git;
         }
@@ -329,9 +329,9 @@ in
         programs.opencode.settings = {
           mcp = mcp;
 
-          # The orchestrator (a primary agent) is the default when opencode
+          # The orchestrate (a primary agent) is the default when opencode
           # starts, so every session routes through delegation.
-          default_agent = "orchestrator";
+          default_agent = "orchestrate";
 
           # MCP servers stay registered (`mcp` above) but their tools are
           # denied for every session by default, keeping their schemas out of

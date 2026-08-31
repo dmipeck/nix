@@ -58,7 +58,7 @@ in
       # Code's dialect: a `name`/`description`/`tools` allowlist frontmatter
       # over the shared system-prompt body (the opencode
       # `mode`/`permission`/`tools` block is dropped). Used for the read-only
-      # and worker subagents (test, commit) and the orchestrator main-session
+      # and worker subagents (test, commit) and the orchestrate main-session
       # agent; nix and the github agents are hand-rendered because they carry
       # an inline mcpServers definition.
       claudeAgent =
@@ -116,12 +116,12 @@ in
           } > "$out"
         '';
 
-      # Claude Code makes the orchestrator the main session agent via the
+      # Claude Code makes the orchestrate the main session agent via the
       # `agent` settings.json key; `Agent` lets it spawn subagents,
       # `AskUserQuestion`/`TodoWrite` keep it talking to the user and tracking
       # delegated units.
-      orchestratorAgent =
-        claudeAgent "orchestrator"
+      orchestrateAgent =
+        claudeAgent "orchestrate"
           "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent."
           "Agent, AskUserQuestion, TodoWrite, Skill";
       testAgent =
@@ -218,14 +218,14 @@ in
           };
           # The subagents, re-rendered for Claude Code's agent dialect: nix
           # with the nixos MCP server scoped inline (see nixAgent), the
-          # orchestrator main-session agent (see orchestratorAgent), the shared
+          # orchestrate main-session agent (see orchestrateAgent), the shared
           # test/commit workers (see claudeAgent), and the explore-github/github
           # agents with the github server scoped inline (see githubClaudeAgent;
           # only when the github instance is enabled). The home-manager/claude-code
           # module writes them to ~/.claude/agents/<name>.md.
           agents = {
             nix = nixAgent;
-            orchestrator = orchestratorAgent;
+            orchestrate = orchestrateAgent;
             test = testAgent;
             commit = commitAgent;
             explore-git = exploreGitAgent;
@@ -282,10 +282,10 @@ in
             };
           };
           settings = {
-            # The orchestrator is the default main-session agent, so every
-            # session starts in the delegation-only orchestrator and routes
+            # The orchestrate is the default main-session agent, so every
+            # session starts in the delegation-only orchestrate and routes
             # all grunt work through subagents.
-            agent = "orchestrator";
+            agent = "orchestrate";
             statusLine = {
               type = "command";
               command = "${claudeStatusline}/bin/claude-statusline";
