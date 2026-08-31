@@ -24,27 +24,38 @@ let
 in
 {
   # Every skill dir in each grafana group is exposed by its own name. The
-  # group/package keys (grafana-core, grafana-lgtm, grafana-datasources) are NOT
-  # exposed: their packages have no $out/skills/<group> dir, and every
-  # config.dotagents.skills key is rendered as $out/skills/<name> by the
-  # adapters.
+  # group/package keys (grafana-core, grafana-lgtm, grafana-datasources) are
+  # whole bundles whose $out/skills/ contains the many constituent skills;
+  # they are exposed too and marked layout "collection" so adapters render
+  # the package root (claude: whole plugin) or skip it (opencode: no
+  # single-skill form).
   config.dotagents.skills =
     lib.genAttrs [
       "alerting-irm"
       "alloy"
       "beyla"
       "dashboarding"
+      "grafana-core"
       "grafana-oss"
       "opentelemetry"
       "promql"
       "skill-authoring"
     ] (_: mkGrafanaGroup "grafana-core")
     // lib.genAttrs [
+      "grafana-lgtm"
       "loki"
       "mimir"
       "prometheus"
       "pyroscope"
       "tempo"
     ] (_: mkGrafanaGroup "grafana-lgtm")
-    // lib.genAttrs [ "datasources-provisioning" ] (_: mkGrafanaGroup "grafana-datasources");
+    // lib.genAttrs [ "datasources-provisioning" "grafana-datasources" ] (
+      _: mkGrafanaGroup "grafana-datasources"
+    );
+
+  config.dotagents.skillLayouts = {
+    grafana-core = "collection";
+    grafana-lgtm = "collection";
+    grafana-datasources = "collection";
+  };
 }
