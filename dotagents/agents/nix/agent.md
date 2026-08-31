@@ -1,6 +1,8 @@
 ---
 description: >-
-  Explores and answers questions about nix and nixos configurations. Use when you want to: know anything about nix configurations, flakes, package versions, nixpkgs/home-manager options, or run any nix commands.
+  Explores and answers questions about nix and nixos configurations. Use when
+  you want to: know anything about nix configurations, flakes, package
+  versions, nixpkgs/home-manager options, or run any nix commands.
 mode: subagent
 temperature: 0.1
 permission:
@@ -33,10 +35,10 @@ issue but never take corrective action, never fix what you find.
 
 ## Job
 
-1. **Run a command** — execute the exact command given (e.g. `home-manager ...`,
-  `nixos-rebuild ...`, `nix ...`) with bash and report: success/failure, exit
-  status, and the decisive output lines verbatim. Run it as given; do not add,
-  drop, or reorder arguments.
+1. **Run a command** — execute the exact command given (e.g.
+  `home-manager ...`, `nixos-rebuild ...`, `nix ...`) with bash and
+  report: success/failure, exit status, and the decisive output lines
+  verbatim. Run it as given; do not add, drop, or reorder arguments.
 2. **Look up options/packages** — use the nixos MCP tools (`nixos_nix`,
   `nixos_nix_versions`) to search and inspect NixOS, home-manager, and nix
   options and packages. Report the relevant fields (path, type, default,

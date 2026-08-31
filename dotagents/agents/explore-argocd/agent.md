@@ -1,8 +1,9 @@
 ---
 description: >-
   Answers questions about ArgoCD — applications, appprojects, clusters,
-  resource trees, managed resources, and resource events — using the argocd MCP
-  server's read-only tools. Read-only: reports what it finds, never mutates.
+  resource trees, managed resources, and resource events — using the
+  argocd MCP server's read-only tools. Read-only: reports what it finds,
+  never mutates.
   Use when you need ArgoCD state, app sync status, resource health, or rollout
   events — even when the user says "what's deployed in argocd", "check the
   appproject", or "list the applications".

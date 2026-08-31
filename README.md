@@ -12,7 +12,8 @@ Every file under `nix/` is auto-imported as a flake-parts module
 
 - `nix/nixosModules/` — NixOS modules
 - `nix/homeModules/` — home-manager modules; `desktop/` = GUI apps
-- `nix/homeModules/desktop/vscode/` — VS Code extension sets (`flake.vscodeModules`)
+- `nix/homeModules/desktop/vscode/` — VS Code extension sets
+  (`flake.vscodeModules`)
 - `nix/devShells/` — dev shell
 
 The module name is the option key, not the filename.
@@ -24,5 +25,6 @@ with `inputs.nix.url = "github:dmipeck/nix"`.
 
 ## Dev
 
-- `nix flake check` — CI gate; lazily validates modules, doesn't build homeModules
+- `nix flake check` — CI gate; lazily validates modules, doesn't
+  build homeModules
 - `nix develop` — devShell + pre-commit hooks (conventional commits, gitleaks)

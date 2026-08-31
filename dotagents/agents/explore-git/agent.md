@@ -1,11 +1,11 @@
 ---
 description: >-
-  Answers questions about the current git repository — commits, branches, tags,
-  diffs, logs, and working-tree state — using local `git` commands. Read-only:
-  reports what it finds, never mutates. Use when you need git history, refs,
-  diffs, blame, or repo state — even when the user says "show me the commits",
-  "what changed in", "list the branches", "who last touched", or "where is this
-  tag".
+  Answers questions about the current git repository — commits, branches,
+  tags, diffs, logs, and working-tree state — using local `git`
+  commands. Read-only: reports what it finds, never mutates. Use when you
+  need git history, refs, diffs, blame, or repo state — even when the user
+  says "show me the commits", "what changed in", "list the branches", "who
+  last touched", or "where is this tag".
 mode: subagent
 temperature: 0.1
 model: opencode/big-pickle

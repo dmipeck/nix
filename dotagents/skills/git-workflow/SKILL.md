@@ -12,7 +12,8 @@ Checklist: change "about to start" to "merged", in order.
 ## 1. Before starting work
 
 - Pull latest from default branch. Fast-forward (or rebase) — no stale base.
-- Not on a worktree yet → create one. Don't work on the default branch checkout.
+- Not on a worktree yet → create one. Don't work on the default
+  branch checkout.
 - Worktrees must live in `.agent/worktrees/` in the repo root.
 - Create with `git worktree add .agent/worktrees/<change-name> <branch>`.
 - `.agent/worktrees/` → `.git/info/exclude` so it never shows in `git status`.
