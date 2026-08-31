@@ -5,9 +5,9 @@ let
   # packages are derivations; evaluation stays lazy until a consumer forces one.
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 
-  # Local AI content (skills/, commands/, agents/, rules/) lives in the repo
-  # root dotagents/ dir; this module packages it into derivations for the
-  # adapters.
+  # Local AI content (skills/, commands/, agents/, agents.md global rules)
+  # lives in the repo root dotagents/ dir (following the .agents protocol
+  # layout); this module packages it into derivations for the adapters.
   dotagents = ../../dotagents;
 
   # Copy a whole skill dir (SKILL.md + references/) to $out root as a bare
@@ -22,7 +22,8 @@ let
 
   # The whole dotagents content tree (skills/ + commands/ + agents/) in one
   # package; the golang/postgres skills and the commit/test subagents are
-  # sliced out by the adapters via $out/skills/<name> / $out/agents/<name>.md.
+  # sliced out by the adapters via $out/skills/<name> /
+  # $out/agents/<name>/agent.md.
   wholeTree = pkgs.runCommand "dotagents" { } ''
     mkdir -p $out
     cp -r ${dotagents}/skills $out/skills
