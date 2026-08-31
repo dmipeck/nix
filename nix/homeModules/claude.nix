@@ -82,6 +82,57 @@ in
           );
         in
         pkgs.runCommand "dotagents-${name}-agent-claude" { } ''
+
+      # The orchestrator main-session agent, re-rendered for Claude Code's
+      # dialect. opencode's version (dotagents/agents/orchestrator/agent.md)
+      # names opencode-only subagents (explore-fs, test, commit), so the claude
+      # body is written fresh against claude's subagent set (Explore,
+      # general-purpose and the nix agent). Claude Code makes it the main
+      # session agent via the `agent` settings.json key; `Agent` lets it spawn
+      # subagents, `AskUserQuestion`/`TodoWrite` keep it talking to the user
+      # and tracking delegated units.
+      orchestratorAgent = pkgs.runCommand "dotagents-orchestrator-agent-claude" { } ''
+                mkdir -p "$(dirname "$out")"
+                cat > "$out" <<'AGENTEOF'
+        ---
+        name: orchestrator
+        description: >-
+          Plans multi-step work, delegates every unit to the right subagent, tracks
+          progress, and assembles the results into one final report. Has no tools of
+          its own for exploring or editing — all lookups, searches, test runs, nix
+          commands, and file changes happen through subagents. The default Claude Code
+          main agent: invoked for every session — even when the user just says "figure
+          this out", "get this done", or starts claude without naming an agent.
+        tools: Agent, AskUserQuestion, TodoWrite, Skill
+        ---
+
+        You are the orchestrator, the default main agent. You have no hands: no Read,
+        Grep, Glob, Bash, Write, or Edit tools. Every piece of work goes to a
+        subagent. Never do work yourself — always delegate.
+
+        ## Job
+
+        1. Plan: decompose the task into discrete units of work. Pick the right subagent per unit — `Explore` for filesystem and web discovery, `nix` for nix commands and option lookups, `general-purpose` for anything else. Independent units run in parallel; dependent units run in order.
+        2. Delegate: spawn one agent per unit with a precise prompt — the unit, the subagent's role, and what to return.
+        3. Track: keep a todo list of every delegated unit and its status.
+        4. Assemble: combine the subagent reports into one final report. Preserve decisive lines verbatim. Flag failures, blockers, and open questions. Never paper over a failed unit.
+
+        ## Cost
+
+        You do no mechanical work, so cost is planning plus reporting overhead. Keep
+        subagent prompts precise and the final report terse: what was done, what
+        failed, what is next.
+
+        ## Never
+
+        - Read, search, edit, or run commands yourself — even a trivial lookup goes
+          to a subagent.
+        - Take corrective action on a subagent's failure. Report it and let the user
+          decide.
+        - Re-do a subagent's work or second-guess its output without evidence.
+        AGENTEOF
+      '';
+
           mkdir -p "$(dirname "$out")"
           {
             echo '---'
@@ -168,17 +219,20 @@ in
           };
           # The nix subagent, re-rendered for Claude Code's agent dialect with
           # the nixos MCP server scoped inline (see nixAgent above), plus the
-          # explore-github and github agents with the github server scoped
-          # inline (see githubClaudeAgent; only when the github instance is
-          # enabled). The home-manager/claude-code module writes them to
+          # orchestrator main-session agent (see orchestratorAgent) and the
+          # explore-github/github agents with the github server scoped inline
+          # (see githubClaudeAgent; only when the github instance is enabled).
+          # The home-manager/claude-code module writes them to
           # ~/.claude/agents/.
-          agents = {
-            nix = nixAgent;
-          }
-          // lib.optionalAttrs config.dotagents.instance.github.enable {
-            explore-github = exploreGithubAgent;
-            github = githubAgent;
-          };
+          agents =
+            {
+              nix = nixAgent;
+              orchestrator = orchestratorAgent;
+            }
+            // lib.optionalAttrs config.dotagents.instance.github.enable {
+              explore-github = exploreGithubAgent;
+              github = githubAgent;
+            };
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
           # so their lspServers config in marketplace.json never actually
@@ -226,6 +280,10 @@ in
             };
           };
           settings = {
+            # The orchestrator is the default main-session agent, so every
+            # session starts in the delegation-only orchestrator and routes
+            # all grunt work through subagents.
+            agent = "orchestrator";
             statusLine = {
               type = "command";
               command = "${claudeStatusline}/bin/claude-statusline";
