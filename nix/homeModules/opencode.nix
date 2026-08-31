@@ -230,7 +230,7 @@ in
           explore-git = agents."explore-git";
           git = agents.git;
         }
-        // lib.optionalAttrs config.dotagents.instance.github.enable {
+        // lib.optionalAttrs config.dotagents.mcps.github.enable {
           explore-github = agents."explore-github";
           github = agents.github;
         };

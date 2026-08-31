@@ -9,7 +9,7 @@
   # (dotagents/agents/github/agent.md). It speaks the github MCP server's full
   # registered surface (read + write), so adapters gate its registration on
   # the per-user github instance being enabled
-  # (dotagents.instance.github.enable). A real source path (not a string
+  # (dotagents.mcps.github.enable). A real source path (not a string
   # interpolation of the whole-tree package outPath) keeps pure evaluation
   # working: home-manager's `agents` option copies it via `source`
   # (lib.isPath), and the claude adapter can interpolate it into its runCommand

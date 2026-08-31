@@ -61,7 +61,7 @@ flakes. `CLAUDE.md` is a symlink to this file.
   (`nix/dotagents/skills/golang.nix`), so the adapters slice them out via
   `$out/skills/<name>`.
 - `nix/homeModules/dotagents.nix` is the home-manager config layer: per-user
-  `dotagents.instance` options, the shared global context (defaulting to the
+  `dotagents.mcps` options, the shared global context (defaulting to the
   `dotagents.rules` content from `dotagents/agents.md`), and the overlay of
   instance values (grafana URL/token file, gitlab URL) onto the shared MCP
   server definitions. It reads `config.dotagents.mcpServers`,
@@ -83,7 +83,7 @@ pkgs: { extensions = ...; }`, consumed via `_module.args.vscodeModules`).
 ## Secrets
 
 - sops-nix convention everywhere: secrets are referenced by name
-  (`dotagents.instance.*.tokenSopsKey`, `comin.accessTokenSopsKey`) and decrypted
+  (`dotagents.mcps.*.tokenSopsKey`, `comin.accessTokenSopsKey`) and decrypted
   at runtime; the value is only ever pointed to by file path
   (`GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE`), never inlined. Never
   inline tokens in module code; gitleaks enforces this.
