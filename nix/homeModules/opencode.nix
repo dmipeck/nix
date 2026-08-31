@@ -212,12 +212,14 @@ in
 
         # Delegate-to-subagent skills (commit, test, explore-fs) reference
         # their subagent by name; the definitions come from dmipeck/agents via
-        # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix and
-        # explore-fs.nix).
+        # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix,
+        # explore-fs.nix and nix.nix). nix re-enables the nixos MCP tools via
+        # `tools` in its agent definition.
         programs.opencode.agents = {
           commit = subagents.commit;
           test = subagents.test;
           explore-fs = subagents."explore-fs";
+          nix = subagents.nix;
         };
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents

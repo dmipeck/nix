@@ -44,11 +44,19 @@ in
     comments = bareSkill "comments";
     whole-tree = wholeTree;
 
-    # scaffold is a single command file, not a dir; the package output
-    # is the file itself.
+    # scaffold, home-manager and nixos-rebuild are single command files, not
+    # dirs; each package output is the file itself.
     scaffold = pkgs.runCommand "dotagents-scaffold" { } ''
       mkdir -p "$(dirname "$out")"
       cp ${dotagents}/commands/scaffold.md "$out"
+    '';
+    home-manager = pkgs.runCommand "dotagents-home-manager" { } ''
+      mkdir -p "$(dirname "$out")"
+      cp ${dotagents}/commands/home-manager.md "$out"
+    '';
+    nixos-rebuild = pkgs.runCommand "dotagents-nixos-rebuild" { } ''
+      mkdir -p "$(dirname "$out")"
+      cp ${dotagents}/commands/nixos-rebuild.md "$out"
     '';
   };
 }
