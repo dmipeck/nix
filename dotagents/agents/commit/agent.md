@@ -54,9 +54,9 @@ any report to the caller terse.
 ## Hooks
 
 `git commit` runs pre-commit + commit-msg hooks. Any hook failure aborts the
-commit. Report the failure — decisive line, verbatim — and stop. Do not amend,
-retry with `--no-verify`, or take any other corrective action. Caller decides
-how to proceed.
+commit. Report the failure — decisive line, verbatim — and stop. Do
+not amend, retry with `--no-verify`, or take any other corrective action.
+Caller decides how to proceed.
 
 ## Never
 

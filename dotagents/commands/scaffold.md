@@ -1,5 +1,6 @@
 ---
-description: Scaffold a new project with a flake-parts flake.nix, a Nix devShell full of linters, and pre-commit wired to run them all.
+description: Scaffold a new project with a flake-parts flake.nix, a Nix
+  devShell full of linters, and pre-commit wired to run them all.
 ---
 
 Scaffold a new software project in the current directory. If the directory is
@@ -46,8 +47,9 @@ hook id is real before including it.
 ## flake.nix
 
 Use flake-parts. No other framework dependencies. Do not add
-`pre-commit-hooks.nix` — hooks live in the checked-in `.pre-commit-config.yaml`
-instead, so pre-commit config stays visible and portable.
+`pre-commit-hooks.nix` — hooks live in the checked-in
+`.pre-commit-config.yaml` instead, so pre-commit config stays visible and
+portable.
 
 ```nix
 {
@@ -60,7 +62,8 @@ instead, so pre-commit config stays visible and portable.
 
   outputs = inputs@{ self, flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin"
+      "aarch64-darwin" ];
 
       perSystem = { pkgs, ... }:
         let
@@ -75,7 +78,8 @@ instead, so pre-commit config stays visible and portable.
           devShells.default = pkgs.mkShell {
             packages = linters;
             shellHook = ''
-              pre-commit install --hook-type pre-commit --hook-type commit-msg --overwrite
+              pre-commit install --hook-type pre-commit --hook-type \
+              commit-msg --overwrite
             '';
           };
         };
@@ -151,7 +155,13 @@ result-*
 After writing files, prove the scaffold works:
 
 1. `nix flake check`
-2. `nix develop --command pre-commit install --hook-type pre-commit --hook-type commit-msg`
+2. Install the pre-commit hooks:
+
+```bash
+nix develop --command pre-commit install --hook-type pre-commit --hook-type \
+  commit-msg
+```
+
 3. `nix develop --command pre-commit run --all-files`
 
 If any hook fails, fix the scaffold (usually the `.editorconfig` or formatting)
@@ -159,8 +169,8 @@ and re-run until clean. Report the final state to the user.
 
 ## Dendritic refactor (when the flake grows)
 
-As soon as the flake gets complex — more than one `perSystem` feature beyond the
-devShell, or roughly 80+ lines in `flake.nix` — refactor to the dendritic
+As soon as the flake gets complex — more than one `perSystem` feature beyond
+the devShell, or roughly 80+ lines in `flake.nix` — refactor to the dendritic
 pattern (https://github.com/mightyiam/dendritic): every non-entry-point Nix
 file is a top-level flake-parts module implementing a single feature, imported
 automatically, with module internals living under a `./nix` directory.
@@ -174,7 +184,8 @@ automatically, with module internals living under a `./nix` directory.
   ```nix
   outputs = inputs@{ self, flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin"
+      "aarch64-darwin" ];
       imports =
         map (f: ./nix/${f})
           (builtins.filter (f: builtins.match ".*\\.nix" f != null)

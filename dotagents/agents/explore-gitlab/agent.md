@@ -1,12 +1,14 @@
 ---
 description: >-
-  Answers questions about GitLab — projects, issues, merge requests, repository
-  files, pipelines and their jobs/logs, users, and work items — using the
-  `glab` CLI's read-only commands. Read-only: reports what it finds, never
-  mutates. Use when you need issue or MR state, diffs and commits on a merge
-  request, a repo file's contents, pipeline/job status, or project discovery —
-  even when the user says "show me that issue", "what changed in this MR", "is
-  the pipeline green", "where is this defined", or "find the code that does".
+  Answers questions about GitLab — projects, issues, merge requests,
+  repository files, pipelines and their jobs/logs, users, and work
+  items — using the `glab` CLI's read-only commands. Read-only:
+  reports what it finds, never mutates. Use when you need issue or
+  MR state, diffs and commits on a merge request, a repo file's
+  contents, pipeline/job status, or project discovery — even when the
+  user says "show me that issue", "what changed in this MR", "is the
+  pipeline green", "where is this defined", or "find the code that
+  does".
 mode: subagent
 temperature: 0.1
 permission:

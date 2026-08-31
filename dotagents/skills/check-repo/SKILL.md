@@ -32,11 +32,14 @@ Identify project root and ecosystem. Manifest heuristics:
 |---|---|
 | `Cargo.toml` | Rust |
 | `go.mod` | Go |
-| `package.json` | Node — read lockfile: `package-lock.json`→npm, `pnpm-lock.yaml`→pnpm, `yarn.lock`→yarn |
+| `package.json` | Node — lockfile picks npm / pnpm / yarn |
 | `pyproject.toml` / `setup.py` / `requirements.txt` | Python |
 | `CMakeLists.txt` / `Makefile` | C/C++ / generic-make |
 | `mix.exs` | Elixir |
 | `pom.xml` / `build.gradle` | JVM |
+
+Node lockfiles name the package manager: `package-lock.json` → npm,
+  `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn.
 
 Then read, in order of trust: `README`*, `AGENTS.md`/`CLAUDE.md`, and the CI
 workflows (`.github/workflows/*`, `.gitlab-ci.yml`, `.circleci/config.yml`,
@@ -62,7 +65,12 @@ detected toolchain:
 
   outputs = { self, nixpkgs }:
     let
-      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
     in
     {
@@ -83,15 +91,16 @@ Toolchain → nixpkgs packages:
 |---|---|
 | Rust | `rustc` `cargo` |
 | Go | `go` |
-| Node | `nodejs` plus `pnpm` (pnpm lock) or `yarn` (yarn lock); npm ships with nodejs |
-| Python | `python3` plus `uv` when `uv.lock` present; if `python3 -m pip` is absent, use `python3.withPackages (p: [ p.pip ])` |
+| Node | `nodejs`, plus `pnpm` (pnpm lock) / `yarn` (yarn lock); npm bundled |
+| Python | `python3`, plus `uv` when `uv.lock` is present |
+| Python | no `python3 -m pip`? use `python3.withPackages (p: [ p.pip ])` |
 | C/C++ / make | `gcc` or `clang` `cmake` `make` |
 | Elixir | `elixir` |
 | JVM | `jdk` `gradle` / `maven` |
 
 Use plain flake for third-party checkouts; flake-parts optional. Want the full
-linter + pre-commit rig too → that is `/scaffold`, not here — do not duplicate
-it. If `flake.lock` is missing, run `nix flake lock`.
+linter + pre-commit rig too → that is `/scaffold`, not here — do not
+duplicate it. If `flake.lock` is missing, run `nix flake lock`.
 
 **Gate:** `nix develop --command true` must exit 0 (non-interactive eval
 proof). Never claim the devshell works without this proof.
@@ -106,9 +115,11 @@ Match the lockfile:
 |---|---|
 | Rust | `cargo fetch` (workspace-aware; run at workspace root) |
 | Go | `go mod download` |
-| Node | `npm ci` / `pnpm install --frozen-lockfile` / `yarn install --frozen-lockfile` (match lockfile) |
+| Node (npm) | `npm ci` |
+| Node (pnpm) | `pnpm install --frozen-lockfile` |
+| Node (yarn) | `yarn install --frozen-lockfile` |
 | Python | `uv sync` when `uv.lock`, else `python -m pip install -e .` |
-| C/C++ / make | skip pure fetch unless CMake external projects (fetched at configure) |
+| C/C++ / make | skip pure fetch; CMake external projects fetch at configure |
 | Elixir | `mix deps.get` |
 | JVM | `mvn dependency:go-offline` / `gradle dependencies` |
 
@@ -141,14 +152,15 @@ Prefer the CI-documented test command; fallback table:
 | C/C++ / make | `make test` |
 
 Green gate: whole suite once, exit 0, all pass. Suite needs external services
-(DB, network)? State that and stop to ask — never fake a pass. Summarize counts
-(e.g. "42 passed, 3 skipped").
+(DB, network)? State that and stop to ask — never fake a pass. Summarize
+counts (e.g. "42 passed, 3 skipped").
 
 ## 6. Smoke-test the application
 
 Launch the built app the way CI/docs do:
 
-- CLI → run with `--help` / `--version` or a trivial invocation; expect exit 0.
+- CLI → run with `--help` / `--version` or a trivial invocation;
+  expect exit 0.
 - Server/app → start in background with a timeout, probe the documented
   endpoint (`curl` health/root), then kill cleanly.
 

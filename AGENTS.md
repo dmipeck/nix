@@ -10,9 +10,9 @@ flakes. `CLAUDE.md` is a symlink to this file.
 ## Architecture (read this first)
 
 - `flake.nix:14` is a flake-parts `mkFlake` over `inputs.import-tree ./nix`.
-  **Every file under `nix/` is auto-imported as a flake-parts module** — nothing
-  is wired by hand. To add a module, drop a file under the right subdir that
-  returns `{ flake.<category>.<name> = ...; }`.
+  **Every file under `nix/` is auto-imported as a flake-parts module**
+  — nothing is wired by hand. To add a module, drop a file under the right
+  subdir that returns `{ flake.<category>.<name> = ...; }`.
 - Contribution categories: `flake.homeModules.<name>`,
   `flake.nixosModules.<name>`,
   `flake.vscodeModules.<name>`. The public name is the option key, not the
@@ -28,14 +28,15 @@ flakes. `CLAUDE.md` is a symlink to this file.
   it lazily validates modules and overlays; it does **not** build homeModules,
   so broken references inside them pass. Exercise a module with
   `nix eval .#homeModules.<name>` or a scratch `homeManagerConfiguration`.
-- `nix develop` — devShell (editorconfig-checker, gitleaks, nixfmt, pre-commit);
-  shellHook installs git hooks (pre-commit + commit-msg stages). CI runs
-  `nix develop --command pre-commit run --all-files`.
-- Commit-msg hook enforces conventional commits; gitleaks, editorconfig-checker
-  and nixfmt run pre-commit (nixfmt formats in place and fails the commit on
-  changes). Format with `nixfmt` — pinned nixpkgs ships 1.4.0, which formats to
-  the RFC 166 style (`nixfmt-rfc-style` is a deprecated alias of `nixfmt`).
-  EditorConfig: 2-space indent, LF for `*.nix`.
+- `nix develop` — devShell (editorconfig-checker, gitleaks, nixfmt,
+  pre-commit); shellHook installs git hooks (pre-commit + commit-msg
+  stages). CI runs `nix develop --command pre-commit run --all-files`.
+- Commit-msg hook enforces conventional commits; gitleaks,
+  editorconfig-checker and nixfmt run pre-commit (nixfmt formats in
+  place and fails the commit on changes). Format with `nixfmt` — pinned
+  nixpkgs ships 1.4.0, which formats to the RFC 166 style
+  (`nixfmt-rfc-style` is a deprecated alias of `nixfmt`). EditorConfig:
+  2-space indent, LF for `*.nix`.
 
 ## AI-tools layering
 
@@ -62,7 +63,8 @@ flakes. `CLAUDE.md` is a symlink to this file.
   auto-discovery (`nix/dotagents/auto.nix`), upstream skill collections
   (`nix/dotagents/skills/*.nix` — caveman, claude-plugins-official,
   grafana-skills, mattpocock-skills, skill-optimizer, stop-slop), and the
-  global agent rules (`nix/dotagents/rules.nix`, read from `dotagents/agents.md`).
+  global agent rules (`nix/dotagents/rules.nix`, read from
+  `dotagents/agents.md`).
   Auto-imported as flake-parts modules like everything else under `nix/`.
   The upstream skill modules emit `config.dotagents.skills` via `lib.genAttrs`
   over their exposed skill names; agent definitions are the auto-discovered
@@ -78,10 +80,10 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `dotagents.rules` content from `dotagents/agents.md`), and the overlay of
   instance values (grafana URL/token file, gitlab URL) onto the shared MCP
   server definitions. It reads `config.dotagents.mcpServers`,
-  `config.dotagents.rules` and `config.dotagents.commands` from the auto-imported
-  `nix/dotagents/` modules.
-  Add an instance option → edit `nix/homeModules/dotagents.nix`; add a server →
-  edit `nix/dotagents/mcps/`.
+  `config.dotagents.rules` and `config.dotagents.commands` from the
+  auto-imported `nix/dotagents/` modules.
+  Add an instance option → edit `nix/homeModules/dotagents.nix`; add a
+  server → edit `nix/dotagents/mcps/`.
 - `nix/homeModules/opencode.nix` and `claude.nix` are thin adapters: each
   iterates `config.dotagents.skills`, `config.dotagents.agents` and
   `config.dotagents.commands` generically and maps them onto the tool's config
@@ -105,7 +107,8 @@ flakes. `CLAUDE.md` is a symlink to this file.
 `nix/homeModules/desktop/vscode/default.nix` defines `flake.vscodeModules`
 (sibling files like `go.nix` contribute `flake.vscodeModules.<name> =
 pkgs: { extensions = ...; }`, consumed via `_module.args.vscodeModules`).
-`nix flake check` prints "unknown flake output 'vscodeModules'" — harmless noise.
+`nix flake check` prints "unknown flake output 'vscodeModules'" —
+harmless noise.
 
 ## Secrets
 

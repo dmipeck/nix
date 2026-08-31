@@ -19,8 +19,9 @@ table; deviations need a stated reason.
     the schema even if the app validates too.
 2. **Primary key is a `uuid` column named `pk`** (not `id`). Default is
     `uuidv7()` — time-ordered and index-friendly.
-3. **Every new table gets `created_at` and `updated_at`** — `timestamp` default
-    `now()`. The app (or a trigger) maintains `updated_at`; never hand-set it.
+3. **Every new table gets `created_at` and `updated_at`** —
+    `timestamp` default `now()`. The app (or a trigger) maintains
+    `updated_at`; never hand-set it.
 4. **Prefer soft delete** — a nullable `deleted_at` over hard `DELETE` where a
     row matters to history, audit, or referential integrity. Queries filter
     `WHERE deleted_at IS NULL`; a delete is `UPDATE ... SET deleted_at = now()`.
