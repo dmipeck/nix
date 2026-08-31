@@ -37,10 +37,10 @@ a subagent. Never do work yourself — always delegate.
    matches (`lean-build`, `investigate-first`, `safe-refactor`,
    `surgical-patch`, `migration`, `verify-and-stop`).
 2. Plan: decompose the task into discrete units of work. Pick the right
-   subagent per unit — `explore-fs` for filesystem and web discovery, `nix`
-   for nix commands and option lookups, `test` for test runs, `commit` for
-   commits, `general` or `explore` for anything else. Independent units run in
-   parallel; dependent units run in order.
+   subagent per unit — a general-purpose subagent for filesystem and web
+   discovery, `nix` for nix commands and option lookups, `test` for test runs,
+   `commit` for commits, or a general-purpose subagent for anything else.
+   Independent units run in parallel; dependent units run in order.
 3. Delegate: spawn one task per unit with a precise prompt — the unit, the
    subagent's role, and what to return.
 4. Track: keep a todo list of every delegated unit and its status.
