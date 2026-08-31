@@ -30,6 +30,9 @@ in
         "explore-github"
         "github"
       ];
+      argocdAgentNames = [
+        "explore-argocd"
+      ];
 
       # opencode namespaces every MCP tool as `<server>_<tool>`. By default the
       # whole MCP set is denied for every session (via the top-level `tools`
@@ -175,12 +178,18 @@ in
         # explore-github and github re-enable the github MCP tools via `tools`
         # in their agent definitions. Both only speak the github server, so
         # they're registered only when the per-user github instance is enabled.
+        # explore-argocd re-enables the argocd MCP tools via `tools` in its agent
+        # definition and is registered only when the per-user argocd instance is
+        # enabled.
         # explore-git and git talk to the local repo through bash `git`
         # commands, so they're always registered.
         programs.opencode.agents =
-          (lib.removeAttrs allAgents githubAgentNames)
+          (lib.removeAttrs allAgents (githubAgentNames ++ argocdAgentNames))
           // lib.optionalAttrs config.dotagents.mcps.github.enable (
             lib.genAttrs githubAgentNames (n: allAgents.${n})
+          )
+          // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
+            lib.genAttrs argocdAgentNames (n: allAgents.${n})
           );
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents

@@ -80,6 +80,15 @@ in
               args: ${builtins.toJSON githubServer.args}
               env: ${builtins.toJSON githubServer.env}
       '';
+      argocdServer = config.dotagents.mcpServers.argocd;
+      argocdMcpBlock = ''
+        mcpServers:
+          - argocd:
+              type: stdio
+              command: ${argocdServer.command}
+              args: ${builtins.toJSON argocdServer.args}
+              env: ${builtins.toJSON argocdServer.env}
+      '';
 
       # The export-kubernetes subagent, rendered for Claude Code's dialect with
       # the kubernetes MCP server scoped inline. The server starts with
@@ -127,6 +136,13 @@ in
           description = "'Answers questions about a Kubernetes cluster - contexts, nodes, namespaces, events, resources, and pod logs - using the kubernetes MCP server''s tools. Read-only: reports what it finds, never mutates.'";
           tools = "mcp__kubernetes__get-k8s-pod-logs, mcp__kubernetes__get-k8s-resource, mcp__kubernetes__list-k8s-contexts, mcp__kubernetes__list-k8s-events, mcp__kubernetes__list-k8s-namespaces, mcp__kubernetes__list-k8s-nodes, mcp__kubernetes__list-k8s-resources";
           extraFrontmatter = kubernetesMcpBlock;
+        };
+        "explore-argocd" = {
+          # Single-quoted YAML scalar: the description contains `: ` which a
+          # plain scalar would misparse as a mapping separator.
+          description = "'Answers questions about ArgoCD — applications, appprojects, clusters, resource trees, managed resources, and resource events — using the argocd MCP server. Read-only: reports, never mutates.'";
+          tools = "mcp__argocd__list_clusters, mcp__argocd__get_appproject, mcp__argocd__list_applications, mcp__argocd__get_application, mcp__argocd__get_application_resource_tree, mcp__argocd__get_application_managed_resources, mcp__argocd__get_application_workload_logs, mcp__argocd__get_resource_events, mcp__argocd__get_resource_actions";
+          extraFrontmatter = argocdMcpBlock;
         };
         orchestrate = {
           description = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent.";
@@ -177,6 +193,9 @@ in
       githubAgentNames = [
         "explore-github"
         "github"
+      ];
+      argocdAgentNames = [
+        "explore-argocd"
       ];
 
       # claude-statusline isn't packaged as a Claude Code plugin (no
@@ -237,14 +256,19 @@ in
           # The subagents, re-rendered for Claude Code's agent dialect from the
           # shared dotagents/agents/<name>/agent.md files (nix with the nixos
           # MCP server scoped inline, the orchestrate main-session agent, the
-          # test/commit workers, and the explore-github/github agents with the
-          # github server scoped inline; the github pair only when the github
+          # test/commit workers, the explore-github/github agents with the
+          # github server scoped inline, and the explore-argocd agent with the
+          # argocd server scoped inline; the github pair only when the github
+          # instance is enabled, and explore-argocd only when the argocd
           # instance is enabled). The home-manager/claude-code module writes
           # them to ~/.claude/agents/<name>.md.
           agents =
-            (lib.removeAttrs allClaudeAgents githubAgentNames)
+            (lib.removeAttrs allClaudeAgents (githubAgentNames ++ argocdAgentNames))
             // lib.optionalAttrs config.dotagents.mcps.github.enable (
               lib.genAttrs githubAgentNames (n: allClaudeAgents.${n})
+            )
+            // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
+              lib.genAttrs argocdAgentNames (n: allClaudeAgents.${n})
             );
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
