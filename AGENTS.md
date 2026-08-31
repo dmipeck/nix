@@ -40,18 +40,19 @@ flakes. `CLAUDE.md` is a symlink to this file.
 ## AI-tools layering
 
 - Local AI content — skills, commands, agent (subagent) definitions and global
-  rules — lives in the repo root `dotagents/` dir (`dotagents/skills/<name>/SKILL.md`,
-  `dotagents/commands/<file>.md`, `dotagents/agents/<name>.md`, `dotagents/rules/rules.md`).
+  rules — lives in the repo root `dotagents/` dir (`.agents` protocol layout:
+  `dotagents/skills/<name>/SKILL.md`, `dotagents/commands/<file>.md`,
+  `dotagents/agents/<name>/agent.md`, `dotagents/agents.md` global rules).
   `nix/dotagents/local.nix` packages it into derivations (`dotagents.localPackages`):
   bare-dir skill packages (`git-workflow`, `commit`, `test`, `thrifty`,
   `conventional-commits`), the whole-tree `dotagents` package (skills + commands +
   agents, sliced by the adapters via `$out/skills/<name>` /
-  `$out/agents/<name>.md`), and the `scaffold` command file.
+  `$out/agents/<name>/agent.md`), and the `scaffold` command file.
 - `nix/dotagents/` is the flakeModule machinery for the AI-agent stack: the
   neutral `dotagents.mcpServers` option model (`nix/dotagents/dotagents.nix`),
   per-server configs (`nix/dotagents/mcps/*.nix`), upstream skill/plugin
   derivations (`nix/dotagents/skills/*.nix`), and the global agent rules
-  (`nix/dotagents/rules.nix`, read from `dotagents/rules/rules.md`).
+  (`nix/dotagents/rules.nix`, read from `dotagents/agents.md`).
   Auto-imported as flake-parts modules like everything else under `nix/`.
   The local skill/command packages referenced by `nix/dotagents/skills/*.nix` and
   `nix/dotagents/commands/*.nix` are built from `dotagents/` by `nix/dotagents/local.nix`.
@@ -60,7 +61,7 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `$out/skills/<name>`.
 - `nix/homeModules/dotagents.nix` is the home-manager config layer: per-user
   `dotagents.instance` options, the shared global context (defaulting to the
-  `dotagents.rules` content from `dotagents/rules/rules.md`), and the overlay of
+  `dotagents.rules` content from `dotagents/agents.md`), and the overlay of
   instance values (grafana URL/token file, gitlab URL) onto the shared MCP
   server definitions. It reads `config.dotagents.mcpServers`,
   `config.dotagents.rules` and `config.dotagents.commands` from the auto-imported
