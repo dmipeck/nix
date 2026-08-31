@@ -21,13 +21,17 @@ let
   '';
 in
 {
-  # Each of the three toolkit skills is exposed by its own name. The package
-  # key itself (skill-optimizer) is NOT exposed: the package has no
-  # $out/skills/skill-optimizer dir, and every config.dotagents.skills key is
-  # rendered as $out/skills/<name> by the adapters.
+  # Each of the three toolkit skills is exposed by its own name, and the
+  # package key itself (skill-optimizer) is exposed as a whole bundle marked
+  # layout "collection": its package $out/skills/ contains the constituent
+  # skills, so adapters render the package root (claude: whole plugin) or
+  # skip it (opencode: no single-skill form).
   config.dotagents.skills = lib.genAttrs [
     "skill-generalizer"
     "skill-miner"
+    "skill-optimizer"
     "skill-personalizer"
   ] (_: skillOptimizerPack);
+
+  config.dotagents.skillLayouts."skill-optimizer" = "collection";
 }

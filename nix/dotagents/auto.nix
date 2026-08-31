@@ -80,6 +80,22 @@ in
     type = discovered lib.types.package;
     description = "AI tool command files, discovered automatically from dotagents/commands/.";
   };
+  options.dotagents.skillLayouts = lib.mkOption {
+    type = lib.types.attrsOf (
+      lib.types.enum [
+        "skill"
+        "collection"
+      ]
+    );
+    default = { };
+    description = ''
+      Per-skill layout. "skill" (default): the package exposes
+      $out/skills/<name>/SKILL.md and adapters render $out/skills/<name>.
+      "collection": the package is a whole bundle whose $out/skills/
+      contains many constituent skills; adapters render the package root
+      (claude: whole plugin) or skip it (opencode: no single-skill form).
+    '';
+  };
   options.dotagents.localPackages = lib.mkOption {
     type = lib.types.attrsOf lib.types.package;
     description = "Local AI content packages built from ../dotagents (skills/, commands/, agents/).";

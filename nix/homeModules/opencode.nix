@@ -4,6 +4,7 @@ let
   # here is flake-parts state (auto-imported under nix/); captured once so the
   # home-manager module below can reference the packages.
   agentSkills = flakeArgs.config.dotagents.skills;
+  skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
 in
 {
@@ -78,8 +79,13 @@ in
       # wants each skill referenced by its directory path. The whole
       # config.dotagents.skills attrset (local auto-discovered skills + every
       # upstream skill package) is rendered generically, so dropping a new
-      # skill into dotagents/skills/ needs no adapter edit.
-      skills = lib.mapAttrs' (name: pkg: lib.nameValuePair name "${pkg}/skills/${name}") agentSkills;
+      # skill into dotagents/skills/ needs no adapter edit. Collection keys
+      # (whole bundles whose $out/skills/ holds many constituent skills) are
+      # skipped: opencode has no single-skill form for them, and their
+      # constituents are already registered as separate keys.
+      skills = lib.mapAttrs' (name: pkg: lib.nameValuePair name "${pkg}/skills/${name}") (
+        lib.filterAttrs (name: _: (skillLayouts.${name} or "skill") != "collection") agentSkills
+      );
 
       # Both themes share the opencode theme schema and mapping; only the
       # `defs` palette differs.
