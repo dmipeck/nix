@@ -23,6 +23,7 @@ permission:
   skill: deny
   bash:
     "*": deny
+  "github_merge_pull_request": "ask"
 tools:
   "github_*": true
 ---

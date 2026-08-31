@@ -236,6 +236,12 @@ in
               "Bash(sed:*)"
               "Bash(kubectl:*)"
             ];
+            # PR merges always prompt, even inside the github subagent. The
+            # github server only connects inside that agent, so the pattern
+            # never fires in the main session.
+            permissions.ask = [
+              "mcp__github__merge_pull_request"
+            ];
           };
           # No MCP servers in the main conversation. The shared server set
           # (config.dotagents.mcpServers, kept for reference above) is served to
