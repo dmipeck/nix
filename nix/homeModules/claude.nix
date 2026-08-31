@@ -1,9 +1,11 @@
 { config, ... }@flakeArgs:
 let
-  # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix). `config`
-  # here is flake-parts state (auto-imported under nix/); captured once so the
-  # home-manager module below can reference the packages.
+  # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix); the
+  # subagent definitions live in the whole-tree package (agents/*/agent.md).
+  # `config` here is flake-parts state (auto-imported under nix/); captured
+  # once so the home-manager module below can reference the packages.
   skills = flakeArgs.config.dotagents.skills;
+  subagents = flakeArgs.config.dotagents.subagents;
 in
 {
   flake.homeModules.claude =
@@ -25,6 +27,45 @@ in
       # in with `mcpServers:` inline definitions in its agent file, which
       # connect only while that subagent runs.
       mcpServers = config.dotagents.mcpServers;
+
+      # The nix subagent definition is shared with opencode
+      # (dotagents/agents/nix/agent.md) but speaks opencode's dialect
+      # (`mode`/`permission`/`tools` map). Claude Code's subagent dialect
+      # differs (a `name`, a tool allowlist, and inline `mcpServers`), so the
+      # claude definition is re-rendered from the shared system-prompt body,
+      # pointing the inline nixos MCP server at the mcp-nixos store path.
+      nixAgent = pkgs.runCommand "dotagents-nix-agent-claude" { } ''
+                  mkdir -p "$(dirname "$out")"
+                  {
+                    cat <<EOF
+        ---
+        name: nix
+        description: Runs home-manager and nixos-rebuild commands and answers Nix/NixOS option and package questions via the nixos MCP server. A reporter only — runs what it is told and reports results; never fixes anything.
+        tools: Read, Grep, Glob, Bash
+        mcpServers:
+          - nixos:
+              type: stdio
+              command: ${pkgs.mcp-nixos}/bin/mcp-nixos
+        ---
+
+        EOF
+                    # Drop the shared file's opencode frontmatter block, keep the body.
+                    awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${subagents.nix}
+                  } > "$out"
+      '';
+
+      # Claude Code runs a slash command as a forked subagent only when the
+      # command frontmatter carries `context: fork` (plus `agent: <name>` and
+      # `background: false`). opencode reads the same shared command file and
+      # rejects unknown frontmatter keys, so the claude dialect is derived by
+      # injecting the two claude-only keys into the shared file; the shared
+      # `agent: nix` and body stay untouched.
+      claudeCommand =
+        name: pkg:
+        pkgs.runCommand "dotagents-${name}-claude" { } ''
+          mkdir -p "$(dirname "$out")"
+          sed '1a context: fork\nbackground: false' ${pkg} > "$out"
+        '';
 
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
@@ -91,6 +132,17 @@ in
             # scaffold command file, built by dmipeck/agents and passed
             # through config.dotagents.commands (dotagents.nix).
             scaffold = config.dotagents.commands.scaffold;
+            # home-manager / nixos-rebuild delegate to the nix subagent; the
+            # shared files carry the opencode `agent: nix` frontmatter, and the
+            # claude variants add `context: fork` to run as a forked subagent.
+            home-manager = claudeCommand "home-manager" config.dotagents.commands.home-manager;
+            nixos-rebuild = claudeCommand "nixos-rebuild" config.dotagents.commands.nixos-rebuild;
+          };
+          # The nix subagent, re-rendered for Claude Code's agent dialect with
+          # the nixos MCP server scoped inline (see nixAgent above). The
+          # home-manager/claude-code module writes it to ~/.claude/agents/nix.md.
+          agents = {
+            nix = nixAgent;
           };
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
