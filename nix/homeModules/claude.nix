@@ -81,6 +81,20 @@ in
               env: ${builtins.toJSON githubServer.env}
       '';
 
+      # The export-kubernetes subagent, rendered for Claude Code's dialect with
+      # the kubernetes MCP server scoped inline. The server starts with
+      # `--readonly` (nix/dotagents/mcps/kubernetes.nix), which disables the
+      # apply-k8s-resource and k8s-pod-exec write tools, so the agent can only
+      # inspect the cluster. The block is hand-built YAML like githubMcpBlock.
+      kubernetesServer = config.dotagents.mcpServers.kubernetes;
+      kubernetesMcpBlock = ''
+        mcpServers:
+          - kubernetes:
+              type: stdio
+              command: ${kubernetesServer.command}
+              args: ${builtins.toJSON kubernetesServer.args}
+      '';
+
       # Hand-tuned description/tools for the agents whose opencode frontmatter
       # does not carry a Claude Code-compatible spec (mode/permission maps,
       # inline mcpServers). nix and the github pair override their frontmatter
@@ -108,6 +122,11 @@ in
           description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s git tools. Read-only: reports, never mutates.'";
           tools = "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
           extraFrontmatter = githubMcpBlock;
+        };
+        "export-kubernetes" = {
+          description = "'Answers questions about a Kubernetes cluster - contexts, nodes, namespaces, events, resources, and pod logs - using the kubernetes MCP server''s tools. Read-only: reports what it finds, never mutates.'";
+          tools = "mcp__kubernetes__get-k8s-pod-logs, mcp__kubernetes__get-k8s-resource, mcp__kubernetes__list-k8s-contexts, mcp__kubernetes__list-k8s-events, mcp__kubernetes__list-k8s-namespaces, mcp__kubernetes__list-k8s-nodes, mcp__kubernetes__list-k8s-resources";
+          extraFrontmatter = kubernetesMcpBlock;
         };
         orchestrate = {
           description = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent.";
