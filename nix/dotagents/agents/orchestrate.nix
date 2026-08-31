@@ -13,10 +13,10 @@ let
   store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
-  options.dotagents.subagents.orchestrate = lib.mkOption {
+  options.dotagents.agents.orchestrate = lib.mkOption {
     type = lib.types.path;
     description = "opencode agent definition for orchestrate (built from ../dotagents/agents/orchestrate/agent.md).";
   };
 
-  config.dotagents.subagents.orchestrate = lib.mkDefault (store + "/agents/orchestrate/agent.md");
+  config.dotagents.agents.orchestrate = lib.mkDefault (store + "/agents/orchestrate/agent.md");
 }

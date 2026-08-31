@@ -10,10 +10,10 @@ let
   store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
-  options.dotagents.subagents.nix = lib.mkOption {
+  options.dotagents.agents.nix = lib.mkOption {
     type = lib.types.path;
-    description = "opencode subagent definition for nix (built from ../dotagents/agents/nix/agent.md).";
+    description = "opencode agent definition for nix (built from ../dotagents/agents/nix/agent.md).";
   };
 
-  config.dotagents.subagents.nix = lib.mkDefault (store + "/agents/nix/agent.md");
+  config.dotagents.agents.nix = lib.mkDefault (store + "/agents/nix/agent.md");
 }
