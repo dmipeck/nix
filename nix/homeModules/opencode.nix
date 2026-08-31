@@ -210,15 +210,14 @@ in
 
         programs.opencode.skills = skills;
 
-        # Delegate-to-subagent skills (commit, test, explore-fs) reference
-        # their subagent by name; the definitions come from dmipeck/agents via
-        # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix,
-        # explore-fs.nix and nix.nix). nix re-enables the nixos MCP tools via
-        # `tools` in its agent definition.
+        # Delegate-to-subagent skills (commit, test, nix) reference their
+        # subagent by name; the definitions come from dmipeck/agents via
+        # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix and
+        # nix.nix). nix re-enables the nixos MCP tools via `tools` in its agent
+        # definition.
         programs.opencode.agents = {
           commit = subagents.commit;
           test = subagents.test;
-          explore-fs = subagents."explore-fs";
           nix = subagents.nix;
         };
 
