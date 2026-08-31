@@ -1,28 +1,24 @@
-{ lib, config, ... }:
-let
-  # The commit/test opencode subagent definitions live in the whole-tree
-  # package at $out/agents/<name>/agent.md, built from ../dotagents by
-  # nix/dotagents/local.nix.
-  local = config.dotagents.localPackages;
-
-  # `outPath` is a string in Nix 2.34; `/. +` rebuilds it as a true path so
-  # home-manager's `agents` option copies the file via `source` (lib.isPath).
-  store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
-in
+{ lib, ... }:
 {
   options.dotagents.agents = {
     commit = lib.mkOption {
       type = lib.types.path;
-      description = "opencode agent definition for commit (built from ../dotagents/agents/commit/agent.md).";
+      description = "opencode agent definition for commit (dotagents/agents/commit/agent.md).";
     };
     test = lib.mkOption {
       type = lib.types.path;
-      description = "opencode agent definition for test (built from ../dotagents/agents/test/agent.md).";
+      description = "opencode agent definition for test (dotagents/agents/test/agent.md).";
     };
   };
 
+  # The commit/test opencode subagent definitions are the repo-source files
+  # (dotagents/agents/<name>/agent.md). Real source paths (not string
+  # interpolations of the whole-tree package outPath) keep pure evaluation
+  # working: home-manager's `agents` option copies them via `source`
+  # (lib.isPath), and the claude adapter can interpolate them into its
+  # runCommand build scripts without an eval-time store import.
   config = {
-    dotagents.agents.commit = lib.mkDefault (store + "/agents/commit/agent.md");
-    dotagents.agents.test = lib.mkDefault (store + "/agents/test/agent.md");
+    dotagents.agents.commit = lib.mkDefault ../../../dotagents/agents/commit/agent.md;
+    dotagents.agents.test = lib.mkDefault ../../../dotagents/agents/test/agent.md;
   };
 }
