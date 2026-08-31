@@ -1,22 +1,22 @@
 { config, ... }@flakeArgs:
 let
   # Shared MCP server configs (neutral model + concrete servers) live in
-  # nix/agents/ (option model in agents.nix, per-server configs in mcps/);
+  # nix/dotagents/ (option model in dotagents.nix, per-server configs in mcps/);
   # captured here from flake-parts state so the home-manager module can
   # overlay the per-user instance values.
-  baseMcpServers = flakeArgs.config.agents.mcpServers;
+  baseMcpServers = flakeArgs.config.dotagents.mcpServers;
 
-  # Global agent rules (nix/agents/rules.nix) are owned by dmipeck/agents
+  # Global agent rules (nix/dotagents/rules.nix) are owned by dmipeck/agents
   # (rules/rules.md) and passed through here; the home-manager module uses them
   # as the default for the shared `context` written to each AI tool's global
   # rules file.
-  rules = flakeArgs.config.agents.rules;
+  rules = flakeArgs.config.dotagents.rules;
 
-  # Agent command files (nix/agents/commands/*.nix), e.g. the scaffold
+  # Agent command files (nix/dotagents/commands/*.nix), e.g. the scaffold
   # slash command built by dmipeck/agents (commands/scaffold.md);
   # passed through here so the home-manager module can hand them to each AI
   # tool's custom command set.
-  commands = flakeArgs.config.agents.commands;
+  commands = flakeArgs.config.dotagents.commands;
 in
 {
 
@@ -27,7 +27,7 @@ in
   # (grafana URL/token file, gitlab URL) onto the shared server definitions.
   # Add an instance option here; add a server, skill or command over in
   # dmipeck/agents.
-  flake.homeModules.agents =
+  flake.homeModules.dotagents =
     {
       lib,
       pkgs,
@@ -35,15 +35,15 @@ in
       ...
     }:
     let
-      instance = config.agents.instance;
+      instance = config.dotagents.instance;
     in
     {
-      options.agents = {
+      options.dotagents = {
         # Shared global context written to each AI tool's global rules file —
         # ~/.config/opencode/AGENTS.md for opencode, ~/.claude/CLAUDE.md for
-        # Claude Code. Defaults to the dmipeck/agents `agents.rules` content
+        # Claude Code. Defaults to the dmipeck/agents `dotagents.rules` content
         # (rules/rules.md, instructing the agent to load the git-workflow and
-        # caveman skills), passed through via nix/agents/rules.nix; overridable
+        # caveman skills), passed through via nix/dotagents/rules.nix; overridable
         # per profile.
         context = lib.mkOption {
           type = lib.types.lines;
@@ -103,7 +103,7 @@ in
               description = ''
                 Whether to add the gitlab MCP server to the AI tool's config.
                 Off by default since not every profile has a GitLab instance to
-                point it at; set to true and provide `agents.instance.gitlab.url`
+                point it at; set to true and provide `dotagents.instance.gitlab.url`
                 to enable it.
               '';
             };
@@ -115,7 +115,7 @@ in
                 to. The server itself is remote HTTP (served by GitLab at
                 "''${url}/api/v4/mcp") and authenticates interactively via OAuth
                 2.0 on first use — no sops secret is needed here. Only read when
-                `agents.instance.gitlab.enable` is true.
+                `dotagents.instance.gitlab.enable` is true.
               '';
             };
           };
@@ -126,7 +126,7 @@ in
               description = ''
                 Whether to add the github MCP server to the AI tool's config.
                 Off by default since not every profile needs GitHub access; set
-                to true and provide `agents.instance.github.tokenSopsKey` to
+                to true and provide `dotagents.instance.github.tokenSopsKey` to
                 enable it.
               '';
             };
@@ -158,33 +158,33 @@ in
         };
 
         mcpServers = lib.mkOption {
-          # The neutral submodule type is defined once in nix/agents/agents.nix
-          # (`agents.mcpServers`); this option just passes the final merged
+          # The neutral submodule type is defined once in nix/dotagents/dotagents.nix
+          # (`dotagents.mcpServers`); this option just passes the final merged
           # attrs through to the adapters.
           type = lib.types.attrsOf lib.types.anything;
-          description = "Neutral MCP server configs (defined in nix/agents/).";
+          description = "Neutral MCP server configs (defined in nix/dotagents/).";
         };
 
         commands = lib.mkOption {
           # Each command is a package (a single markdown command file) defined
-          # in nix/agents/commands/*.nix and built by dmipeck/agents; passed
+          # in nix/dotagents/commands/*.nix and built by dmipeck/agents; passed
           # through to the adapters, which map it onto each tool's custom
           # command slot.
           type = lib.types.attrsOf lib.types.anything;
-          description = "Agent command files (defined in nix/agents/commands/).";
+          description = "Agent command files (defined in nix/dotagents/commands/).";
         };
       };
 
-      config.agents = {
+      config.dotagents = {
         # Global agent instructions, shared by both tools (written to
         # ~/.config/opencode/AGENTS.md and ~/.claude/CLAUDE.md). The content is
         # owned once by dmipeck/agents (rules/rules.md) and passed through via
-        # `agents.rules` (nix/agents/rules.nix); declared as a default here so a
+        # `dotagents.rules` (nix/dotagents/rules.nix); declared as a default here so a
         # profile can still override it with its own instructions.
         context = lib.mkDefault rules;
 
         # Base server definitions (commands, args, tool lists) come from
-        # nix/agents/ (mcps/*.nix); only the per-user instance values are
+        # nix/dotagents/ (mcps/*.nix); only the per-user instance values are
         # overlaid here.
         mcpServers = {
           nixos = baseMcpServers.nixos;
@@ -266,7 +266,7 @@ in
           };
         };
 
-        # Agent command files (defined in nix/agents/commands/*.nix) passed
+        # Agent command files (defined in nix/dotagents/commands/*.nix) passed
         # straight through to each AI tool's custom command set.
         commands = commands;
       };

@@ -40,33 +40,33 @@ flakes. `CLAUDE.md` is a symlink to this file.
 ## AI-tools layering
 
 - Local AI content — skills, commands, agent (subagent) definitions and global
-  rules — lives in the repo root `ai/` dir (`ai/skills/<name>/SKILL.md`,
-  `ai/commands/<file>.md`, `ai/agents/<name>.md`, `ai/rules/rules.md`).
-  `nix/agents/local.nix` packages it into derivations (`agents.localPackages`):
+  rules — lives in the repo root `dotagents/` dir (`dotagents/skills/<name>/SKILL.md`,
+  `dotagents/commands/<file>.md`, `dotagents/agents/<name>.md`, `dotagents/rules/rules.md`).
+  `nix/dotagents/local.nix` packages it into derivations (`dotagents.localPackages`):
   bare-dir skill packages (`git-workflow`, `commit`, `test`, `thrifty`,
-  `conventional-commits`), the whole-tree `agents` package (skills + commands +
+  `conventional-commits`), the whole-tree `dotagents` package (skills + commands +
   agents, sliced by the adapters via `$out/skills/<name>` /
   `$out/agents/<name>.md`), and the `scaffold` command file.
-- `nix/agents/` is the flakeModule machinery for the AI-agent stack: the
-  neutral `agents.mcpServers` option model (`nix/agents/agents.nix`),
-  per-server configs (`nix/agents/mcps/*.nix`), upstream skill/plugin
-  derivations (`nix/agents/skills/*.nix`), and the global agent rules
-  (`nix/agents/rules.nix`, read from `ai/rules/rules.md`).
+- `nix/dotagents/` is the flakeModule machinery for the AI-agent stack: the
+  neutral `dotagents.mcpServers` option model (`nix/dotagents/dotagents.nix`),
+  per-server configs (`nix/dotagents/mcps/*.nix`), upstream skill/plugin
+  derivations (`nix/dotagents/skills/*.nix`), and the global agent rules
+  (`nix/dotagents/rules.nix`, read from `dotagents/rules/rules.md`).
   Auto-imported as flake-parts modules like everything else under `nix/`.
-  The local skill/command packages referenced by `nix/agents/skills/*.nix` and
-  `nix/agents/commands/*.nix` are built from `ai/` by `nix/agents/local.nix`.
-  The golang/postgres skills live inside the whole-tree `agents` package
-  (`nix/agents/skills/golang.nix`), so the adapters slice them out via
+  The local skill/command packages referenced by `nix/dotagents/skills/*.nix` and
+  `nix/dotagents/commands/*.nix` are built from `dotagents/` by `nix/dotagents/local.nix`.
+  The golang/postgres skills live inside the whole-tree `dotagents` package
+  (`nix/dotagents/skills/golang.nix`), so the adapters slice them out via
   `$out/skills/<name>`.
-- `nix/homeModules/agents.nix` is the home-manager config layer: per-user
-  `agents.instance` options, the shared global context (defaulting to the
-  `agents.rules` content from `ai/rules/rules.md`), and the overlay of
+- `nix/homeModules/dotagents.nix` is the home-manager config layer: per-user
+  `dotagents.instance` options, the shared global context (defaulting to the
+  `dotagents.rules` content from `dotagents/rules/rules.md`), and the overlay of
   instance values (grafana URL/token file, gitlab URL) onto the shared MCP
-  server definitions. It reads `config.agents.mcpServers`,
-  `config.agents.rules` and `config.agents.commands` from the auto-imported
-  `nix/agents/` modules.
-  Add an instance option → edit agents.nix; add a server, skill or command →
-  edit nix/agents/ (content goes in `ai/`).
+  server definitions. It reads `config.dotagents.mcpServers`,
+  `config.dotagents.rules` and `config.dotagents.commands` from the auto-imported
+  `nix/dotagents/` modules.
+  Add an instance option → edit dotagents.nix; add a server, skill or command →
+  edit nix/dotagents/ (content goes in `dotagents/`).
 - `opencode.nix` renders permission allow/ask lists from
   `mcpServers.<srv>.readOnlyTools/writableTools`; `claude.nix` remaps them to
   the `mpc__plugin_hm_<server>__<tool>` namespace.
@@ -81,7 +81,7 @@ pkgs: { extensions = ...; }`, consumed via `_module.args.vscodeModules`).
 ## Secrets
 
 - sops-nix convention everywhere: secrets are referenced by name
-  (`agents.instance.*.tokenSopsKey`, `comin.accessTokenSopsKey`) and decrypted
+  (`dotagents.instance.*.tokenSopsKey`, `comin.accessTokenSopsKey`) and decrypted
   at runtime; the value is only ever pointed to by file path
   (`GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE`), never inlined. Never
   inline tokens in module code; gitleaks enforces this.

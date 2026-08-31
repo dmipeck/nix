@@ -17,13 +17,13 @@ let
   };
   mkGrafanaGroup =
     group:
-    pkgs.runCommand "agents-grafana-${group}" { } ''
+    pkgs.runCommand "dotagents-grafana-${group}" { } ''
       mkdir -p $out/skills
       cp -rL ${grafanaSkillsSrc}/skills/${group}/. $out/skills/
     '';
 in
 {
-  options.agents.skills = {
+  options.dotagents.skills = {
     "grafana-core" = lib.mkOption {
       type = lib.types.package;
       description = "opencode skill package for grafana-core ($out/skills/).";
@@ -38,7 +38,7 @@ in
     };
   };
 
-  config.agents.skills = {
+  config.dotagents.skills = {
     "grafana-core" = lib.mkDefault (mkGrafanaGroup "grafana-core");
     "grafana-lgtm" = lib.mkDefault (mkGrafanaGroup "grafana-lgtm");
     "grafana-datasources" = lib.mkDefault (mkGrafanaGroup "grafana-datasources");

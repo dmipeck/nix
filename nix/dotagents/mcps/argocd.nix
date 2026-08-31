@@ -55,20 +55,20 @@ let
   });
 in
 {
-  options.agents.mcps."argocd-mcp" = lib.mkOption {
+  options.dotagents.mcps."argocd-mcp" = lib.mkOption {
     type = lib.types.package;
     description = "argocd-mcp MCP server package.";
   };
 
-  config.agents.mcps."argocd-mcp" = lib.mkDefault argocdMcp;
+  config.dotagents.mcps."argocd-mcp" = lib.mkDefault argocdMcp;
 
-  config.agents.mcpServers.argocd = {
+  config.dotagents.mcpServers.argocd = {
     type = "local";
     command = "${argocdMcp}/bin/argocd-mcp";
     args = [ "stdio" ];
     # API token and base URL are per-user placeholders; the consumer's
     # home-manager config wraps the server so the token is read from a
-    # sops-decrypted file at startup (see dmipeck/nix homeModules/agents.nix).
+    # sops-decrypted file at startup (see dmipeck/nix homeModules/dotagents.nix).
     env = {
       MCP_READ_ONLY = "true";
       ARGOCD_BASE_URL = "";

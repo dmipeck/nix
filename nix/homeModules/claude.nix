@@ -1,9 +1,9 @@
 { config, ... }@flakeArgs:
 let
-  # Skill/plugin packages are owned by nix/agents/ (skills/*.nix). `config`
+  # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix). `config`
   # here is flake-parts state (auto-imported under nix/); captured once so the
   # home-manager module below can reference the packages.
-  skills = flakeArgs.config.agents.skills;
+  skills = flakeArgs.config.dotagents.skills;
 in
 {
   flake.homeModules.claude =
@@ -17,14 +17,14 @@ in
       cfg = config.programs.claude-code;
 
       # Neutral MCP server configs + per-user instance options live in
-      # homeModules/agents.nix; skill packages come from nix/agents/
+      # homeModules/dotagents.nix; skill packages come from nix/dotagents/
       # (`skills`, captured above). This module is a thin adapter that maps
       # them onto Claude Code's config dialect. No MCP servers are registered
       # for the main session (see `mcpServers = {}` below), so their tool
       # descriptions never consume main-context; a subagent opts a server back
       # in with `mcpServers:` inline definitions in its agent file, which
       # connect only while that subagent runs.
-      mcpServers = config.agents.mcpServers;
+      mcpServers = config.dotagents.mcpServers;
 
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
@@ -60,9 +60,9 @@ in
           enable = true;
 
           # Global context written to ~/.claude/CLAUDE.md, applied across every
-          # Claude Code session. Content lives once in config.agents.context
-          # (homeModules/agents.nix), shared with opencode.
-          context = config.agents.context;
+          # Claude Code session. Content lives once in config.dotagents.context
+          # (homeModules/dotagents.nix), shared with opencode.
+          context = config.dotagents.context;
           plugins = {
             mcp-server-dev = skills.mcp-server-dev;
             skill-creator = skills.skill-creator;
@@ -91,8 +91,8 @@ in
           commands = {
             set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
             # scaffold command file, built by dmipeck/agents and passed
-            # through config.agents.commands (agents.nix).
-            scaffold = config.agents.commands.scaffold;
+            # through config.dotagents.commands (dotagents.nix).
+            scaffold = config.dotagents.commands.scaffold;
           };
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
@@ -153,7 +153,7 @@ in
             ];
           };
           # No MCP servers in the main conversation. The shared server set
-          # (config.agents.mcpServers, kept for reference above) is served to
+          # (config.dotagents.mcpServers, kept for reference above) is served to
           # subagents via inline `mcpServers:` frontmatter in their agent
           # files instead, so main-context stays free of MCP tool schemas.
           mcpServers = { };

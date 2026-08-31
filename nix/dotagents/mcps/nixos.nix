@@ -7,17 +7,9 @@ let
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 in
 {
-  config.agents.mcpServers.kubernetes = {
+  config.dotagents.mcpServers.nixos = {
     type = "local";
-    command = "${pkgs.mcp-k8s-go}/bin/mcp-k8s-go";
-    readOnlyTools = [
-      "get-k8s-pod-logs"
-      "get-k8s-resource"
-      "list-k8s-contexts"
-      "list-k8s-events"
-      "list-k8s-namespaces"
-      "list-k8s-nodes"
-      "list-k8s-resources"
-    ];
+    command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+    readOnlyTools = [ ];
   };
 }

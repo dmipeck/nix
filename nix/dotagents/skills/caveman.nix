@@ -15,7 +15,7 @@ let
     rev = "17f9f2ec2377b0bfe16b52ee03a462e7f0a02bc8";
     hash = "sha256-lmzmlPj47lWNRZudMSsdIocS4srZYQeG2bQw800Os7U=";
   };
-  cavemanPack = pkgs.runCommand "agents-caveman" { } ''
+  cavemanPack = pkgs.runCommand "dotagents-caveman" { } ''
     mkdir -p $out/skills
     for d in ${cavemanSrc}/skills/*; do
       [ -f "$d/SKILL.md" ] || continue
@@ -24,10 +24,10 @@ let
   '';
 in
 {
-  options.agents.skills."caveman" = lib.mkOption {
+  options.dotagents.skills."caveman" = lib.mkOption {
     type = lib.types.package;
     description = "opencode skill package for caveman ($out/skills/).";
   };
 
-  config.agents.skills."caveman" = lib.mkDefault cavemanPack;
+  config.dotagents.skills."caveman" = lib.mkDefault cavemanPack;
 }

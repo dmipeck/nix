@@ -13,7 +13,7 @@ let
     rev = "b9ffd1513e84136b72e2b6f041dc1ebfd9e23a84";
     hash = "sha256-bmlc9nD0Tz62sy+Grvt6ZWhuNQjk6AjuMy0aLPw+ZE8=";
   };
-  skillOptimizerPack = pkgs.runCommand "agents-skill-optimizer" { } ''
+  skillOptimizerPack = pkgs.runCommand "dotagents-skill-optimizer" { } ''
     mkdir -p $out/skills
     cp -rL ${skillOptimizerSrc}/skills/skill-miner $out/skills/
     cp -rL ${skillOptimizerSrc}/skills/skill-personalizer $out/skills/
@@ -21,10 +21,10 @@ let
   '';
 in
 {
-  options.agents.skills."skill-optimizer" = lib.mkOption {
+  options.dotagents.skills."skill-optimizer" = lib.mkOption {
     type = lib.types.package;
     description = "opencode skill package for skill-optimizer ($out/skills/).";
   };
 
-  config.agents.skills."skill-optimizer" = lib.mkDefault skillOptimizerPack;
+  config.dotagents.skills."skill-optimizer" = lib.mkDefault skillOptimizerPack;
 }

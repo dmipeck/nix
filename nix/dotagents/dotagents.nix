@@ -1,6 +1,6 @@
 { lib, ... }:
 {
-  options.agents.mcpServers = lib.mkOption {
+  options.dotagents.mcpServers = lib.mkOption {
     type = lib.types.attrsOf (
       lib.types.submodule {
         options = {

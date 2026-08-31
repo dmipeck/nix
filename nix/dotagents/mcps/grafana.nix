@@ -7,7 +7,7 @@ let
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 in
 {
-  config.agents.mcpServers.grafana = {
+  config.dotagents.mcpServers.grafana = {
     type = "local";
     command = "${pkgs.mcp-grafana}/bin/mcp-grafana";
     args = [
@@ -18,7 +18,7 @@ in
       "-disable-write"
     ];
     # Per-user secrets are placeholders here; filled in by the consumer's
-    # home-manager config (see dmipeck/nix homeModules/agents.nix).
+    # home-manager config (see dmipeck/nix homeModules/dotagents.nix).
     env = {
       GRAFANA_URL = "";
       GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE = "";
