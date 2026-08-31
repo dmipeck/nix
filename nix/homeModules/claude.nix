@@ -54,6 +54,52 @@ in
                   } > "$out"
       '';
 
+      # The explore-github and github subagents, rendered for Claude Code's
+      # dialect with the github MCP server scoped inline. They reuse the
+      # per-user instance config from config.dotagents.mcpServers.github
+      # (dotagents.nix wraps the server so the PAT is read from a
+      # sops-decrypted file at startup), so they only exist when the github
+      # instance is enabled. The frontmatter is generated with toYAML because
+      # command/args/env are instance-derived; the args carry shell-quoted
+      # shim text, so the frontmatter is written as a store file and cat'd,
+      # never shell-interpolated.
+      githubServer = config.dotagents.mcpServers.github;
+      githubClaudeAgent =
+        name: description: tools:
+        let
+          frontmatter = pkgs.writeText "dotagents-${name}-frontmatter" (
+            lib.generators.toYAML { } {
+              inherit name description tools;
+              mcpServers = [
+                {
+                  github = {
+                    type = "stdio";
+                    inherit (githubServer) command args env;
+                  };
+                }
+              ];
+            }
+          );
+        in
+        pkgs.runCommand "dotagents-${name}-agent-claude" { } ''
+          mkdir -p "$(dirname "$out")"
+          {
+            echo '---'
+            cat ${frontmatter}
+            echo '---'
+            awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${subagents.${name}}
+          } > "$out"
+        '';
+
+      exploreGithubAgent =
+        githubClaudeAgent "explore-github"
+          "Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server's git tools. Read-only: reports, never mutates."
+          "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
+      githubAgent =
+        githubClaudeAgent "github"
+          "Full GitHub development assistant — reads repos, commits, branches and code; creates and updates pull requests, issues and discussions; triggers and inspects Actions runs and logs. Write-capable: performs the GitHub operations asked of it."
+          "mcp__github__*";
+
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
       # field that plugins have no mechanism to declare, so it's wired in
@@ -121,10 +167,17 @@ in
             scaffold = config.dotagents.commands.scaffold;
           };
           # The nix subagent, re-rendered for Claude Code's agent dialect with
-          # the nixos MCP server scoped inline (see nixAgent above). The
-          # home-manager/claude-code module writes it to ~/.claude/agents/nix.md.
+          # the nixos MCP server scoped inline (see nixAgent above), plus the
+          # explore-github and github agents with the github server scoped
+          # inline (see githubClaudeAgent; only when the github instance is
+          # enabled). The home-manager/claude-code module writes them to
+          # ~/.claude/agents/.
           agents = {
             nix = nixAgent;
+          }
+          // lib.optionalAttrs config.dotagents.instance.github.enable {
+            explore-github = exploreGithubAgent;
+            github = githubAgent;
           };
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
@@ -182,6 +235,12 @@ in
               "Bash(awk:*)"
               "Bash(sed:*)"
               "Bash(kubectl:*)"
+            ];
+            # PR merges always prompt, even inside the github subagent. The
+            # github server only connects inside that agent, so the pattern
+            # never fires in the main session.
+            permissions.ask = [
+              "mcp__github__merge_pull_request"
             ];
           };
           # No MCP servers in the main conversation. The shared server set

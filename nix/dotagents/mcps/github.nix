@@ -6,59 +6,22 @@ let
   # until a consumer forces it.
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 
-  # github-mcp-server only registers the tools it's told about. Pin the
-  # surface to the PR workflow: context (who am I), git/repos for code reads
-  # and pushes, issues and pull_requests for reading issues, PRs, comments and
-  # reviews, and users. Everything outside these toolsets (actions, gists,
-  # labels, projects, orgs, copilot, notifications, ...) is never registered.
-  toolsets = "context,git,issues,pull_requests,repos,users";
+  # github-mcp-server only registers the tools it's told about. The surface is
+  # a full developer workflow: context (who am I), actions (view/trigger
+  # workflow runs), discussions, git/repos for code reads and pushes, issues,
+  # pull_requests, and users. Verified against github-mcp-server 1.8.0:
+  # `--toolsets ${toolsets} --exclude-tools <this list>` registers 50 tools.
+  toolsets = "actions,context,discussions,git,issues,pull_requests,repos,users";
 
-  # Write tools inside the enabled toolsets that go beyond "open a PR, push
-  # changes" — merging, repo create/delete/fork, file delete, and
-  # issue/comment/review/PR-state writes. Excluded server-side so the tools do
-  # not exist to be called; the host-level permission lists (opencode/claude)
-  # are pure defence-in-depth. Verified against github-mcp-server 1.8.0:
-  # `--toolsets ${toolsets} --exclude-tools <this list>` registers 32 tools.
+  # Write tools inside the enabled toolsets that are account/repo-level
+  # destructive or surprising — creating or forking a repository, and deleting
+  # a file outside a normal git flow. Excluded server-side so the tools do not
+  # exist to be called; the host-level permission lists (opencode/claude) are
+  # pure defence-in-depth.
   excludedTools = [
-    "add_comment_to_pending_review"
-    "add_issue_comment"
-    "add_issue_comment_reaction"
-    "add_issue_reaction"
-    "add_pull_request_review_comment"
-    "add_pull_request_review_comment_reaction"
-    "add_reply_to_pull_request_comment"
-    "add_sub_issue"
-    "create_issue"
-    "create_pull_request_review"
     "create_repository"
     "delete_file"
-    "delete_pending_pull_request_review"
-    "delete_repository"
     "fork_repository"
-    "issue_dependency_write"
-    "issue_write"
-    "merge_pull_request"
-    "pull_request_review_write"
-    "remove_sub_issue"
-    "reprioritize_sub_issue"
-    "request_pull_request_reviewers"
-    "resolve_review_thread"
-    "set_issue_fields"
-    "sub_issue_write"
-    "submit_pending_pull_request_review"
-    "unresolve_review_thread"
-    "update_issue_assignees"
-    "update_issue_body"
-    "update_issue_labels"
-    "update_issue_milestone"
-    "update_issue_state"
-    "update_issue_title"
-    "update_issue_type"
-    "update_pull_request_body"
-    "update_pull_request_branch"
-    "update_pull_request_draft_state"
-    "update_pull_request_state"
-    "update_pull_request_title"
   ];
 in
 {
@@ -81,8 +44,13 @@ in
     # Read tools as registered by github-mcp-server 1.8.0 for the enabled
     # toolsets above; allow-listed on the host side.
     readOnlyTools = [
+      "actions_get"
+      "actions_list"
       "get_commit"
+      "get_discussion"
+      "get_discussion_comments"
       "get_file_contents"
+      "get_job_logs"
       "get_label"
       "get_latest_release"
       "get_me"
@@ -91,12 +59,15 @@ in
       "get_tag"
       "get_team_members"
       "get_teams"
+      "github-mcp-server"
       "issue_read"
       "list_branches"
       "list_commits"
+      "list_discussion_categories"
+      "list_discussions"
       "list_issue_fields"
-      "list_issue_types"
       "list_issues"
+      "list_issue_types"
       "list_pull_requests"
       "list_releases"
       "list_repository_collaborators"
@@ -109,14 +80,26 @@ in
       "search_repositories"
       "search_users"
     ];
-    # The only write tools registered by the server: open a PR, push changes.
-    # Explicit `ask`/prompt candidates on the host side.
+    # The write tools registered by the server (minus the excluded
+    # repo/account-level ops above): PRs, issues, discussions, Actions
+    # triggers, branches and pushes. Explicit `ask`/prompt candidates on the
+    # host side.
     writableTools = [
+      "actions_run_trigger"
+      "add_comment_to_pending_review"
+      "add_issue_comment"
+      "add_reply_to_pull_request_comment"
       "create_branch"
       "create_or_update_file"
-      "push_files"
       "create_pull_request"
+      "discussion_comment_write"
+      "issue_write"
+      "merge_pull_request"
+      "pull_request_review_write"
+      "push_files"
+      "sub_issue_write"
       "update_pull_request"
+      "update_pull_request_branch"
     ];
   };
 }
