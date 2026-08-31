@@ -44,6 +44,7 @@ in
     commit = bareSkill "commit";
     test = bareSkill "test";
     comments = bareSkill "comments";
+    explore-fs = bareSkill "explore-fs";
     whole-tree = wholeTree;
 
     # scaffold is a single command file, not a dir; the package output

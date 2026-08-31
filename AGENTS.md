@@ -45,8 +45,8 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `dotagents/agents/<name>/agent.md`, `dotagents/agents.md` global rules).
   `nix/dotagents/local.nix` packages it into derivations (`dotagents.localPackages`):
   bare-dir skill packages (`git-workflow`, `commit`, `test`, `thrifty`,
-  `conventional-commits`), the whole-tree `dotagents` package (skills + commands +
-  agents, sliced by the adapters via `$out/skills/<name>` /
+  `conventional-commits`, `explore-fs`), the whole-tree `dotagents` package
+  (skills + commands + agents, sliced by the adapters via `$out/skills/<name>` /
   `$out/agents/<name>/agent.md`), and the `scaffold` command file.
 - `nix/dotagents/` is the flakeModule machinery for the AI-agent stack: the
   neutral `dotagents.mcpServers` option model (`nix/dotagents/dotagents.nix`),

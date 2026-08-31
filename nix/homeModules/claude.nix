@@ -78,6 +78,7 @@ in
             commit = skills.commit;
             test = skills.test;
             comments = skills.comments;
+            explore-fs = skills.explore-fs;
             golang-api = "${skills.golang-api}/skills/golang-api";
             golang-cli = "${skills.golang-cli}/skills/golang-cli";
             golang-database = "${skills.golang-database}/skills/golang-database";
