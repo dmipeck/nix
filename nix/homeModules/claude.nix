@@ -54,19 +54,6 @@ in
                   } > "$out"
       '';
 
-      # Claude Code runs a slash command as a forked subagent only when the
-      # command frontmatter carries `context: fork` (plus `agent: <name>` and
-      # `background: false`). opencode reads the same shared command file and
-      # rejects unknown frontmatter keys, so the claude dialect is derived by
-      # injecting the two claude-only keys into the shared file; the shared
-      # `agent: nix` and body stay untouched.
-      claudeCommand =
-        name: pkg:
-        pkgs.runCommand "dotagents-${name}-claude" { } ''
-          mkdir -p "$(dirname "$out")"
-          sed '1a context: fork\nbackground: false' ${pkg} > "$out"
-        '';
-
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
       # field that plugins have no mechanism to declare, so it's wired in
@@ -132,11 +119,6 @@ in
             # scaffold command file, built by dmipeck/agents and passed
             # through config.dotagents.commands (dotagents.nix).
             scaffold = config.dotagents.commands.scaffold;
-            # home-manager / nixos-rebuild delegate to the nix subagent; the
-            # shared files carry the opencode `agent: nix` frontmatter, and the
-            # claude variants add `context: fork` to run as a forked subagent.
-            home-manager = claudeCommand "home-manager" config.dotagents.commands.home-manager;
-            nixos-rebuild = claudeCommand "nixos-rebuild" config.dotagents.commands.nixos-rebuild;
           };
           # The nix subagent, re-rendered for Claude Code's agent dialect with
           # the nixos MCP server scoped inline (see nixAgent above). The
