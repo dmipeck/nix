@@ -132,6 +132,14 @@ in
         claudeAgent "commit"
           "Reviews pending changes, decides commit boundaries, and writes conventional + caveman-compressed commit messages."
           "Read, Grep, Glob, List, Bash, Skill";
+      exploreGitAgent =
+        claudeAgent "explore-git"
+          "Answers questions about the current git repository — commits, branches, tags, diffs, logs, and working-tree state — using local git commands. Read-only: reports what it finds, never mutates."
+          "Bash";
+      gitAgent =
+        claudeAgent "git"
+          "Full git assistant — reads repo state (commits, branches, tags, diffs, working tree) and performs git operations: stage, commit, push, pull, branch, checkout/switch, worktree, merge, rebase, stash, tag, remote. Write-capable: does the git task asked of it."
+          "Read, Grep, Glob, List, Bash, Skill";
 
       exploreGithubAgent =
         githubClaudeAgent "explore-github"
@@ -220,6 +228,8 @@ in
             orchestrator = orchestratorAgent;
             test = testAgent;
             commit = commitAgent;
+            explore-git = exploreGitAgent;
+            git = gitAgent;
           }
           // lib.optionalAttrs config.dotagents.instance.github.enable {
             explore-github = exploreGithubAgent;

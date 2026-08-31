@@ -220,11 +220,15 @@ in
         # explore-github and github re-enable the github MCP tools via `tools`
         # in their agent definitions. Both only speak the github server, so
         # they're registered only when the per-user github instance is enabled.
+        # explore-git and git talk to the local repo through bash `git`
+        # commands, so they're always registered.
         programs.opencode.agents = {
           commit = subagents.commit;
           test = subagents.test;
           nix = subagents.nix;
           orchestrator = subagents.orchestrator;
+          explore-git = subagents."explore-git";
+          git = subagents.git;
         }
         // lib.optionalAttrs config.dotagents.instance.github.enable {
           explore-github = subagents."explore-github";
