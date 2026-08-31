@@ -22,6 +22,14 @@ in
       # permission rules from the shared per-server tool lists.
       mcpServers = config.dotagents.mcpServers;
 
+      # All agent definitions (dotagents/agents/<name>/agent.md), registered
+      # unconditionally except the github pair (see the `agents` config below).
+      allAgents = lib.mapAttrs (_: p: p) agents;
+      githubAgentNames = [
+        "explore-github"
+        "github"
+      ];
+
       # opencode namespaces every MCP tool as `<server>_<tool>`. By default the
       # whole MCP set is denied for every session (via the top-level `tools`
       # map below), so the schemas of all those tools never enter the main
@@ -67,69 +75,11 @@ in
       };
 
       # Skill/plugin packages expose $out/skills/<name>/SKILL.md; opencode
-      # wants each skill referenced by its directory path. git-workflow is
-      # exceptional: dmipeck/agents ships it as a bare directory (not a
-      # $out/skills/<name> package), so it's referenced directly.
-      skills =
-        lib.mapAttrs' (name: pkg: lib.nameValuePair name "${pkg}/skills/${name}") {
-          "build-mcp-app" = agentSkills.mcp-server-dev;
-          "build-mcpb" = agentSkills.mcp-server-dev;
-          "build-mcp-server" = agentSkills.mcp-server-dev;
-          "skill-creator" = agentSkills.skill-creator;
-          "alerting-irm" = agentSkills.grafana-core;
-          "alloy" = agentSkills.grafana-core;
-          "beyla" = agentSkills.grafana-core;
-          "dashboarding" = agentSkills.grafana-core;
-          "grafana-oss" = agentSkills.grafana-core;
-          "opentelemetry" = agentSkills.grafana-core;
-          "promql" = agentSkills.grafana-core;
-          "skill-authoring" = agentSkills.grafana-core;
-          "loki" = agentSkills.grafana-lgtm;
-          "mimir" = agentSkills.grafana-lgtm;
-          "prometheus" = agentSkills.grafana-lgtm;
-          "pyroscope" = agentSkills.grafana-lgtm;
-          "tempo" = agentSkills.grafana-lgtm;
-          "datasources-provisioning" = agentSkills.grafana-datasources;
-          "stop-slop" = agentSkills.stop-slop;
-          "handoff" = agentSkills.handoff;
-          "grill-me" = agentSkills.grill-me;
-          "caveman" = agentSkills.caveman;
-          "cavecrew" = agentSkills.caveman;
-          "caveman-commit" = agentSkills.caveman;
-          "caveman-compress" = agentSkills.caveman;
-          "caveman-discover" = agentSkills.caveman;
-          "caveman-evidence-review" = agentSkills.caveman;
-          "caveman-explore" = agentSkills.caveman;
-          "caveman-help" = agentSkills.caveman;
-          "caveman-learn" = agentSkills.caveman;
-          "caveman-manage" = agentSkills.caveman;
-          "caveman-optimize" = agentSkills.caveman;
-          "caveman-review" = agentSkills.caveman;
-          "caveman-setup" = agentSkills.caveman;
-          "caveman-stats" = agentSkills.caveman;
-          "investigate-first" = agentSkills.caveman;
-          "lean-build" = agentSkills.caveman;
-          "migration" = agentSkills.caveman;
-          "safe-refactor" = agentSkills.caveman;
-          "surgical-patch" = agentSkills.caveman;
-          "verify-and-stop" = agentSkills.caveman;
-          "skill-miner" = agentSkills.skill-optimizer;
-          "skill-personalizer" = agentSkills.skill-optimizer;
-          "skill-generalizer" = agentSkills.skill-optimizer;
-          "golang-api" = agentSkills.golang-api;
-          "golang-cli" = agentSkills.golang-cli;
-          "golang-database" = agentSkills.golang-database;
-          "golang-decoupling" = agentSkills.golang-decoupling;
-          "golang-layout" = agentSkills.golang-layout;
-          "golang-migration" = agentSkills.golang-migration;
-          "golang-query" = agentSkills.golang-query;
-          "golang-testing" = agentSkills.golang-testing;
-          "postgres" = agentSkills.postgres;
-        }
-        // {
-          "git-workflow" = "${agentSkills.git-workflow}";
-          "comments" = "${agentSkills.comments}";
-        };
+      # wants each skill referenced by its directory path. The whole
+      # config.dotagents.skills attrset (local auto-discovered skills + every
+      # upstream skill package) is rendered generically, so dropping a new
+      # skill into dotagents/skills/ needs no adapter edit.
+      skills = lib.mapAttrs' (name: pkg: lib.nameValuePair name "${pkg}/skills/${name}") agentSkills;
 
       # Both themes share the opencode theme schema and mapping; only the
       # `defs` palette differs.
@@ -211,29 +161,21 @@ in
         programs.opencode.skills = skills;
 
         # Delegate-to-subagent skills (commit, test, nix) reference their
-        # subagent by name; the definitions come from dmipeck/agents via
-        # config.dotagents.agents (nix/dotagents/agents/commit-test.nix,
-        # nix.nix and orchestrate.nix). nix re-enables the
-        # nixos MCP tools via `tools` in its agent definition. orchestrate is
-        # a primary agent (mode: primary) that has no tools of its own and
-        # delegates everything through `task`; it is the default agent.
+        # subagent by name; the definitions come from dotagents/agents/<name>/agent.md
+        # via config.dotagents.agents (auto-discovered in nix/dotagents/auto.nix).
+        # nix re-enables the nixos MCP tools via `tools` in its agent definition.
+        # orchestrate is a primary agent (mode: primary) that has no tools of its
+        # own and delegates everything through `task`; it is the default agent.
         # explore-github and github re-enable the github MCP tools via `tools`
         # in their agent definitions. Both only speak the github server, so
         # they're registered only when the per-user github instance is enabled.
         # explore-git and git talk to the local repo through bash `git`
         # commands, so they're always registered.
-        programs.opencode.agents = {
-          commit = agents.commit;
-          test = agents.test;
-          nix = agents.nix;
-          orchestrate = agents.orchestrate;
-          explore-git = agents."explore-git";
-          git = agents.git;
-        }
-        // lib.optionalAttrs config.dotagents.mcps.github.enable {
-          explore-github = agents."explore-github";
-          github = agents.github;
-        };
+        programs.opencode.agents =
+          (lib.removeAttrs allAgents githubAgentNames)
+          // lib.optionalAttrs config.dotagents.mcps.github.enable (
+            lib.genAttrs githubAgentNames (n: allAgents.${n})
+          );
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents
         # from commands/scaffold.md, passed through config.dotagents.commands).

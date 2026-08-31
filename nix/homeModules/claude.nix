@@ -1,9 +1,10 @@
 { config, ... }@flakeArgs:
 let
   # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix); the
-  # subagent definitions live in the whole-tree package (agents/*/agent.md).
-  # `config` here is flake-parts state (auto-imported under nix/); captured
-  # once so the home-manager module below can reference the packages.
+  # subagent definitions are auto-discovered from dotagents/agents/*/agent.md
+  # (nix/dotagents/auto.nix). `config` here is flake-parts state
+  # (auto-imported under nix/); captured once so the home-manager module below
+  # can reference the packages.
   skills = flakeArgs.config.dotagents.skills;
   agents = flakeArgs.config.dotagents.agents;
 in
@@ -28,55 +29,36 @@ in
       # connect only while that subagent runs.
       mcpServers = config.dotagents.mcpServers;
 
-      # The nix subagent definition is shared with opencode
-      # (dotagents/agents/nix/agent.md) but speaks opencode's dialect
-      # (`mode`/`permission`/`tools` map). Claude Code's subagent dialect
-      # differs (a `name`, a tool allowlist, and inline `mcpServers`), so the
-      # claude definition is re-rendered from the shared system-prompt body,
-      # pointing the inline nixos MCP server at the mcp-nixos store path.
-      nixAgent = pkgs.runCommand "dotagents-nix-agent-claude" { } ''
-                  mkdir -p "$(dirname "$out")"
-                  {
-                    cat <<EOF
-        ---
-        name: nix
-        description: Runs home-manager and nixos-rebuild commands and answers Nix/NixOS option and package questions via the nixos MCP server. A reporter only — runs what it is told and reports results; never fixes anything.
-        tools: Read, Grep, Glob, Bash
-        mcpServers:
-          - nixos:
-              type: stdio
-              command: ${pkgs.mcp-nixos}/bin/mcp-nixos
-        ---
-
-        EOF
-                    # Drop the shared file's opencode frontmatter block, keep the body.
-                    awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.nix}
-                  } > "$out"
-      '';
-
       # Render an opencode agent (dotagents/agents/<name>/agent.md) into Claude
       # Code's dialect: a `name`/`description`/`tools` allowlist frontmatter
       # over the shared system-prompt body (the opencode
-      # `mode`/`permission`/`tools` block is dropped). Used for the read-only
-      # and worker subagents (test, commit) and the orchestrate main-session
-      # agent; nix and the github agents are hand-rendered because they carry
-      # an inline mcpServers definition.
+      # `mode`/`permission`/`tools` block is dropped), plus optional extra
+      # frontmatter lines (e.g. an inline `mcpServers:` block for agents that
+      # connect a server only while they run).
       claudeAgent =
-        name: description: tools:
+        name: description: tools: extra:
+        let
+          frontmatter = lib.concatStringsSep "\n" (
+            [
+              "---"
+              "name: ${name}"
+              "description: ${description}"
+              "tools: ${tools}"
+            ]
+            ++ lib.optional (extra != "") extra
+            ++ [ "---" ]
+          );
+        in
         pkgs.runCommand "dotagents-${name}-agent-claude" { } ''
-                    mkdir -p "$(dirname "$out")"
-                    {
-                      cat <<'EOF'
-          ---
-          name: ${name}
-          description: ${description}
-          tools: ${tools}
-          ---
+              mkdir -p "$(dirname "$out")"
+              {
+                cat <<'EOF'
+          ${frontmatter}
 
           EOF
-                      # Drop the shared file's opencode frontmatter block, keep the body.
-                      awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.${name}}
-                    } > "$out"
+                # Drop the shared file's opencode frontmatter block, keep the body.
+                awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.${name}}
+              } > "$out"
         '';
 
       # The explore-github and github subagents, rendered for Claude Code's
@@ -84,71 +66,98 @@ in
       # per-user instance config from config.dotagents.mcpServers.github
       # (dotagents.nix wraps the server so the PAT is read from a
       # sops-decrypted file at startup), so they only exist when the github
-      # instance is enabled. The frontmatter is generated with toYAML because
-      # command/args/env are instance-derived; the args carry shell-quoted
-      # shim text, so the frontmatter is written as a store file and cat'd,
-      # never shell-interpolated.
+      # instance is enabled. The block is hand-built YAML (args/env as YAML
+      # flow collections) because the args carry shell-quoted shim text that
+      # must not be shell-interpolated; lib.generators.toYAML is just toJSON
+      # in current nixpkgs and would mix JSON into the YAML frontmatter.
       githubServer = config.dotagents.mcpServers.github;
-      githubClaudeAgent =
-        name: description: tools:
+      githubMcpBlock = ''
+        mcpServers:
+          - github:
+              type: stdio
+              command: ${githubServer.command}
+              args: ${builtins.toJSON githubServer.args}
+              env: ${builtins.toJSON githubServer.env}
+      '';
+
+      # Hand-tuned description/tools for the agents whose opencode frontmatter
+      # does not carry a Claude Code-compatible spec (mode/permission maps,
+      # inline mcpServers). nix and the github pair override their frontmatter
+      # with an inline mcpServers block; orchestrate/test/commit/explore-git/git
+      # get hand-written descriptions and tool allowlists.
+      agentSpecs = {
+        nix = {
+          description = "Runs home-manager and nixos-rebuild commands and answers Nix/NixOS option and package questions via the nixos MCP server. A reporter only — runs what it is told and reports results; never fixes anything.";
+          tools = "Read, Grep, Glob, Bash";
+          extraFrontmatter = ''
+            mcpServers:
+              - nixos:
+                  type: stdio
+                  command: ${pkgs.mcp-nixos}/bin/mcp-nixos
+          '';
+        };
+        github = {
+          # Single-quoted YAML scalar: the description contains `: ` which a
+          # plain scalar would misparse as a mapping separator.
+          description = "'Full GitHub development assistant — reads repos, commits, branches and code; creates and updates pull requests, issues and discussions; triggers and inspects Actions runs and logs. Write-capable: performs the GitHub operations asked of it.'";
+          tools = "mcp__github__*";
+          extraFrontmatter = githubMcpBlock;
+        };
+        "explore-github" = {
+          description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s git tools. Read-only: reports, never mutates.'";
+          tools = "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
+          extraFrontmatter = githubMcpBlock;
+        };
+        orchestrate = {
+          description = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent.";
+          tools = "Agent, AskUserQuestion, TodoWrite, Skill";
+        };
+        test = {
+          description = "Runs the test suite for one testing ecosystem, reviews the output, and reports pass/fail results. Reports failures only; never takes corrective action.";
+          tools = "Read, Grep, Glob, List, Bash, Skill";
+        };
+        commit = {
+          description = "Reviews pending changes, decides commit boundaries, and writes conventional + caveman-compressed commit messages.";
+          tools = "Read, Grep, Glob, List, Bash, Skill";
+        };
+        "explore-git" = {
+          description = "Answers questions about the current git repository — commits, branches, tags, diffs, logs, and working-tree state — using local git commands. Read-only: reports what it finds, never mutates.";
+          tools = "Bash";
+        };
+        git = {
+          description = "Full git assistant — reads repo state (commits, branches, tags, diffs, working tree) and performs git operations: stage, commit, push, pull, branch, checkout/switch, worktree, merge, rebase, stash, tag, remote. Write-capable: does the git task asked of it.";
+          tools = "Read, Grep, Glob, List, Bash, Skill";
+        };
+      };
+
+      # Agents without a hand-tuned spec fall back to a description extracted
+      # from their agent.md frontmatter (empty if missing) and a sensible
+      # default tool allowlist.
+      defaultTools = "Read, Grep, Glob, List, Bash, Skill";
+      agentDescription =
+        name:
         let
-          frontmatter = pkgs.writeText "dotagents-${name}-frontmatter" (
-            lib.generators.toYAML { } {
-              inherit name description tools;
-              mcpServers = [
-                {
-                  github = {
-                    type = "stdio";
-                    inherit (githubServer) command args env;
-                  };
-                }
-              ];
-            }
-          );
+          m = builtins.match ".*description:[ \t]*([^\n]*)[\s\S]*" (builtins.readFile agents.${name});
         in
-        pkgs.runCommand "dotagents-${name}-agent-claude" { } ''
-          mkdir -p "$(dirname "$out")"
-          {
-            echo '---'
-            cat ${frontmatter}
-            echo '---'
-            awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.${name}}
-          } > "$out"
-        '';
+        if m == null then "" else builtins.head m;
+      renderAgent =
+        name:
+        let
+          spec = agentSpecs.${name} or { };
+          extra = spec.extraFrontmatter or "";
+        in
+        claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools) (
+          lib.optionalString (extra != "") (lib.trim extra)
+        );
 
-      # Claude Code makes the orchestrate the main session agent via the
-      # `agent` settings.json key; `Agent` lets it spawn subagents,
-      # `AskUserQuestion`/`TodoWrite` keep it talking to the user and tracking
-      # delegated units.
-      orchestrateAgent =
-        claudeAgent "orchestrate"
-          "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent."
-          "Agent, AskUserQuestion, TodoWrite, Skill";
-      testAgent =
-        claudeAgent "test"
-          "Runs the test suite for one testing ecosystem, reviews the output, and reports pass/fail results. Reports failures only; never takes corrective action."
-          "Read, Grep, Glob, List, Bash, Skill";
-      commitAgent =
-        claudeAgent "commit"
-          "Reviews pending changes, decides commit boundaries, and writes conventional + caveman-compressed commit messages."
-          "Read, Grep, Glob, List, Bash, Skill";
-      exploreGitAgent =
-        claudeAgent "explore-git"
-          "Answers questions about the current git repository — commits, branches, tags, diffs, logs, and working-tree state — using local git commands. Read-only: reports what it finds, never mutates."
-          "Bash";
-      gitAgent =
-        claudeAgent "git"
-          "Full git assistant — reads repo state (commits, branches, tags, diffs, working tree) and performs git operations: stage, commit, push, pull, branch, checkout/switch, worktree, merge, rebase, stash, tag, remote. Write-capable: does the git task asked of it."
-          "Read, Grep, Glob, List, Bash, Skill";
-
-      exploreGithubAgent =
-        githubClaudeAgent "explore-github"
-          "Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server's git tools. Read-only: reports, never mutates."
-          "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
-      githubAgent =
-        githubClaudeAgent "github"
-          "Full GitHub development assistant — reads repos, commits, branches and code; creates and updates pull requests, issues and discussions; triggers and inspects Actions runs and logs. Write-capable: performs the GitHub operations asked of it."
-          "mcp__github__*";
+      # All agent definitions (dotagents/agents/<name>/agent.md), rendered for
+      # Claude Code's dialect; the github pair is registered only when the
+      # per-user github instance is enabled.
+      allClaudeAgents = lib.mapAttrs (name: _: renderAgent name) agents;
+      githubAgentNames = [
+        "explore-github"
+        "github"
+      ];
 
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
@@ -187,54 +196,29 @@ in
           # Claude Code session. Content lives once in config.dotagents.context
           # (homeModules/dotagents.nix), shared with opencode.
           context = config.dotagents.context;
-          plugins = {
-            mcp-server-dev = skills.mcp-server-dev;
-            skill-creator = skills.skill-creator;
-            grafana-core = skills.grafana-core;
-            grafana-lgtm = skills.grafana-lgtm;
-            grafana-datasources = skills.grafana-datasources;
-            stop-slop = skills.stop-slop;
-            handoff = skills.handoff;
-            grill-me = skills.grill-me;
-            caveman = skills.caveman;
-            skill-optimizer = skills.skill-optimizer;
-            git-workflow = skills.git-workflow;
-            comments = skills.comments;
-            golang-api = "${skills.golang-api}/skills/golang-api";
-            golang-cli = "${skills.golang-cli}/skills/golang-cli";
-            golang-database = "${skills.golang-database}/skills/golang-database";
-            golang-decoupling = "${skills.golang-decoupling}/skills/golang-decoupling";
-            golang-layout = "${skills.golang-layout}/skills/golang-layout";
-            golang-migration = "${skills.golang-migration}/skills/golang-migration";
-            golang-query = "${skills.golang-query}/skills/golang-query";
-            golang-testing = "${skills.golang-testing}/skills/golang-testing";
-            postgres = "${skills.postgres}/skills/postgres";
-          };
+          # Every key of config.dotagents.skills (local auto-discovered skills +
+          # every upstream skill package) becomes a Claude plugin named after the
+          # skill, referenced by its $out/skills/<name> directory. The package
+          # values coerce to paths, so no hand-curated name→package map lives
+          # here — dropping a new skill into dotagents/skills/ needs no adapter
+          # edit.
+          plugins = lib.mapAttrs' (name: pkg: lib.nameValuePair name "${pkg}/skills/${name}") skills;
           commands = {
             set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
-            # scaffold command file, built by dmipeck/agents and passed
-            # through config.dotagents.commands (dotagents.nix).
-            scaffold = config.dotagents.commands.scaffold;
-          };
-          # The subagents, re-rendered for Claude Code's agent dialect: nix
-          # with the nixos MCP server scoped inline (see nixAgent), the
-          # orchestrate main-session agent (see orchestrateAgent), the shared
-          # test/commit workers (see claudeAgent), and the explore-github/github
-          # agents with the github server scoped inline (see githubClaudeAgent;
-          # only when the github instance is enabled). The home-manager/claude-code
-          # module writes them to ~/.claude/agents/<name>.md.
-          agents = {
-            nix = nixAgent;
-            orchestrate = orchestrateAgent;
-            test = testAgent;
-            commit = commitAgent;
-            explore-git = exploreGitAgent;
-            git = gitAgent;
           }
-          // lib.optionalAttrs config.dotagents.mcps.github.enable {
-            explore-github = exploreGithubAgent;
-            github = githubAgent;
-          };
+          // config.dotagents.commands;
+          # The subagents, re-rendered for Claude Code's agent dialect from the
+          # shared dotagents/agents/<name>/agent.md files (nix with the nixos
+          # MCP server scoped inline, the orchestrate main-session agent, the
+          # test/commit workers, and the explore-github/github agents with the
+          # github server scoped inline; the github pair only when the github
+          # instance is enabled). The home-manager/claude-code module writes
+          # them to ~/.claude/agents/<name>.md.
+          agents =
+            (lib.removeAttrs allClaudeAgents githubAgentNames)
+            // lib.optionalAttrs config.dotagents.mcps.github.enable (
+              lib.genAttrs githubAgentNames (n: allClaudeAgents.${n})
+            );
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
           # so their lspServers config in marketplace.json never actually

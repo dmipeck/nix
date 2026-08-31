@@ -24,10 +24,28 @@ let
   '';
 in
 {
-  options.dotagents.skills."caveman" = lib.mkOption {
-    type = lib.types.package;
-    description = "opencode skill package for caveman ($out/skills/).";
-  };
-
-  config.dotagents.skills."caveman" = lib.mkDefault cavemanPack;
+  # Every skill dir shipped by the caveman repo is exposed by its own name; the
+  # opencode/claude adapters slice each out of this package via $out/skills/<name>.
+  config.dotagents.skills = lib.genAttrs [
+    "caveman"
+    "cavecrew"
+    "caveman-commit"
+    "caveman-compress"
+    "caveman-discover"
+    "caveman-evidence-review"
+    "caveman-explore"
+    "caveman-help"
+    "caveman-learn"
+    "caveman-manage"
+    "caveman-optimize"
+    "caveman-review"
+    "caveman-setup"
+    "caveman-stats"
+    "investigate-first"
+    "lean-build"
+    "migration"
+    "safe-refactor"
+    "surgical-patch"
+    "verify-and-stop"
+  ] (_: cavemanPack);
 }

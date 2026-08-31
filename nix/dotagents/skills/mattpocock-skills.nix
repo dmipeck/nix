@@ -24,25 +24,19 @@ let
     '';
 in
 {
-  options.dotagents.skills = {
-    "handoff" = lib.mkOption {
-      type = lib.types.package;
-      description = "opencode skill package for handoff ($out/skills/handoff/SKILL.md).";
-    };
-    "grill-me" = lib.mkOption {
-      type = lib.types.package;
-      description = "opencode skill package for grill-me ($out/skills/grill-me/SKILL.md).";
-    };
-  };
-
-  config.dotagents.skills = {
-    "handoff" = lib.mkDefault (mkSkill {
-      name = "handoff";
-      subdir = "skills/productivity/handoff";
-    });
-    "grill-me" = lib.mkDefault (mkSkill {
-      name = "grill-me";
-      subdir = "skills/productivity/grill-me";
-    });
-  };
+  config.dotagents.skills =
+    lib.genAttrs [ "handoff" ] (
+      _:
+      mkSkill {
+        name = "handoff";
+        subdir = "skills/productivity/handoff";
+      }
+    )
+    // lib.genAttrs [ "grill-me" ] (
+      _:
+      mkSkill {
+        name = "grill-me";
+        subdir = "skills/productivity/grill-me";
+      }
+    );
 }
