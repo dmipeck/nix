@@ -131,6 +131,7 @@ in
           "commit" = "${agentSkills.commit}";
           "test" = "${agentSkills.test}";
           "comments" = "${agentSkills.comments}";
+          "explore-fs" = "${agentSkills.explore-fs}";
         };
 
       # Both themes share the opencode theme schema and mapping; only the
@@ -218,6 +219,7 @@ in
         programs.opencode.agents = {
           commit = subagents.commit;
           test = subagents.test;
+          explore-fs = subagents."explore-fs";
         };
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents
