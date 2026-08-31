@@ -23,24 +23,28 @@ let
     '';
 in
 {
-  options.dotagents.skills = {
-    "grafana-core" = lib.mkOption {
-      type = lib.types.package;
-      description = "opencode skill package for grafana-core ($out/skills/).";
-    };
-    "grafana-lgtm" = lib.mkOption {
-      type = lib.types.package;
-      description = "opencode skill package for grafana-lgtm ($out/skills/).";
-    };
-    "grafana-datasources" = lib.mkOption {
-      type = lib.types.package;
-      description = "opencode skill package for grafana-datasources ($out/skills/).";
-    };
-  };
-
-  config.dotagents.skills = {
-    "grafana-core" = lib.mkDefault (mkGrafanaGroup "grafana-core");
-    "grafana-lgtm" = lib.mkDefault (mkGrafanaGroup "grafana-lgtm");
-    "grafana-datasources" = lib.mkDefault (mkGrafanaGroup "grafana-datasources");
-  };
+  # Every skill dir in each grafana group is exposed by its own name. The
+  # group/package keys (grafana-core, grafana-lgtm, grafana-datasources) are NOT
+  # exposed: their packages have no $out/skills/<group> dir, and every
+  # config.dotagents.skills key is rendered as $out/skills/<name> by the
+  # adapters.
+  config.dotagents.skills =
+    lib.genAttrs [
+      "alerting-irm"
+      "alloy"
+      "beyla"
+      "dashboarding"
+      "grafana-oss"
+      "opentelemetry"
+      "promql"
+      "skill-authoring"
+    ] (_: mkGrafanaGroup "grafana-core")
+    // lib.genAttrs [
+      "loki"
+      "mimir"
+      "prometheus"
+      "pyroscope"
+      "tempo"
+    ] (_: mkGrafanaGroup "grafana-lgtm")
+    // lib.genAttrs [ "datasources-provisioning" ] (_: mkGrafanaGroup "grafana-datasources");
 }

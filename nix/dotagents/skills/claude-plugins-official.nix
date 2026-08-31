@@ -21,19 +21,16 @@ let
     '';
 in
 {
-  options.dotagents.skills = {
-    "mcp-server-dev" = lib.mkOption {
-      type = lib.types.package;
-      description = "opencode skill package for mcp-server-dev ($out/skills/mcp-server-dev/SKILL.md).";
-    };
-    "skill-creator" = lib.mkOption {
-      type = lib.types.package;
-      description = "opencode skill package for skill-creator ($out/skills/skill-creator/SKILL.md).";
-    };
-  };
-
-  config.dotagents.skills = {
-    "mcp-server-dev" = lib.mkDefault (mkPlugin "mcp-server-dev");
-    "skill-creator" = lib.mkDefault (mkPlugin "skill-creator");
-  };
+  # Each mcp-server-dev plugin skill is exposed by its own name. The plugin
+  # key itself (mcp-server-dev) is NOT exposed: the package has no
+  # $out/skills/mcp-server-dev dir, and every config.dotagents.skills key is
+  # rendered as $out/skills/<name> by the adapters. skill-creator's plugin dir
+  # carries skills/skill-creator, so its exposed name is the plugin key itself.
+  config.dotagents.skills =
+    lib.genAttrs [
+      "build-mcp-app"
+      "build-mcp-server"
+      "build-mcpb"
+    ] (_: mkPlugin "mcp-server-dev")
+    // lib.genAttrs [ "skill-creator" ] (_: mkPlugin "skill-creator");
 }

@@ -6,6 +6,7 @@ let
   skillsDir = ../../dotagents/skills;
   agentsDir = ../../dotagents/agents;
   commandsDir = ../../dotagents/commands;
+  dotagentsDir = ../../dotagents;
 
   # Discover content by directory/file presence. Public name = directory
   # name (skills/agents) or filename minus .md (commands). No index files.
@@ -34,13 +35,25 @@ let
       cp ${commandsDir}/${name}.md "$out"
     '';
 
-  # The per-name options under dotagents.skills/.agents/.commands are declared
-  # by the existing per-name modules. A parent option of `attrsOf` type cannot
-  # host those nested declarations ("would be a parent of ..."), so the parent
-  # is a submodule (type name "submodule", which allows nested options) with an
-  # `attrsOf` freeformType: declared names keep their per-name option types,
-  # auto-discovered names (no per-name module) flow into the attrsOf — i.e.
-  # attrsOf semantics plus auto-discovery.
+  # The whole dotagents content tree (skills/ + commands/ + agents/) in one
+  # package; historically the golang/postgres skills and the commit/test
+  # subagents were sliced out of it by the adapters via $out/skills/<name> /
+  # $out/agents/<name>/agent.md. Kept for downstream consumers that want the
+  # whole tree in a single store path.
+  wholeTree = pkgs.runCommand "dotagents" { } ''
+    mkdir -p $out
+    cp -r ${dotagentsDir}/skills $out/skills
+    cp -r ${dotagentsDir}/commands $out/commands
+    cp -r ${dotagentsDir}/agents $out/agents
+  '';
+
+  # A parent option of `attrsOf` type cannot host nested option declarations
+  # ("would be a parent of ..."), so the parent is a submodule (type name
+  # "submodule", which allows nested options) with an `attrsOf` freeformType:
+  # every key flows through the freeform type — auto-discovered local names
+  # and the upstream modules' emitted names alike (there are no per-name
+  # option declarations anymore; C3 moved those into per-module genAttrs
+  # config under the freeform type).
   discovered =
     elemType:
     lib.types.submodule {
@@ -48,11 +61,11 @@ let
     };
 
   # Auto-discovered values. Set as config with mkOptionDefault (priority 1500,
-  # same as an option `default`) so the existing per-name `lib.mkDefault`
-  # (priority 1000) definitions override them. They cannot be an option
-  # `default`: the module system drops a submodule parent's `default` entirely
-  # whenever any higher-priority config definition targets the same option, so
-  # the auto-discovered keys would never reach the freeform type.
+  # same as an option `default`) so a profile can still override them with a
+  # plain (priority 100) definition. They cannot be an option `default`: the
+  # module system drops a submodule parent's `default` entirely whenever any
+  # higher-priority config definition targets the same option, so the
+  # auto-discovered keys would never reach the freeform type.
 in
 {
   options.dotagents.skills = lib.mkOption {
@@ -67,10 +80,18 @@ in
     type = discovered lib.types.package;
     description = "AI tool command files, discovered automatically from dotagents/commands/.";
   };
+  options.dotagents.localPackages = lib.mkOption {
+    type = lib.types.attrsOf lib.types.package;
+    description = "Local AI content packages built from ../dotagents (skills/, commands/, agents/).";
+  };
 
   config.dotagents.skills = lib.genAttrs skillNames (name: lib.mkOptionDefault (skillPkg name));
   config.dotagents.agents = lib.genAttrs agentNames (
     name: lib.mkOptionDefault (agentsDir + "/${name}/agent.md")
   );
   config.dotagents.commands = lib.genAttrs commandNames (name: lib.mkOptionDefault (commandPkg name));
+
+  config.dotagents.localPackages = {
+    whole-tree = wholeTree;
+  };
 }
