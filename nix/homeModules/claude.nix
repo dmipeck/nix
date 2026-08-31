@@ -5,7 +5,7 @@ let
   # `config` here is flake-parts state (auto-imported under nix/); captured
   # once so the home-manager module below can reference the packages.
   skills = flakeArgs.config.dotagents.skills;
-  subagents = flakeArgs.config.dotagents.subagents;
+  agents = flakeArgs.config.dotagents.agents;
 in
 {
   flake.homeModules.claude =
@@ -50,7 +50,7 @@ in
 
         EOF
                     # Drop the shared file's opencode frontmatter block, keep the body.
-                    awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${subagents.nix}
+                    awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.nix}
                   } > "$out"
       '';
 
@@ -75,7 +75,7 @@ in
 
           EOF
                       # Drop the shared file's opencode frontmatter block, keep the body.
-                      awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${subagents.${name}}
+                      awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.${name}}
                     } > "$out"
         '';
 
@@ -112,7 +112,7 @@ in
             echo '---'
             cat ${frontmatter}
             echo '---'
-            awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${subagents.${name}}
+            awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.${name}}
           } > "$out"
         '';
 

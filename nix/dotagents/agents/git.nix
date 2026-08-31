@@ -11,10 +11,10 @@ let
   store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
-  options.dotagents.subagents.git = lib.mkOption {
+  options.dotagents.agents.git = lib.mkOption {
     type = lib.types.path;
-    description = "opencode subagent definition for git (built from ../dotagents/agents/git/agent.md).";
+    description = "opencode agent definition for git (built from ../dotagents/agents/git/agent.md).";
   };
 
-  config.dotagents.subagents.git = lib.mkDefault (store + "/agents/git/agent.md");
+  config.dotagents.agents.git = lib.mkDefault (store + "/agents/git/agent.md");
 }

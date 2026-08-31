@@ -10,19 +10,19 @@ let
   store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
-  options.dotagents.subagents = {
+  options.dotagents.agents = {
     commit = lib.mkOption {
       type = lib.types.path;
-      description = "opencode subagent definition for commit (built from ../dotagents/agents/commit/agent.md).";
+      description = "opencode agent definition for commit (built from ../dotagents/agents/commit/agent.md).";
     };
     test = lib.mkOption {
       type = lib.types.path;
-      description = "opencode subagent definition for test (built from ../dotagents/agents/test/agent.md).";
+      description = "opencode agent definition for test (built from ../dotagents/agents/test/agent.md).";
     };
   };
 
   config = {
-    dotagents.subagents.commit = lib.mkDefault (store + "/agents/commit/agent.md");
-    dotagents.subagents.test = lib.mkDefault (store + "/agents/test/agent.md");
+    dotagents.agents.commit = lib.mkDefault (store + "/agents/commit/agent.md");
+    dotagents.agents.test = lib.mkDefault (store + "/agents/test/agent.md");
   };
 }

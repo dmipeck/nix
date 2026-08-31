@@ -4,7 +4,7 @@ let
   # here is flake-parts state (auto-imported under nix/); captured once so the
   # home-manager module below can reference the packages.
   agentSkills = flakeArgs.config.dotagents.skills;
-  subagents = flakeArgs.config.dotagents.subagents;
+  agents = flakeArgs.config.dotagents.agents;
 in
 {
   flake.homeModules.opencode =
@@ -212,7 +212,7 @@ in
 
         # Delegate-to-subagent skills (commit, test, nix) reference their
         # subagent by name; the definitions come from dmipeck/agents via
-        # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix,
+        # config.dotagents.agents (nix/dotagents/agents/commit-test.nix,
         # nix.nix and orchestrate.nix). nix re-enables the
         # nixos MCP tools via `tools` in its agent definition. orchestrate is
         # a primary agent (mode: primary) that has no tools of its own and
@@ -223,16 +223,16 @@ in
         # explore-git and git talk to the local repo through bash `git`
         # commands, so they're always registered.
         programs.opencode.agents = {
-          commit = subagents.commit;
-          test = subagents.test;
-          nix = subagents.nix;
-          orchestrate = subagents.orchestrate;
-          explore-git = subagents."explore-git";
-          git = subagents.git;
+          commit = agents.commit;
+          test = agents.test;
+          nix = agents.nix;
+          orchestrate = agents.orchestrate;
+          explore-git = agents."explore-git";
+          git = agents.git;
         }
         // lib.optionalAttrs config.dotagents.instance.github.enable {
-          explore-github = subagents."explore-github";
-          github = subagents.github;
+          explore-github = agents."explore-github";
+          github = agents.github;
         };
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents

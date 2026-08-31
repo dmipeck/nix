@@ -12,12 +12,12 @@ let
   store = /. + builtins.unsafeDiscardStringContext local.whole-tree.outPath;
 in
 {
-  options.dotagents.subagents."explore-github" = lib.mkOption {
+  options.dotagents.agents."explore-github" = lib.mkOption {
     type = lib.types.path;
-    description = "opencode subagent definition for explore-github (built from ../dotagents/agents/explore-github/agent.md).";
+    description = "opencode agent definition for explore-github (built from ../dotagents/agents/explore-github/agent.md).";
   };
 
-  config.dotagents.subagents."explore-github" = lib.mkDefault (
+  config.dotagents.agents."explore-github" = lib.mkDefault (
     store + "/agents/explore-github/agent.md"
   );
 }

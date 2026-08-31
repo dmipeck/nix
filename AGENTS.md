@@ -51,8 +51,9 @@ flakes. `CLAUDE.md` is a symlink to this file.
 - `nix/dotagents/` is the flakeModule machinery for the AI-agent stack: the
   neutral `dotagents.mcpServers` option model (`nix/dotagents/dotagents.nix`),
   per-server configs (`nix/dotagents/mcps/*.nix`), upstream skill/plugin
-  derivations (`nix/dotagents/skills/*.nix`), and the global agent rules
-  (`nix/dotagents/rules.nix`, read from `dotagents/agents.md`).
+  derivations (`nix/dotagents/skills/*.nix`), agent definitions
+  (`nix/dotagents/agents/*.nix`, exported as `dotagents.agents`), and the
+  global agent rules (`nix/dotagents/rules.nix`, read from `dotagents/agents.md`).
   Auto-imported as flake-parts modules like everything else under `nix/`.
   The local skill/command packages referenced by `nix/dotagents/skills/*.nix` and
   `nix/dotagents/commands/*.nix` are built from `dotagents/` by `nix/dotagents/local.nix`.
@@ -66,8 +67,8 @@ flakes. `CLAUDE.md` is a symlink to this file.
   server definitions. It reads `config.dotagents.mcpServers`,
   `config.dotagents.rules` and `config.dotagents.commands` from the auto-imported
   `nix/dotagents/` modules.
-  Add an instance option → edit dotagents.nix; add a server, skill or command →
-  edit nix/dotagents/ (content goes in `dotagents/`).
+  Add an instance option → edit dotagents.nix; add a server, skill, command or
+  agent → edit nix/dotagents/ (content goes in `dotagents/`).
 - `opencode.nix` renders permission allow/ask lists from
   `mcpServers.<srv>.readOnlyTools/writableTools`; `claude.nix` remaps them to
   the `mpc__plugin_hm_<server>__<tool>` namespace.
