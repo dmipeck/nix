@@ -12,7 +12,7 @@ let
 
   # Copy a whole skill dir (SKILL.md + references/) to $out root as a bare
   # dir, matching the historical per-skill package shape consumed by opencode
-  # and claude (git-workflow, commit, test, thrifty, conventional-commits).
+  # and claude (git-workflow, thrifty, conventional-commits, comments).
   bareSkill =
     name:
     pkgs.runCommand "dotagents-${name}" { } ''
@@ -41,10 +41,7 @@ in
     git-workflow = bareSkill "git-workflow";
     conventional-commits = bareSkill "conventional-commits";
     thrifty = bareSkill "thrifty";
-    commit = bareSkill "commit";
-    test = bareSkill "test";
     comments = bareSkill "comments";
-    explore-fs = bareSkill "explore-fs";
     whole-tree = wholeTree;
 
     # scaffold is a single command file, not a dir; the package output

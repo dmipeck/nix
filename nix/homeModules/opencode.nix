@@ -128,10 +128,7 @@ in
         }
         // {
           "git-workflow" = "${agentSkills.git-workflow}";
-          "commit" = "${agentSkills.commit}";
-          "test" = "${agentSkills.test}";
           "comments" = "${agentSkills.comments}";
-          "explore-fs" = "${agentSkills.explore-fs}";
         };
 
       # Both themes share the opencode theme schema and mapping; only the
@@ -213,9 +210,10 @@ in
 
         programs.opencode.skills = skills;
 
-        # Delegate-to-subagent skills (commit, test) reference their
-        # subagent by name; the definitions come from dmipeck/agents via
-        # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix).
+        # Delegate-to-subagent skills (commit, test, explore-fs) reference
+        # their subagent by name; the definitions come from dmipeck/agents via
+        # config.dotagents.subagents (nix/dotagents/skills/commit-test.nix and
+        # explore-fs.nix).
         programs.opencode.agents = {
           commit = subagents.commit;
           test = subagents.test;
