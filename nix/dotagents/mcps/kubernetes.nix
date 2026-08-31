@@ -10,6 +10,7 @@ in
   config.dotagents.mcpServers.kubernetes = {
     type = "local";
     command = "${pkgs.mcp-k8s-go}/bin/mcp-k8s-go";
+    args = [ "--readonly" ];
     readOnlyTools = [
       "get-k8s-pod-logs"
       "get-k8s-resource"
