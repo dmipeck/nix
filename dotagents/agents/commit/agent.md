@@ -5,6 +5,7 @@ description: >-
   the user says "commit this" or "write a commit message".
 mode: subagent
 temperature: 0.1
+model: opencode/big-pickle
 permission:
   read: allow
   glob: allow

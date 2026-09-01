@@ -8,6 +8,7 @@ description: >-
   tag".
 mode: subagent
 temperature: 0.1
+model: opencode/big-pickle
 permission:
   read: deny
   glob: deny

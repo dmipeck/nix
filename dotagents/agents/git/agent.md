@@ -8,6 +8,7 @@ description: >-
   branch", "push", "merge into", "rebase", or "stash".
 mode: subagent
 temperature: 0.1
+model: opencode/big-pickle
 permission:
   read: allow
   glob: allow
