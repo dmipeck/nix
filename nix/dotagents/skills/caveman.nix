@@ -1,20 +1,30 @@
-{ lib, withSystem, ... }:
+{
+  lib,
+  withSystem,
+  inputs,
+  ...
+}:
 let
   # flake-parts flake modules get no `pkgs` argument (only perSystem does), so
   # reach into the x86_64-linux system's pkgs via withSystem. The skill
   # packages are derivations; evaluation stays lazy until a consumer forces one.
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 
-  # https://github.com/JuliusBrussee/caveman — the whole skills/ tree (every
-  # subdirectory containing a SKILL.md), mirroring the grafana group packaging
-  # above. Non-skill files (compile.mjs, generated/, ...) are skipped by the
-  # SKILL.md test.
-  cavemanSrc = pkgs.fetchFromGitHub {
-    owner = "JuliusBrussee";
-    repo = "caveman";
-    rev = "17f9f2ec2377b0bfe16b52ee03a462e7f0a02bc8";
-    hash = "sha256-lmzmlPj47lWNRZudMSsdIocS4srZYQeG2bQw800Os7U=";
-  };
+  # https://github.com/JuliusBrussee/caveman — pinned as a flake=false input so
+  # skill names are auto-discovered at eval time. Layout: skills/<name>/SKILL.md.
+  # Non-skill entries (generated/, loose files) fall out via the SKILL.md test.
+  cavemanSrc = inputs.caveman;
+
+  skillDirs =
+    root:
+    builtins.attrNames (
+      lib.filterAttrs (
+        name: type: type == "directory" && builtins.pathExists (root + "/" + name + "/SKILL.md")
+      ) (builtins.readDir root)
+    );
+
+  skillNames = skillDirs (cavemanSrc + "/skills");
+
   cavemanPack = pkgs.runCommand "dotagents-caveman" { } ''
     mkdir -p $out/skills
     for d in ${cavemanSrc}/skills/*; do
@@ -26,26 +36,5 @@ in
 {
   # Every skill dir shipped by the caveman repo is exposed by its own name; the
   # opencode/claude adapters slice each out of this package via $out/skills/<name>.
-  config.dotagents.skills = lib.genAttrs [
-    "caveman"
-    "cavecrew"
-    "caveman-commit"
-    "caveman-compress"
-    "caveman-discover"
-    "caveman-evidence-review"
-    "caveman-explore"
-    "caveman-help"
-    "caveman-learn"
-    "caveman-manage"
-    "caveman-optimize"
-    "caveman-review"
-    "caveman-setup"
-    "caveman-stats"
-    "investigate-first"
-    "lean-build"
-    "migration"
-    "safe-refactor"
-    "surgical-patch"
-    "verify-and-stop"
-  ] (_: cavemanPack);
+  config.dotagents.skills = lib.genAttrs skillNames (_: cavemanPack);
 }
