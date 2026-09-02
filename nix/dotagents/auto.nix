@@ -1,4 +1,9 @@
-{ lib, withSystem, ... }:
+{
+  config,
+  lib,
+  withSystem,
+  ...
+}:
 let
   # flake-parts flake modules get no pkgs; reach into x86_64-linux via withSystem.
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
@@ -33,6 +38,20 @@ let
     pkgs.runCommand "dotagents-${name}" { } ''
       mkdir -p "$(dirname "$out")"
       cp ${commandsDir}/${name}.md "$out"
+    '';
+  # Generic skill → command wrapper: $out IS a slash-command markdown file that
+  # prompts the agent to invoke a skill by name via the Skill tool.
+  skillCommandPkg =
+    name:
+    pkgs.runCommand "dotagents-command-${name}" { } ''
+            mkdir -p "$(dirname "$out")"
+            cat > "$out" <<EOF
+      ---
+      description: Invoke the ${name} skill.
+      ---
+
+      Call the Skill tool with "${name}".
+      EOF
     '';
 
   # The whole dotagents content tree (skills/ + commands/ + agents/) in one
@@ -80,6 +99,11 @@ in
     type = discovered lib.types.package;
     description = "AI tool command files, discovered automatically from dotagents/commands/.";
   };
+  options.dotagents.skillCommands = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [ ];
+    description = "Skills that get an auto-generated slash-command prompting the agent to invoke the skill.";
+  };
   options.dotagents.skillLayouts = lib.mkOption {
     type = lib.types.attrsOf (
       lib.types.enum [
@@ -105,7 +129,17 @@ in
   config.dotagents.agents = lib.genAttrs agentNames (
     name: lib.mkOptionDefault (agentsDir + "/${name}/agent.md")
   );
-  config.dotagents.commands = lib.genAttrs commandNames (name: lib.mkOptionDefault (commandPkg name));
+  config.dotagents.commands =
+    let
+      # Names from config.dotagents.skillCommands that resolve to a plain skill
+      # (present in config.dotagents.skills, not a "collection" bundle).
+      invokedSkillNames = lib.filter (
+        name:
+        (config.dotagents.skills ? ${name}) && (config.dotagents.skillLayouts.${name} or "skill") == "skill"
+      ) config.dotagents.skillCommands;
+    in
+    lib.genAttrs commandNames (name: lib.mkOptionDefault (commandPkg name))
+    // lib.genAttrs invokedSkillNames (name: lib.mkOptionDefault (skillCommandPkg name));
 
   config.dotagents.localPackages = {
     whole-tree = wholeTree;
