@@ -5,8 +5,8 @@ let
   # packages are derivations; evaluation stays lazy until a consumer forces one.
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 
-  # https://github.com/mattpocock/skills — a skill collection; handoff and
-  # grill-me each live in their own subdirectory under skills/productivity/.
+  # https://github.com/mattpocock/skills — a skill collection; each skill
+  # lives in its own subdirectory under skills/<category>/.
   mattpocockSkillsSrc = pkgs.fetchFromGitHub {
     owner = "mattpocock";
     repo = "skills";
@@ -25,18 +25,23 @@ let
 in
 {
   config.dotagents.skills =
-    lib.genAttrs [ "handoff" ] (
-      _:
-      mkSkill {
-        name = "handoff";
-        subdir = "skills/productivity/handoff";
-      }
-    )
-    // lib.genAttrs [ "grill-me" ] (
-      _:
-      mkSkill {
-        name = "grill-me";
-        subdir = "skills/productivity/grill-me";
-      }
-    );
+    let
+      # name → upstream subdir. grill-me, grill-with-docs, wayfinder are
+      # user-invoked trampolines; grilling, domain-modeling, research,
+      # prototype are the model-invoked skills they dispatch to;
+      # setup-matt-pocock-skills bootstraps the per-repo config wayfinder
+      # reads.
+      skills = {
+        handoff = "skills/productivity/handoff";
+        grill-me = "skills/productivity/grill-me";
+        grill-with-docs = "skills/engineering/grill-with-docs";
+        wayfinder = "skills/engineering/wayfinder";
+        grilling = "skills/productivity/grilling";
+        domain-modeling = "skills/engineering/domain-modeling";
+        research = "skills/engineering/research";
+        prototype = "skills/engineering/prototype";
+        setup-matt-pocock-skills = "skills/engineering/setup-matt-pocock-skills";
+      };
+    in
+    lib.mapAttrs (name: subdir: mkSkill { inherit name subdir; }) skills;
 }
