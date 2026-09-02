@@ -33,6 +33,17 @@ let
     map (name: { inherit category name; }) (skillDirs (mattpocockSkillsSrc + "/skills/" + category))
   ) categories;
 
+  # User-invoked skills carry `disable-model-invocation: true` in their SKILL.md
+  # frontmatter; those get an auto-generated slash-command via
+  # config.dotagents.skillCommands.
+  hasInvocationFlag =
+    { name, category }:
+    builtins.match ".*disable-model-invocation:[ \t]*true.*" (
+      builtins.readFile (mattpocockSkillsSrc + "/skills/" + category + "/" + name + "/SKILL.md")
+    ) != null;
+
+  userInvokedNames = map (s: s.name) (lib.filter hasInvocationFlag discovered);
+
   # Copy an upstream sub-directory into $out/skills/<name>, producing the
   # shared $out/skills/<name>/SKILL.md layout both Claude plugins and opencode
   # read.
@@ -47,4 +58,5 @@ in
   config.dotagents.skills = builtins.listToAttrs (
     map (s: lib.nameValuePair s.name (mkSkill s)) discovered
   );
+  config.dotagents.skillCommands = userInvokedNames;
 }
