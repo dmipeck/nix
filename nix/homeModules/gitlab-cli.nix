@@ -8,6 +8,11 @@
     }:
     let
       cfg = config.programs.gitlab-cli;
+      hostname =
+        if cfg.host != null then
+          lib.removePrefix "https://" (lib.removePrefix "http://" cfg.host)
+        else
+          null;
     in
     {
       options.programs.gitlab-cli = {
@@ -58,24 +63,21 @@
               '')
             ];
 
-        home.file.".config/glab-cli/config.yml".text =
-          let
-            hostname =
-              if cfg.host != null then
-                lib.removePrefix "https://" (lib.removePrefix "http://" cfg.host)
-              else
-                null;
-          in
-          ''
+        home.activation.gitlabCliConfig = lib.mkIf (cfg.host != null) (
+          lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+            mkdir -p "$HOME/.config/glab-cli"
+            umask 077
+            cat > "$HOME/.config/glab-cli/config.yml" <<'EOF'
             git_protocol: https
             check_update: false
-          ''
-          + lib.optionalString (cfg.host != null) ''
             hosts:
               ${hostname}:
                 git_protocol: https
                 user: ${cfg.user}
-          '';
+            EOF
+            chmod 600 "$HOME/.config/glab-cli/config.yml"
+          ''
+        );
       };
     };
 }
