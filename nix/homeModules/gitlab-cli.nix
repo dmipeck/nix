@@ -59,6 +59,7 @@
                 # bash builtin read (no `cat` PATH dependency) of the
                 # sops-decrypted PAT, exported to the env var glab reads.
                 export GITLAB_TOKEN="$(<${config.sops.secrets.${cfg.tokenSopsKey}.path})"
+                ${lib.optionalString (cfg.host != null) "export GITLAB_HOST=\"${hostname}\""}
                 exec ${cfg.package}/bin/glab "$@"
               '')
             ];
