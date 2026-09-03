@@ -20,7 +20,8 @@
       # store, only the file path. Shared by the read-only `glab` wrapper and
       # the read-write `glab-rw` wrapper so the two shims stay identical in
       # shape.
-      mkWrapper = binaryName: secretKey:
+      mkWrapper =
+        binaryName: secretKey:
         pkgs.writeShellScriptBin binaryName ''
           # bash builtin read (no `cat` PATH dependency) of the
           # sops-decrypted PAT, exported to the env var glab reads.
@@ -89,10 +90,7 @@
               lib.optional (cfg.tokenSopsKey != null) (mkWrapper "glab" cfg.tokenSopsKey)
               ++ lib.optional (cfg.readWriteTokenSopsKey != null) (mkWrapper "glab-rw" cfg.readWriteTokenSopsKey);
           in
-          if wrappers == [ ] then
-            [ cfg.package ]
-          else
-            wrappers;
+          if wrappers == [ ] then [ cfg.package ] else wrappers;
 
         home.activation.gitlabCliConfig = lib.mkIf (cfg.host != null) (
           lib.hm.dag.entryAfter [ "linkGeneration" ] ''

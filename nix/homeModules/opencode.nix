@@ -212,9 +212,12 @@ in
           // lib.optionalAttrs (gitlabCli != null && gitlabCli.enable) {
             "explore-gitlab" = allAgents."explore-gitlab";
           }
-          // lib.optionalAttrs (gitlabCli != null && gitlabCli.enable && (gitlabCli.readWriteTokenSopsKey or null) != null) {
-            gitlab = allAgents.gitlab;
-          };
+          //
+            lib.optionalAttrs
+              (gitlabCli != null && gitlabCli.enable && (gitlabCli.readWriteTokenSopsKey or null) != null)
+              {
+                gitlab = allAgents.gitlab;
+              };
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents
         # from commands/scaffold.md, passed through config.dotagents.commands).

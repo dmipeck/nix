@@ -332,7 +332,9 @@ in
                   # sops-decrypted read-only PAT, exported to the env var the
                   # server reads.
                   GITHUB_PERSONAL_ACCESS_TOKEN="$(<"$GITHUB_PERSONAL_ACCESS_TOKEN_FILE")" \
-                    exec ${baseMcpServers."github-ro".command} ${lib.concatStringsSep " " (map lib.escapeShellArg baseMcpServers."github-ro".args)}
+                    exec ${baseMcpServers."github-ro".command} ${
+                      lib.concatStringsSep " " (map lib.escapeShellArg baseMcpServers."github-ro".args)
+                    }
                 ''
               ];
               env = baseMcpServers."github-ro".env // {
