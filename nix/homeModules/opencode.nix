@@ -317,6 +317,15 @@ in
           # starts, so every session routes through delegation.
           default_agent = "orchestrate";
 
+          # opencode's built-in `general` subagent is disabled: orchestrate
+          # delegation must pick a purpose-built subagent instead of falling
+          # back to the generic one.
+          agent = {
+            general = {
+              disable = true;
+            };
+          };
+
           # MCP servers stay registered (`mcp` above) but their tools are
           # denied for every session by default, keeping their schemas out of
           # the main context. Subagents re-enable servers per-agent later.
