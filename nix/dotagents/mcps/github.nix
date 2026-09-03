@@ -23,83 +23,119 @@ let
     "delete_file"
     "fork_repository"
   ];
+
+  # Read tools as registered by github-mcp-server 1.8.0 for the enabled
+  # toolsets above; allow-listed on the host side for both the read-write
+  # `github` server and its read-only twin `github-ro`.
+  readTools = [
+    "actions_get"
+    "actions_list"
+    "get_commit"
+    "get_discussion"
+    "get_discussion_comments"
+    "get_file_contents"
+    "get_job_logs"
+    "get_label"
+    "get_latest_release"
+    "get_me"
+    "get_release_by_tag"
+    "get_repository_tree"
+    "get_tag"
+    "get_team_members"
+    "get_teams"
+    "github-mcp-server"
+    "issue_read"
+    "list_branches"
+    "list_commits"
+    "list_discussion_categories"
+    "list_discussions"
+    "list_issue_fields"
+    "list_issues"
+    "list_issue_types"
+    "list_pull_requests"
+    "list_releases"
+    "list_repository_collaborators"
+    "list_tags"
+    "pull_request_read"
+    "search_code"
+    "search_commits"
+    "search_issues"
+    "search_pull_requests"
+    "search_repositories"
+    "search_users"
+  ];
+
+  # The write tools registered by the server (minus the excluded
+  # repo/account-level ops above): PRs, issues, discussions, Actions
+  # triggers, branches and pushes. Explicit `ask`/prompt candidates on the
+  # host side for the read-write `github` server; every one of them is passed
+  # to `--exclude-tools` on the read-only `github-ro` twin so no write tool is
+  # ever registered there.
+  writeTools = [
+    "actions_run_trigger"
+    "add_comment_to_pending_review"
+    "add_issue_comment"
+    "add_reply_to_pull_request_comment"
+    "create_branch"
+    "create_or_update_file"
+    "create_pull_request"
+    "discussion_comment_write"
+    "issue_write"
+    "merge_pull_request"
+    "pull_request_review_write"
+    "push_files"
+    "sub_issue_write"
+    "update_pull_request"
+    "update_pull_request_branch"
+  ];
 in
 {
-  config.dotagents.mcpServers.github = {
-    type = "local";
-    command = "${pkgs.github-mcp-server}/bin/github-mcp-server";
-    args = [
-      "stdio"
-      "--toolsets"
-      toolsets
-      "--exclude-tools"
-      (lib.concatStringsSep "," excludedTools)
-    ];
-    # GITHUB_PERSONAL_ACCESS_TOKEN is a per-user secret placeholder; the
-    # consumer's home-manager config wraps the server so the PAT is read from
-    # a sops-decrypted file at startup (see dmipeck/nix homeModules/dotagents.nix).
-    env = {
-      GITHUB_PERSONAL_ACCESS_TOKEN = "";
+  config.dotagents.mcpServers = {
+    # Read-write GitHub server: registers the full developer workflow minus
+    # the repo/account-level exclusions above. The per-user home-manager
+    # config (dmipeck/nix homeModules/dotagents.nix) wraps the server so the
+    # PAT is read from a sops-decrypted file at startup.
+    github = {
+      type = "local";
+      command = "${pkgs.github-mcp-server}/bin/github-mcp-server";
+      args = [
+        "stdio"
+        "--toolsets"
+        toolsets
+        "--exclude-tools"
+        (lib.concatStringsSep "," excludedTools)
+      ];
+      # GITHUB_PERSONAL_ACCESS_TOKEN is a per-user secret placeholder; the
+      # consumer's home-manager config wraps the server so the PAT is read from
+      # a sops-decrypted file at startup (see dmipeck/nix homeModules/dotagents.nix).
+      env = {
+        GITHUB_PERSONAL_ACCESS_TOKEN = "";
+      };
+      readOnlyTools = readTools;
+      writableTools = writeTools;
     };
-    # Read tools as registered by github-mcp-server 1.8.0 for the enabled
-    # toolsets above; allow-listed on the host side.
-    readOnlyTools = [
-      "actions_get"
-      "actions_list"
-      "get_commit"
-      "get_discussion"
-      "get_discussion_comments"
-      "get_file_contents"
-      "get_job_logs"
-      "get_label"
-      "get_latest_release"
-      "get_me"
-      "get_release_by_tag"
-      "get_repository_tree"
-      "get_tag"
-      "get_team_members"
-      "get_teams"
-      "github-mcp-server"
-      "issue_read"
-      "list_branches"
-      "list_commits"
-      "list_discussion_categories"
-      "list_discussions"
-      "list_issue_fields"
-      "list_issues"
-      "list_issue_types"
-      "list_pull_requests"
-      "list_releases"
-      "list_repository_collaborators"
-      "list_tags"
-      "pull_request_read"
-      "search_code"
-      "search_commits"
-      "search_issues"
-      "search_pull_requests"
-      "search_repositories"
-      "search_users"
-    ];
-    # The write tools registered by the server (minus the excluded
-    # repo/account-level ops above): PRs, issues, discussions, Actions
-    # triggers, branches and pushes. Explicit `ask`/prompt candidates on the
-    # host side.
-    writableTools = [
-      "actions_run_trigger"
-      "add_comment_to_pending_review"
-      "add_issue_comment"
-      "add_reply_to_pull_request_comment"
-      "create_branch"
-      "create_or_update_file"
-      "create_pull_request"
-      "discussion_comment_write"
-      "issue_write"
-      "merge_pull_request"
-      "pull_request_review_write"
-      "push_files"
-      "sub_issue_write"
-      "update_pull_request"
-      "update_pull_request_branch"
-    ];
+
+    # Read-only twin of `github`: same binary, toolsets and host-side read
+    # allowlist, but `--exclude-tools` also receives every write tool, so
+    # github-mcp-server registers no write tools at all — only the read
+    # surface above ever exists to be called. Its PAT (GITHUB_PERSONAL_ACCESS_TOKEN,
+    # a per-user secret placeholder like the RW server's) must be the
+    # read-only PAT; the consumer's home-manager config picks the secret.
+    "github-ro" = {
+      type = "local";
+      command = "${pkgs.github-mcp-server}/bin/github-mcp-server";
+      args = [
+        "stdio"
+        "--toolsets"
+        toolsets
+        "--exclude-tools"
+        (lib.concatStringsSep "," (excludedTools ++ writeTools))
+      ];
+      env = {
+        GITHUB_PERSONAL_ACCESS_TOKEN = "";
+      };
+      readOnlyTools = readTools;
+      writableTools = [ ];
+    };
   };
 }
