@@ -104,6 +104,23 @@ in
     default = [ ];
     description = "Skills that get an auto-generated slash-command prompting the agent to invoke the skill.";
   };
+  options.dotagents.cheapSubagents = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [
+      "commit"
+      "test"
+      "git"
+      "github"
+      "explore-git"
+      "explore-github"
+    ];
+    description = ''
+      Names of the cheap worker subagents whose model each client adapter maps
+      onto its own cheap model (opencode: big-pickle, claude-code: haiku). The
+      source agent.md files stay model-neutral; each adapter injects its own
+      `model:` line at render time. Keep this list in sync with both adapters.
+    '';
+  };
   options.dotagents.skillLayouts = lib.mkOption {
     type = lib.types.attrsOf (
       lib.types.enum [

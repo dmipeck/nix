@@ -9,7 +9,6 @@ description: >-
   discussion", "re-run CI", or "what did the Actions run say".
 mode: subagent
 temperature: 0.1
-model: opencode/big-pickle
 permission:
   read: deny
   glob: deny

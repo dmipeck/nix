@@ -8,6 +8,7 @@ let
   skills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
+  cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
 in
 {
   flake.homeModules.claude =
@@ -33,11 +34,12 @@ in
       # Render an opencode agent (dotagents/agents/<name>/agent.md) into Claude
       # Code's dialect: a `name`/`description`/`tools` allowlist frontmatter
       # over the shared system-prompt body (the opencode
-      # `mode`/`permission`/`tools` block is dropped), plus optional extra
-      # frontmatter lines (e.g. an inline `mcpServers:` block for agents that
-      # connect a server only while they run).
+      # `mode`/`permission`/`tools` block is dropped), plus an optional `model`
+      # line (cheap worker subagents run on Claude's cheap model) and optional
+      # extra frontmatter lines (e.g. an inline `mcpServers:` block for agents
+      # that connect a server only while they run).
       claudeAgent =
-        name: description: tools: extra:
+        name: description: tools: model: extra:
         let
           frontmatter = lib.concatStringsSep "\n" (
             [
@@ -46,6 +48,7 @@ in
               "description: ${description}"
               "tools: ${tools}"
             ]
+            ++ lib.optional (model != "") "model: ${model}"
             ++ lib.optional (extra != "") extra
             ++ [ "---" ]
           );
@@ -200,8 +203,12 @@ in
         let
           spec = agentSpecs.${name} or { };
           extra = spec.extraFrontmatter or "";
+          # Cheap worker subagents (config.dotagents.cheapSubagents) get their
+          # model pinned to Claude's cheap model; every other agent stays
+          # byte-identical (no `model:` line in its frontmatter).
+          model = if lib.elem name cheapSubagents then "haiku" else "";
         in
-        claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools) (
+        claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools) model (
           lib.optionalString (extra != "") (lib.trim extra)
         );
 

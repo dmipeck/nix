@@ -6,6 +6,7 @@ let
   agentSkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
+  cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
 in
 {
   flake.homeModules.opencode =
@@ -27,7 +28,59 @@ in
       # conditionally: the github pair and the argocd/gitlab agents need their
       # per-user instance (MCP server or glab wrapper) present, everything
       # else is registered unconditionally (see the `agents` config below).
-      allAgents = lib.mapAttrs (_: p: p) agents;
+      # The shared agent.md files are model-neutral; the cheap worker subagents
+      # (config.dotagents.cheapSubagents) are rendered into a store file whose
+      # frontmatter carries the opencode model pin (`model: opencode/big-pickle`,
+      # inserted as the first line after the opening `---`), every other agent
+      # keeps its plain pass-through path.
+      opencodeAgent =
+        name: src:
+        pkgs.runCommand "dotagents-${name}-agent-opencode" { } ''
+          mkdir -p "$(dirname "$out")"
+          awk 'NR==1{print; print "model: opencode/big-pickle"; next} {print}' ${src} > "$out"
+        '';
+
+      allAgents = lib.mapAttrs (
+        name: src: if lib.elem name cheapSubagents then opencodeAgent name src else src
+      ) agents;
+
+      # Registered agent set: the same conditional composition as before (github
+      # pair / argocd / gitlab gating), over `allAgents`.
+      opencodeAgents =
+        (lib.removeAttrs allAgents (githubAgentNames ++ gitlabAgentNames ++ argocdAgentNames))
+        // lib.optionalAttrs config.dotagents.mcps.github.enable (
+          lib.genAttrs githubAgentNames (n: allAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
+          lib.genAttrs argocdAgentNames (n: allAgents.${n})
+        )
+        // lib.optionalAttrs (gitlabCli != null && gitlabCli.enable) {
+          "explore-gitlab" = allAgents."explore-gitlab";
+        }
+        //
+          lib.optionalAttrs
+            (gitlabCli != null && gitlabCli.enable && (gitlabCli.readWriteTokenSopsKey or null) != null)
+            {
+              gitlab = allAgents.gitlab;
+            };
+
+      # opencode's home-manager module writes an agent value to
+      # opencode/agents/<name>.md as `source` only when it `lib.isPath`; a
+      # derivation (the rendered cheap-subagent store file) lands in `text` and
+      # fails the string type check. Mirror the derivation-backed-commands
+      # workaround below: path-valued agents keep the normal
+      # programs.opencode.agents route, derivation-valued ones are written via
+      # xdg.configFile directly (its `source` accepts derivations).
+      pathAgents = lib.filterAttrs (_: a: !lib.isDerivation a) opencodeAgents;
+      derivedAgents = lib.filterAttrs (_: a: lib.isDerivation a) opencodeAgents;
+      derivedAgentFiles = lib.mapAttrs' (
+        name: drv: lib.nameValuePair "opencode/agents/${name}.md" { source = drv; }
+      ) derivedAgents;
+      # Derivation-backed slash commands (see the note in the config below),
+      # written into the opencode commands dir via xdg.configFile.
+      commandFiles = lib.mapAttrs' (
+        name: drv: lib.nameValuePair "opencode/commands/${name}.md" { source = drv; }
+      ) (lib.filterAttrs (_: c: lib.isDerivation c) config.dotagents.commands);
       githubAgentNames = [
         "explore-github"
         "github"
@@ -201,23 +254,7 @@ in
         # to be configured.
         # explore-git and git talk to the local repo through bash `git`
         # commands, so they're always registered.
-        programs.opencode.agents =
-          (lib.removeAttrs allAgents (githubAgentNames ++ gitlabAgentNames ++ argocdAgentNames))
-          // lib.optionalAttrs config.dotagents.mcps.github.enable (
-            lib.genAttrs githubAgentNames (n: allAgents.${n})
-          )
-          // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
-            lib.genAttrs argocdAgentNames (n: allAgents.${n})
-          )
-          // lib.optionalAttrs (gitlabCli != null && gitlabCli.enable) {
-            "explore-gitlab" = allAgents."explore-gitlab";
-          }
-          //
-            lib.optionalAttrs
-              (gitlabCli != null && gitlabCli.enable && (gitlabCli.readWriteTokenSopsKey or null) != null)
-              {
-                gitlab = allAgents.gitlab;
-              };
+        programs.opencode.agents = pathAgents;
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents
         # from commands/scaffold.md, passed through config.dotagents.commands).
@@ -230,13 +267,14 @@ in
         # normal programs.opencode.commands path.
         programs.opencode.commands = lib.filterAttrs (_: c: !lib.isDerivation c) config.dotagents.commands;
 
-        xdg.configFile =
-          lib.mkIf (lib.filterAttrs (_: c: lib.isDerivation c) config.dotagents.commands != { })
-            (
-              lib.mapAttrs' (name: drv: lib.nameValuePair "opencode/commands/${name}.md" { source = drv; }) (
-                lib.filterAttrs (_: c: lib.isDerivation c) config.dotagents.commands
-              )
-            );
+        # The rendered cheap-subagent store files (model-pinned agent.md copies)
+        # and the derivation-backed commands are written into the opencode
+        # config dir via xdg.configFile directly (its `source` accepts
+        # derivations), alongside the plain pass-through content that keeps the
+        # normal programs.opencode.agents/commands routes.
+        xdg.configFile = lib.mkIf (commandFiles != { } || derivedAgentFiles != { }) (
+          commandFiles // derivedAgentFiles
+        );
 
         programs.opencode.themes = {
           vitesse-dark = {
