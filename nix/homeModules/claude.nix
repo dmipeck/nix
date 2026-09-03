@@ -63,14 +63,16 @@ in
         '';
 
       # The explore-github and github subagents, rendered for Claude Code's
-      # dialect with the github MCP server scoped inline. They reuse the
-      # per-user instance config from config.dotagents.mcpServers.github
-      # (dotagents.nix wraps the server so the PAT is read from a
-      # sops-decrypted file at startup), so they only exist when the github
-      # instance is enabled. The block is hand-built YAML (args/env as YAML
-      # flow collections) because the args carry shell-quoted shim text that
-      # must not be shell-interpolated; lib.generators.toYAML is just toJSON
-      # in current nixpkgs and would mix JSON into the YAML frontmatter.
+      # dialect with the github MCP servers scoped inline: github (read-write)
+      # for the github agent, github-ro (read-only, no write tools registered
+      # server-side) for explore-github. They reuse the per-user instance
+      # config from config.dotagents.mcpServers (dotagents.nix wraps each
+      # server so its PAT is read from a sops-decrypted file at startup), so
+      # they only exist when the github instance is enabled. The blocks are
+      # hand-built YAML (args/env as YAML flow collections) because the args
+      # carry shell-quoted shim text that must not be shell-interpolated;
+      # lib.generators.toYAML is just toJSON in current nixpkgs and would mix
+      # JSON into the YAML frontmatter.
       githubServer = config.dotagents.mcpServers.github;
       githubMcpBlock = ''
         mcpServers:
@@ -79,6 +81,23 @@ in
               command: ${githubServer.command}
               args: ${builtins.toJSON githubServer.args}
               env: ${builtins.toJSON githubServer.env}
+      '';
+
+      # The read-only twin server, scoped inline for the explore-github agent.
+      # github-ro registers no write tools server-side (nix/dotagents/mcps/github.nix)
+      # and, like github, its PAT comes from the per-user instance config
+      # (dotagents.nix wraps it in the same bash shim, reading the read-only
+      # secret). Same hand-built-YAML rationale as githubMcpBlock: the args
+      # carry shell-quoted shim text that must not be shell-interpolated, and
+      # lib.generators.toYAML is just toJSON in current nixpkgs.
+      githubRoServer = config.dotagents.mcpServers."github-ro";
+      githubRoMcpBlock = ''
+        mcpServers:
+          - github-ro:
+              type: stdio
+              command: ${githubRoServer.command}
+              args: ${builtins.toJSON githubRoServer.args}
+              env: ${builtins.toJSON githubRoServer.env}
       '';
       argocdServer = config.dotagents.mcpServers.argocd;
       argocdMcpBlock = ''
@@ -128,9 +147,9 @@ in
           extraFrontmatter = githubMcpBlock;
         };
         "explore-github" = {
-          description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s git tools. Read-only: reports, never mutates.'";
-          tools = "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
-          extraFrontmatter = githubMcpBlock;
+          description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github-ro MCP server''s git tools. Read-only: reports, never mutates.'";
+          tools = "mcp__github-ro__get_me, mcp__github-ro__get_commit, mcp__github-ro__get_file_contents, mcp__github-ro__get_repository_tree, mcp__github-ro__get_tag, mcp__github-ro__list_branches, mcp__github-ro__list_commits, mcp__github-ro__list_tags, mcp__github-ro__search_code, mcp__github-ro__search_commits";
+          extraFrontmatter = githubRoMcpBlock;
         };
         "export-kubernetes" = {
           description = "'Answers questions about a Kubernetes cluster - contexts, nodes, namespaces, events, resources, and pod logs - using the kubernetes MCP server''s tools. Read-only: reports what it finds, never mutates.'";
@@ -256,11 +275,12 @@ in
           # The subagents, re-rendered for Claude Code's agent dialect from the
           # shared dotagents/agents/<name>/agent.md files (nix with the nixos
           # MCP server scoped inline, the orchestrate main-session agent, the
-          # test/commit workers, the explore-github/github agents with the
-          # github server scoped inline, and the explore-argocd agent with the
-          # argocd server scoped inline; the github pair only when the github
-          # instance is enabled, and explore-argocd only when the argocd
-          # instance is enabled). The home-manager/claude-code module writes
+          # test/commit workers, the github agent with the read-write github
+          # server and explore-github with the read-only github-ro server
+          # scoped inline, and the explore-argocd agent with the argocd server
+          # scoped inline; the github pair only when the github instance is
+          # enabled, and explore-argocd only when the argocd instance is
+          # enabled). The home-manager/claude-code module writes
           # them to ~/.claude/agents/<name>.md.
           agents =
             (lib.removeAttrs allClaudeAgents (githubAgentNames ++ argocdAgentNames))
