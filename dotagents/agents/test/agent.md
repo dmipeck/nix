@@ -6,7 +6,6 @@ description: >-
   takes corrective action.
 mode: subagent
 temperature: 0.1
-model: opencode/big-pickle
 permission:
   read: allow
   glob: allow
