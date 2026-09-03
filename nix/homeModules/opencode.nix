@@ -24,15 +24,27 @@ in
       mcpServers = config.dotagents.mcpServers;
 
       # All agent definitions (dotagents/agents/<name>/agent.md), registered
-      # unconditionally except the github pair (see the `agents` config below).
+      # conditionally: the github pair and the argocd/gitlab agents need their
+      # per-user instance (MCP server or glab wrapper) present, everything
+      # else is registered unconditionally (see the `agents` config below).
       allAgents = lib.mapAttrs (_: p: p) agents;
       githubAgentNames = [
         "explore-github"
         "github"
       ];
+      gitlabAgentNames = [
+        "explore-gitlab"
+        "gitlab"
+      ];
       argocdAgentNames = [
         "explore-argocd"
       ];
+
+      # The gitlab-cli home module (homeModules/gitlab-cli.nix), when imported
+      # by the profile; null otherwise, so the gitlab agents register only on
+      # profiles that actually install the glab CLI. `or` guards the case
+      # where the module's options are not declared at all.
+      gitlabCli = config.programs.gitlab-cli or null;
 
       # opencode namespaces every MCP tool as `<server>_<tool>`. By default the
       # whole MCP set is denied for every session (via the top-level `tools`
@@ -176,21 +188,33 @@ in
         # orchestrate is a primary agent (mode: primary) that has no tools of its
         # own and delegates everything through `task`; it is the default agent.
         # explore-github and github re-enable the github MCP tools via `tools`
-        # in their agent definitions. Both only speak the github server, so
+        # in their agent definitions. Both only speak the github servers, so
         # they're registered only when the per-user github instance is enabled.
         # explore-argocd re-enables the argocd MCP tools via `tools` in its agent
         # definition and is registered only when the per-user argocd instance is
         # enabled.
+        # explore-gitlab and gitlab talk to GitLab through bash `glab` /
+        # `glab-rw` commands. explore-gitlab is registered when the gitlab-cli
+        # home module is enabled; gitlab (write-capable, uses the `glab-rw`
+        # wrapper) additionally requires the module to be enabled AND a
+        # read-write glab token (`programs.gitlab-cli.readWriteTokenSopsKey`)
+        # to be configured.
         # explore-git and git talk to the local repo through bash `git`
         # commands, so they're always registered.
         programs.opencode.agents =
-          (lib.removeAttrs allAgents (githubAgentNames ++ argocdAgentNames))
+          (lib.removeAttrs allAgents (githubAgentNames ++ gitlabAgentNames ++ argocdAgentNames))
           // lib.optionalAttrs config.dotagents.mcps.github.enable (
             lib.genAttrs githubAgentNames (n: allAgents.${n})
           )
           // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
             lib.genAttrs argocdAgentNames (n: allAgents.${n})
-          );
+          )
+          // lib.optionalAttrs (gitlabCli != null && gitlabCli.enable) {
+            "explore-gitlab" = allAgents."explore-gitlab";
+          }
+          // lib.optionalAttrs (gitlabCli != null && gitlabCli.enable && (gitlabCli.readWriteTokenSopsKey or null) != null) {
+            gitlab = allAgents.gitlab;
+          };
 
         # Custom slash commands, e.g. scaffold (built by dmipeck/agents
         # from commands/scaffold.md, passed through config.dotagents.commands).
