@@ -220,8 +220,8 @@ in
           tools = "Read, Grep, Glob, List, Bash, Skill";
         };
         "explore-git" = {
-          description = "Answers questions about the current git repository — commits, branches, tags, diffs, logs, and working-tree state — using local git commands. Read-only: reports what it finds, never mutates.";
-          tools = "Bash";
+          description = "Answers questions about the current git repository — commits, branches, tags, diffs, logs, and working-tree state — using local git commands and read-only file access. Read-only: reports what it finds, never mutates.";
+          tools = "Read, Grep, Glob, List, Bash";
         };
         git = {
           description = "Full git assistant — reads repo state (commits, branches, tags, diffs, working tree) and performs git operations: stage, commit, push, pull, branch, checkout/switch, worktree, merge, rebase, stash, tag, remote. Write-capable: does the git task asked of it.";

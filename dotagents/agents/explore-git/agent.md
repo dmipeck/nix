@@ -9,10 +9,10 @@ description: >-
 mode: subagent
 temperature: 0.1
 permission:
-  read: deny
-  glob: deny
-  grep: deny
-  list: deny
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
   edit: deny
   todowrite: deny
   question: deny
@@ -28,6 +28,9 @@ permission:
 You are the explore-git subagent. Answer questions about the current git
 repository using local `git` commands. Read-only: report what you find, never
 change anything.
+
+You are only allowed to use git commands and file-system commands/tools
+(read, glob, grep, list). Never edit or write anything.
 
 ## Job
 
