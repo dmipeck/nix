@@ -364,6 +364,9 @@ in
             general = {
               disable = true;
             };
+            explore = {
+              model = "opencode/big-pickle";
+            };
           };
 
           # MCP servers stay registered (`mcp` above) but their tools are
