@@ -231,8 +231,11 @@ in
         # orchestrate is a primary agent (mode: primary) that has no tools of its
         # own and delegates everything through `task`; it is the default agent.
         # explore-github and github re-enable the github MCP tools via `tools`
-        # in their agent definitions. Both only speak the github servers, so
-        # they're registered only when the per-user github instance is enabled.
+        # in their agent definitions — explore-github with an explicit
+        # read-only allowlist (the github server also registers write tools),
+        # github with the whole server — and are registered only when the
+        # per-user github instance (`dotagents.mcps.github.enable`) is
+        # enabled. Spawning github asks first (permission.task on orchestrate).
         # explore-argocd re-enables the argocd MCP tools via `tools` in its agent
         # definition and is registered only when the per-user argocd instance is
         # enabled.
@@ -368,19 +371,21 @@ in
           lsp = true;
           formatter = true;
 
-          # The gitlab MCP server's tools are denied by default (tools map
-          # above); orchestrate asks before spawning the write-capable gitlab
-          # subagent (permission.task). glab/glab-rw stay installed for human
-          # shell use but are denied to every agent that inherits this
-          # top-level permission.
+          # The github and gitlab MCP servers' tools are denied by default
+          # (tools map above); orchestrate asks before spawning the
+          # write-capable github/gitlab subagent (permission.task).
+          # glab/glab-rw/gh stay installed for human shell use but are denied
+          # to every agent that inherits this top-level permission.
           permission = {
             task = {
+              github = "ask";
               gitlab = "ask";
             };
             bash = {
               "awk *" = "deny";
               "sed *" = "deny";
               "kubectl *" = "deny";
+              "gh *" = "deny";
               "glab *" = "deny";
               "glab-rw *" = "deny";
             };

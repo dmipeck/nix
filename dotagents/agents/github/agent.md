@@ -57,3 +57,5 @@ repo state you need, then make the requested changes on GitHub.
   registered on the server.
 - Do more than asked: merges, PR state changes and workflow triggers are
   mutating, so run them only when the caller asked for them.
+- Reach for bash or `gh` — all bash is denied here; the github MCP server is
+   the only GitHub channel.

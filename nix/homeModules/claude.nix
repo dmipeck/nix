@@ -66,12 +66,13 @@ in
         '';
 
       # The explore-github and github subagents, rendered for Claude Code's
-      # dialect with the github MCP servers scoped inline: github (read-write)
-      # for the github agent, github-ro (read-only, no write tools registered
-      # server-side) for explore-github. They reuse the per-user instance
-      # config from config.dotagents.mcpServers (dotagents.nix wraps each
-      # server so its PAT is read from a sops-decrypted file at startup), so
-      # they only exist when the github instance is enabled. The blocks are
+      # dialect with the single github MCP server scoped inline. They reuse the
+      # per-user instance config from config.dotagents.mcpServers (dotagents.nix
+      # wraps the server so its PAT is read from a sops-decrypted file at
+      # startup), so they only exist when the github instance is enabled.
+      # explore-github restricts itself to read-only tools via its `tools`
+      # allowlist below — the github server also registers write tools, but
+      # none of them are allow-listed for explore-github. The block is
       # hand-built YAML (args/env as YAML flow collections) because the args
       # carry shell-quoted shim text that must not be shell-interpolated;
       # lib.generators.toYAML is just toJSON in current nixpkgs and would mix
@@ -84,23 +85,6 @@ in
               command: ${githubServer.command}
               args: ${builtins.toJSON githubServer.args}
               env: ${builtins.toJSON githubServer.env}
-      '';
-
-      # The read-only twin server, scoped inline for the explore-github agent.
-      # github-ro registers no write tools server-side (nix/dotagents/mcps/github.nix)
-      # and, like github, its PAT comes from the per-user instance config
-      # (dotagents.nix wraps it in the same bash shim, reading the read-only
-      # secret). Same hand-built-YAML rationale as githubMcpBlock: the args
-      # carry shell-quoted shim text that must not be shell-interpolated, and
-      # lib.generators.toYAML is just toJSON in current nixpkgs.
-      githubRoServer = config.dotagents.mcpServers."github-ro";
-      githubRoMcpBlock = ''
-        mcpServers:
-          - github-ro:
-              type: stdio
-              command: ${githubRoServer.command}
-              args: ${builtins.toJSON githubRoServer.args}
-              env: ${builtins.toJSON githubRoServer.env}
       '';
 
       # The gitlab MCP server, scoped inline for the gitlab and explore-gitlab
@@ -181,9 +165,9 @@ in
           extraFrontmatter = githubMcpBlock;
         };
         "explore-github" = {
-          description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github-ro MCP server''s git tools. Read-only: reports, never mutates.'";
-          tools = "mcp__github-ro__get_me, mcp__github-ro__get_commit, mcp__github-ro__get_file_contents, mcp__github-ro__get_repository_tree, mcp__github-ro__get_tag, mcp__github-ro__list_branches, mcp__github-ro__list_commits, mcp__github-ro__list_tags, mcp__github-ro__search_code, mcp__github-ro__search_commits";
-          extraFrontmatter = githubRoMcpBlock;
+          description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s read-only tools. Read-only: reports, never mutates.'";
+          tools = "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
+          extraFrontmatter = githubMcpBlock;
         };
         gitlab = {
           description = "'Write-capable GitLab development assistant — reads projects, issues, merge requests and pipelines with the gitlab MCP server, then creates issues, merge requests and notes, adds branches, manages pipelines and work items through its write tools. Write-capable: performs the GitLab operations asked of it.'";
@@ -326,14 +310,14 @@ in
           // config.dotagents.commands;
           # The subagents, re-rendered for Claude Code's agent dialect from the
           # shared dotagents/agents/<name>/agent.md files (explore-nix with
-          # the nixos
-          # MCP server scoped inline, the orchestrate main-session agent, the
-          # test/commit workers, the github agent with the read-write github
-          # server and explore-github with the read-only github-ro server
-          # scoped inline, and the explore-argocd agent with the argocd server
-          # scoped inline; the github pair only when the github instance is
-          # enabled, and explore-argocd only when the argocd instance is
-          # enabled). The home-manager/claude-code module writes
+          # the nixos MCP server scoped inline, the orchestrate main-session
+          # agent, the test/commit workers, the github and explore-github
+          # agents both with the single github server scoped inline
+          # (explore-github limited to read-only tools by its allowlist), and
+          # the explore-argocd agent with the argocd server scoped inline; the
+          # github pair only when the github instance is enabled, and
+          # explore-argocd only when the argocd instance is enabled). The
+          # home-manager/claude-code module writes
           # them to ~/.claude/agents/<name>.md.
           agents =
             (lib.removeAttrs allClaudeAgents (githubAgentNames ++ gitlabAgentNames ++ argocdAgentNames))
@@ -406,25 +390,28 @@ in
             # Claude Code's built-in `general-purpose` and `claude` fallback
             # subagents are denied so delegation always lands on a
             # purpose-built subagent; spawning `fork` or the write-capable
-            # `gitlab` subagent (which connects the gitlab server inline)
-            # requires confirmation. The glab CLI stays installed for humans
-            # but is denied to every agent.
+            # `github`/`gitlab` subagents (which connect their servers inline)
+            # requires confirmation. The glab/glab-rw/gh CLIs stay installed
+            # for humans but are denied to every agent.
             permissions.deny = [
               "Bash(awk:*)"
               "Bash(sed:*)"
               "Bash(kubectl:*)"
+              "Bash(gh:*)"
               "Bash(glab:*)"
               "Bash(glab-rw:*)"
               "Agent(general-purpose)"
               "Agent(claude)"
             ];
             # PR merges always prompt, even inside the github subagent, and
-            # spawning gitlab always prompts, even inside orchestrate. The
-            # github server only connects inside that agent, so the merge
-            # pattern never fires in the main session.
+            # spawning the write-capable github/gitlab subagents always
+            # prompts, even inside orchestrate. The github server only
+            # connects inside those agents, so the merge pattern never fires
+            # in the main session.
             permissions.ask = [
               "mcp__github__merge_pull_request"
               "Agent(fork)"
+              "Agent(github)"
               "Agent(gitlab)"
             ];
           };

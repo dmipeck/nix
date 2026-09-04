@@ -12,6 +12,7 @@ temperature: 0.1
 permission:
   task:
     "*": allow
+    github: ask
     gitlab: ask
   todowrite: allow
   skill: allow
