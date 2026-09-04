@@ -25,8 +25,8 @@ in
       mcpServers = config.dotagents.mcpServers;
 
       # All agent definitions (dotagents/agents/<name>/agent.md), registered
-      # conditionally: the github pair and the argocd/gitlab agents need their
-      # per-user instance (MCP server or glab wrapper) present, everything
+      # conditionally: the github pair, argocd and the gitlab pair need their
+      # per-user MCP server present, everything
       # else is registered unconditionally (see the `agents` config below).
       # The shared agent.md files are model-neutral; the cheap worker subagents
       # (config.dotagents.cheapSubagents) are rendered into a store file whose
@@ -54,15 +54,9 @@ in
         // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
           lib.genAttrs argocdAgentNames (n: allAgents.${n})
         )
-        // lib.optionalAttrs (gitlabCli != null && gitlabCli.enable) {
-          "explore-gitlab" = allAgents."explore-gitlab";
-        }
-        //
-          lib.optionalAttrs
-            (gitlabCli != null && gitlabCli.enable && (gitlabCli.readWriteTokenSopsKey or null) != null)
-            {
-              gitlab = allAgents.gitlab;
-            };
+        // lib.optionalAttrs config.dotagents.mcps.gitlab.enable (
+          lib.genAttrs gitlabAgentNames (n: allAgents.${n})
+        );
 
       # opencode's home-manager module writes an agent value to
       # opencode/agents/<name>.md as `source` only when it `lib.isPath`; a
@@ -92,12 +86,6 @@ in
       argocdAgentNames = [
         "explore-argocd"
       ];
-
-      # The gitlab-cli home module (homeModules/gitlab-cli.nix), when imported
-      # by the profile; null otherwise, so the gitlab agents register only on
-      # profiles that actually install the glab CLI. `or` guards the case
-      # where the module's options are not declared at all.
-      gitlabCli = config.programs.gitlab-cli or null;
 
       # opencode namespaces every MCP tool as `<server>_<tool>`. By default the
       # whole MCP set is denied for every session (via the top-level `tools`
@@ -248,12 +236,12 @@ in
         # explore-argocd re-enables the argocd MCP tools via `tools` in its agent
         # definition and is registered only when the per-user argocd instance is
         # enabled.
-        # explore-gitlab and gitlab talk to GitLab through bash `glab` /
-        # `glab-rw` commands. explore-gitlab is registered when the gitlab-cli
-        # home module is enabled; gitlab (write-capable, uses the `glab-rw`
-        # wrapper) additionally requires the module to be enabled AND a
-        # read-write glab token (`programs.gitlab-cli.readWriteTokenSopsKey`)
-        # to be configured.
+        # explore-gitlab and gitlab re-enable the gitlab MCP tools via `tools`
+        # in their agent definitions — explore-gitlab with an explicit
+        # read-only allowlist, gitlab with the whole server — and are
+        # registered only when the per-user gitlab instance
+        # (`dotagents.mcps.gitlab.enable`) is enabled. Spawning gitlab asks
+        # first (permission.task on orchestrate).
         # explore-git and git talk to the local repo through bash `git`
         # commands, so they're always registered.
         programs.opencode.agents = pathAgents;
@@ -377,11 +365,21 @@ in
           lsp = true;
           formatter = true;
 
+          # The gitlab MCP server's tools are denied by default (tools map
+          # above); orchestrate asks before spawning the write-capable gitlab
+          # subagent (permission.task). glab/glab-rw stay installed for human
+          # shell use but are denied to every agent that inherits this
+          # top-level permission.
           permission = {
+            task = {
+              gitlab = "ask";
+            };
             bash = {
               "awk *" = "deny";
               "sed *" = "deny";
               "kubectl *" = "deny";
+              "glab *" = "deny";
+              "glab-rw *" = "deny";
             };
             external_directory = {
               "/nix/store/**" = "allow";
