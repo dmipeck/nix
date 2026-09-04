@@ -148,13 +148,12 @@ in
               type = lib.types.bool;
               default = false;
               description = ''
-                Whether to add the github MCP servers to the AI tool's config.
+                Whether to add the github MCP server to the AI tool's config.
                 Off by default since not every profile needs GitHub access; set
                 to true and provide `dotagents.mcps.github.tokenSopsKey` to
-                enable it. Enabling adds two servers: `github` (read-write,
-                using `tokenSopsKey`) and `github-ro` (read-only, using
-                `readOnlyTokenSopsKey` when set, else falling back to
-                `tokenSopsKey`).
+                enable it. Enabling adds the `github` server (read-write, using
+                `tokenSopsKey`); the read-only `explore-github` subagent is
+                limited to its read tools by its own tool allowlist.
               '';
             };
             tokenSopsKey = lib.mkOption {
@@ -179,16 +178,6 @@ in
                 Never grant repository Administration, or anything beyond
                 those — merge/delete/admin tools are excluded server-side, so
                 a scoped-down PAT is the second layer of the same rule.
-              '';
-            };
-            readOnlyTokenSopsKey = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
-              description = ''
-                Name of the sops secret holding the read-only GitHub PAT used
-                by the `github-ro` server. When null, falls back to
-                `tokenSopsKey` so a read-only server still exists but with the
-                same PAT.
               '';
             };
           };
@@ -285,64 +274,28 @@ in
             };
           };
         }
-        // lib.optionalAttrs mcps.github.enable (
-          let
-            # The read-only server's PAT: its own read-only secret when
-            # configured, else the read-write secret so the server still works.
-            roSecret =
-              if mcps.github.readOnlyTokenSopsKey != null then
-                config.sops.secrets.${mcps.github.readOnlyTokenSopsKey}.path
-              else
-                config.sops.secrets.${mcps.github.tokenSopsKey}.path;
-          in
-          {
-            github = baseMcpServers.github // {
-              # github-mcp-server has no token-file env var, so wrap the binary
-              # in a bash shim that reads the sops-decrypted PAT file into
-              # GITHUB_PERSONAL_ACCESS_TOKEN at startup. Only the file path ever
-              # appears in the Nix store / generated config, never the token.
-              command = "${pkgs.bash}/bin/bash";
-              args = [
-                "-c"
-                ''
-                  set -e
-                  # bash builtin read (no `cat` PATH dependency) of the
-                  # sops-decrypted PAT, exported to the env var the server reads.
-                  GITHUB_PERSONAL_ACCESS_TOKEN="$(<"$GITHUB_PERSONAL_ACCESS_TOKEN_FILE")" \
-                    exec ${baseMcpServers.github.command} ${lib.concatStringsSep " " (map lib.escapeShellArg baseMcpServers.github.args)}
-                ''
-              ];
-              env = baseMcpServers.github.env // {
-                GITHUB_PERSONAL_ACCESS_TOKEN_FILE = config.sops.secrets.${mcps.github.tokenSopsKey}.path;
-              };
+        // lib.optionalAttrs mcps.github.enable {
+          github = baseMcpServers.github // {
+            # github-mcp-server has no token-file env var, so wrap the binary
+            # in a bash shim that reads the sops-decrypted PAT file into
+            # GITHUB_PERSONAL_ACCESS_TOKEN at startup. Only the file path ever
+            # appears in the Nix store / generated config, never the token.
+            command = "${pkgs.bash}/bin/bash";
+            args = [
+              "-c"
+              ''
+                set -e
+                # bash builtin read (no `cat` PATH dependency) of the
+                # sops-decrypted PAT, exported to the env var the server reads.
+                GITHUB_PERSONAL_ACCESS_TOKEN="$(<"$GITHUB_PERSONAL_ACCESS_TOKEN_FILE")" \
+                  exec ${baseMcpServers.github.command} ${lib.concatStringsSep " " (map lib.escapeShellArg baseMcpServers.github.args)}
+              ''
+            ];
+            env = baseMcpServers.github.env // {
+              GITHUB_PERSONAL_ACCESS_TOKEN_FILE = config.sops.secrets.${mcps.github.tokenSopsKey}.path;
             };
-
-            # Read-only twin: same bash shim shape, but the PAT is read from
-            # `roSecret` above (the read-only secret when one is configured).
-            # github-ro registers no write tools server-side (see
-            # nix/dotagents/mcps/github.nix), so the shim only ever feeds a
-            # read-only credential to a read-only tool surface.
-            "github-ro" = baseMcpServers."github-ro" // {
-              command = "${pkgs.bash}/bin/bash";
-              args = [
-                "-c"
-                ''
-                  set -e
-                  # bash builtin read (no `cat` PATH dependency) of the
-                  # sops-decrypted read-only PAT, exported to the env var the
-                  # server reads.
-                  GITHUB_PERSONAL_ACCESS_TOKEN="$(<"$GITHUB_PERSONAL_ACCESS_TOKEN_FILE")" \
-                    exec ${baseMcpServers."github-ro".command} ${
-                      lib.concatStringsSep " " (map lib.escapeShellArg baseMcpServers."github-ro".args)
-                    }
-                ''
-              ];
-              env = baseMcpServers."github-ro".env // {
-                GITHUB_PERSONAL_ACCESS_TOKEN_FILE = roSecret;
-              };
-            };
-          }
-        );
+          };
+        };
 
         # Agent command files (defined in nix/dotagents/commands/*.nix) passed
         # straight through to each AI tool's custom command set.

@@ -25,8 +25,10 @@ let
   ];
 
   # Read tools as registered by github-mcp-server 1.8.0 for the enabled
-  # toolsets above; allow-listed on the host side for both the read-write
-  # `github` server and its read-only twin `github-ro`.
+  # toolsets above; allow-listed on the host side for the `github` server.
+  # This list is what the read-only explore-github subagent opts into via its
+  # `tools` frontmatter — the server also registers write tools, but none of
+  # them are in that subagent's allowlist.
   readTools = [
     "actions_get"
     "actions_list"
@@ -68,9 +70,8 @@ let
   # The write tools registered by the server (minus the excluded
   # repo/account-level ops above): PRs, issues, discussions, Actions
   # triggers, branches and pushes. Explicit `ask`/prompt candidates on the
-  # host side for the read-write `github` server; every one of them is passed
-  # to `--exclude-tools` on the read-only `github-ro` twin so no write tool is
-  # ever registered there.
+  # host side for the read-write `github` server; none of them are in the
+  # explore-github subagent's `tools` allowlist, so it stays read-only.
   writeTools = [
     "actions_run_trigger"
     "add_comment_to_pending_review"
@@ -113,29 +114,6 @@ in
       };
       readOnlyTools = readTools;
       writableTools = writeTools;
-    };
-
-    # Read-only twin of `github`: same binary, toolsets and host-side read
-    # allowlist, but `--exclude-tools` also receives every write tool, so
-    # github-mcp-server registers no write tools at all — only the read
-    # surface above ever exists to be called. Its PAT (GITHUB_PERSONAL_ACCESS_TOKEN,
-    # a per-user secret placeholder like the RW server's) must be the
-    # read-only PAT; the consumer's home-manager config picks the secret.
-    "github-ro" = {
-      type = "local";
-      command = "${pkgs.github-mcp-server}/bin/github-mcp-server";
-      args = [
-        "stdio"
-        "--toolsets"
-        toolsets
-        "--exclude-tools"
-        (lib.concatStringsSep "," (excludedTools ++ writeTools))
-      ];
-      env = {
-        GITHUB_PERSONAL_ACCESS_TOKEN = "";
-      };
-      readOnlyTools = readTools;
-      writableTools = [ ];
     };
   };
 }
