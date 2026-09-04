@@ -353,16 +353,23 @@ in
               command = "${claudeStatusline}/bin/claude-statusline";
               padding = 0;
             };
+
+            # Claude Code's built-in `general-purpose` and `claude` fallback
+            # subagents are denied so delegation always lands on a
+            # purpose-built subagent; spawning `fork` requires confirmation.
             permissions.deny = [
               "Bash(awk:*)"
               "Bash(sed:*)"
               "Bash(kubectl:*)"
+              "Agent(general-purpose)"
+              "Agent(claude)"
             ];
             # PR merges always prompt, even inside the github subagent. The
             # github server only connects inside that agent, so the pattern
             # never fires in the main session.
             permissions.ask = [
               "mcp__github__merge_pull_request"
+              "Agent(fork)"
             ];
           };
           # No MCP servers in the main conversation. The shared server set
