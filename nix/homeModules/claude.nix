@@ -128,13 +128,18 @@ in
 
       # Hand-tuned description/tools for the agents whose opencode frontmatter
       # does not carry a Claude Code-compatible spec (mode/permission maps,
-      # inline mcpServers). nix and the github pair override their frontmatter
-      # with an inline mcpServers block; orchestrate/test/commit/explore-git/git
-      # get hand-written descriptions and tool allowlists.
+      # inline mcpServers). explore-nix and the github pair override their
+      # frontmatter with an inline mcpServers block;
+      # orchestrate/test/commit/explore-git/git get hand-written descriptions
+      # and tool allowlists.
       agentSpecs = {
         nix = {
-          description = "Runs home-manager and nixos-rebuild commands and answers Nix/NixOS option and package questions via the nixos MCP server. A reporter only — runs what it is told and reports results; never fixes anything.";
+          description = "'Applies and verifies nix configuration changes on this machine — the state-changing nix operations: nixos-rebuild switch/boot, home-manager switch/build, nix build, nix flake lock --update-input / nix flake update, nix profile and nix store operations, and nix-collect-garbage. Runs the exact write or build command given and reports the result. Read-only exploration and option lookups belong to the explore-nix subagent.'";
           tools = "Read, Grep, Glob, Bash";
+        };
+        "explore-nix" = {
+          description = "'Explores and answers questions about nix and nixos configurations — this repo''s flake and module code, nixpkgs/home-manager options, and package versions — using read-only file access, read-only nix commands, and the nixos MCP option lookups. Read-only: reports what it finds, never mutates.'";
+          tools = "Read, Grep, Glob, List, Bash";
           extraFrontmatter = ''
             mcpServers:
               - nixos:
@@ -280,7 +285,8 @@ in
           }
           // config.dotagents.commands;
           # The subagents, re-rendered for Claude Code's agent dialect from the
-          # shared dotagents/agents/<name>/agent.md files (nix with the nixos
+          # shared dotagents/agents/<name>/agent.md files (explore-nix with
+          # the nixos
           # MCP server scoped inline, the orchestrate main-session agent, the
           # test/commit workers, the github agent with the read-write github
           # server and explore-github with the read-only github-ro server

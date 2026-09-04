@@ -113,6 +113,7 @@ in
       "github"
       "explore-git"
       "explore-github"
+      "explore-nix"
     ];
     description = ''
       Names of the cheap worker subagents whose model each client adapter maps

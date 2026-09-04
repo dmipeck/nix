@@ -237,7 +237,9 @@ in
         # Delegate-to-subagent skills (commit, test, nix) reference their
         # subagent by name; the definitions come from dotagents/agents/<name>/agent.md
         # via config.dotagents.agents (auto-discovered in nix/dotagents/auto.nix).
-        # nix re-enables the nixos MCP tools via `tools` in its agent definition.
+        # explore-nix re-enables the nixos MCP tools via `tools` in its agent
+        # definition; nix is the write/apply agent, scoped to state-changing
+        # command families via its bash permission map.
         # orchestrate is a primary agent (mode: primary) that has no tools of its
         # own and delegates everything through `task`; it is the default agent.
         # explore-github and github re-enable the github MCP tools via `tools`
