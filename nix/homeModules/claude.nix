@@ -102,6 +102,32 @@ in
               args: ${builtins.toJSON githubRoServer.args}
               env: ${builtins.toJSON githubRoServer.env}
       '';
+
+      # The gitlab MCP server, scoped inline for the gitlab and explore-gitlab
+      # agents. It is the GitLab-native remote server (<instance>/api/v4/mcp),
+      # not a local binary. Claude Code has no {file:...} substitution for
+      # header values, so a tiny headersHelper script reads the sops-decrypted
+      # PAT file at connection time and prints the Authorization header — only
+      # the secret file path ever lands in the store / config.
+      gitlabServer = config.dotagents.mcpServers.gitlab;
+      gitlabHeadersHelper = pkgs.writeShellScriptBin "gitlab-mcp-headers" ''
+        printf '{"Authorization": "Bearer %s"}' "$(<${
+          config.sops.secrets.${config.dotagents.mcps.gitlab.tokenSopsKey}.path
+        })"
+      '';
+      gitlabMcpBlock =
+        let
+          headersHelperLine = lib.optionalString (
+            config.dotagents.mcps.gitlab.tokenSopsKey != null
+          ) "        headersHelper: ${gitlabHeadersHelper}/bin/gitlab-mcp-headers\n";
+        in
+        ''
+          mcpServers:
+            - gitlab:
+                type: http
+                url: ${gitlabServer.url}
+          ${headersHelperLine}
+        '';
       argocdServer = config.dotagents.mcpServers.argocd;
       argocdMcpBlock = ''
         mcpServers:
@@ -158,6 +184,16 @@ in
           description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github-ro MCP server''s git tools. Read-only: reports, never mutates.'";
           tools = "mcp__github-ro__get_me, mcp__github-ro__get_commit, mcp__github-ro__get_file_contents, mcp__github-ro__get_repository_tree, mcp__github-ro__get_tag, mcp__github-ro__list_branches, mcp__github-ro__list_commits, mcp__github-ro__list_tags, mcp__github-ro__search_code, mcp__github-ro__search_commits";
           extraFrontmatter = githubRoMcpBlock;
+        };
+        gitlab = {
+          description = "'Write-capable GitLab development assistant — reads projects, issues, merge requests and pipelines with the gitlab MCP server, then creates issues, merge requests and notes, adds branches, manages pipelines and work items through its write tools. Write-capable: performs the GitLab operations asked of it.'";
+          tools = "mcp__gitlab__*";
+          extraFrontmatter = gitlabMcpBlock;
+        };
+        "explore-gitlab" = {
+          description = "'Answers questions about GitLab — projects, issues, merge requests, repository files, pipelines and their jobs/logs, users, and work items — using the gitlab MCP server''s read-only tools. Read-only: reports, never mutates.'";
+          tools = lib.concatStringsSep ", " (map (t: "mcp__gitlab__${t}") gitlabServer.readOnlyTools);
+          extraFrontmatter = gitlabMcpBlock;
         };
         "export-kubernetes" = {
           description = "'Answers questions about a Kubernetes cluster - contexts, nodes, namespaces, events, resources, and pod logs - using the kubernetes MCP server''s tools. Read-only: reports what it finds, never mutates.'";
@@ -224,6 +260,10 @@ in
       githubAgentNames = [
         "explore-github"
         "github"
+      ];
+      gitlabAgentNames = [
+        "explore-gitlab"
+        "gitlab"
       ];
       argocdAgentNames = [
         "explore-argocd"
@@ -296,9 +336,12 @@ in
           # enabled). The home-manager/claude-code module writes
           # them to ~/.claude/agents/<name>.md.
           agents =
-            (lib.removeAttrs allClaudeAgents (githubAgentNames ++ argocdAgentNames))
+            (lib.removeAttrs allClaudeAgents (githubAgentNames ++ gitlabAgentNames ++ argocdAgentNames))
             // lib.optionalAttrs config.dotagents.mcps.github.enable (
               lib.genAttrs githubAgentNames (n: allClaudeAgents.${n})
+            )
+            // lib.optionalAttrs config.dotagents.mcps.gitlab.enable (
+              lib.genAttrs gitlabAgentNames (n: allClaudeAgents.${n})
             )
             // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
               lib.genAttrs argocdAgentNames (n: allClaudeAgents.${n})
@@ -362,20 +405,27 @@ in
 
             # Claude Code's built-in `general-purpose` and `claude` fallback
             # subagents are denied so delegation always lands on a
-            # purpose-built subagent; spawning `fork` requires confirmation.
+            # purpose-built subagent; spawning `fork` or the write-capable
+            # `gitlab` subagent (which connects the gitlab server inline)
+            # requires confirmation. The glab CLI stays installed for humans
+            # but is denied to every agent.
             permissions.deny = [
               "Bash(awk:*)"
               "Bash(sed:*)"
               "Bash(kubectl:*)"
+              "Bash(glab:*)"
+              "Bash(glab-rw:*)"
               "Agent(general-purpose)"
               "Agent(claude)"
             ];
-            # PR merges always prompt, even inside the github subagent. The
-            # github server only connects inside that agent, so the pattern
-            # never fires in the main session.
+            # PR merges always prompt, even inside the github subagent, and
+            # spawning gitlab always prompts, even inside orchestrate. The
+            # github server only connects inside that agent, so the merge
+            # pattern never fires in the main session.
             permissions.ask = [
               "mcp__github__merge_pull_request"
               "Agent(fork)"
+              "Agent(gitlab)"
             ];
           };
           # No MCP servers in the main conversation. The shared server set

@@ -10,7 +10,9 @@ description: >-
 mode: primary
 temperature: 0.1
 permission:
-  task: allow
+  task:
+    "*": allow
+    gitlab: ask
   todowrite: allow
   skill: allow
   question: allow
