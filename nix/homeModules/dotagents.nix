@@ -36,6 +36,15 @@ in
     }:
     let
       mcps = config.dotagents.mcps;
+
+      # Cloudflare's managed MCP servers all authenticate with one Cloudflare
+      # API token sent as an Authorization: Bearer header. The header value
+      # references the sops-decrypted secret file via opencode's "{file:...}"
+      # substitution, so only the file path ever appears in the Nix store /
+      # generated config, never the token.
+      cloudflareHeaders = lib.optionalAttrs (mcps.cloudflare.tokenSopsKey != null) {
+        Authorization = "Bearer {file:${config.sops.secrets.${mcps.cloudflare.tokenSopsKey}.path}}";
+      };
     in
     {
       options.dotagents = {
@@ -181,6 +190,64 @@ in
               '';
             };
           };
+          cloudflare = {
+            enable = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
+                Whether to add the cloudflare (Code Mode) MCP server to the
+                AI tool's config. Cloudflare's Code Mode server (served at
+                https://mcp.cloudflare.com/mcp) gives full programmatic
+                control over the Cloudflare API through three tools: docs,
+                search and execute. Off by default since it needs a Cloudflare
+                account; set to true and provide `tokenSopsKey` (or rely on
+                interactive OAuth) to enable it.
+              '';
+            };
+            bindings = {
+              enable = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+                description = ''
+                  Whether to add the cloudflare-bindings MCP server (served at
+                  https://bindings.mcp.cloudflare.com/mcp) to the AI tool's
+                  config. Manages KV namespaces, Workers, R2 buckets, D1
+                  databases and Hyperdrive configs through discrete per-resource
+                  tools. Shares the Cloudflare API token configured via
+                  `dotagents.mcps.cloudflare.tokenSopsKey`.
+                '';
+              };
+            };
+            observability = {
+              enable = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+                description = ''
+                  Whether to add the cloudflare-observability MCP server (served
+                  at https://observability.mcp.cloudflare.com/mcp) to the AI
+                  tool's config. Answers worker logs, metrics and schema
+                  questions; entirely read-only. Shares the Cloudflare API
+                  token configured via `dotagents.mcps.cloudflare.tokenSopsKey`.
+                '';
+              };
+            };
+            tokenSopsKey = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                Name of the sops-nix secret holding a Cloudflare API token.
+                The token is sent to the remote MCP server as an
+                Authorization: Bearer header, read from the sops-decrypted file
+                at runtime (the header references the file via opencode's
+                "{file:...}" substitution, so the token value never lands in the
+                Nix store or this repo). Leave as null to fall back to
+                interactive OAuth 2.1 instead. Token scope is set when the
+                token is created — a read-only token yields a read-only agent;
+                account-scoped tokens need the "Account Resources: Read"
+                permission so the server can auto-detect the account ID.
+              '';
+            };
+          };
         };
 
         mcpServers = lib.mkOption {
@@ -295,6 +362,15 @@ in
               GITHUB_PERSONAL_ACCESS_TOKEN_FILE = config.sops.secrets.${mcps.github.tokenSopsKey}.path;
             };
           };
+        }
+        // lib.optionalAttrs mcps.cloudflare.enable {
+          cloudflare = baseMcpServers.cloudflare // cloudflareHeaders;
+        }
+        // lib.optionalAttrs mcps.cloudflare.bindings.enable {
+          "cloudflare-bindings" = baseMcpServers."cloudflare-bindings" // cloudflareHeaders;
+        }
+        // lib.optionalAttrs mcps.cloudflare.observability.enable {
+          "cloudflare-observability" = baseMcpServers."cloudflare-observability" // cloudflareHeaders;
         };
 
         # Agent command files (defined in nix/dotagents/commands/*.nix) passed
