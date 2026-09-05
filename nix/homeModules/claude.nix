@@ -112,6 +112,47 @@ in
                 url: ${gitlabServer.url}
           ${headersHelperLine}
         '';
+
+      # The three Cloudflare remote MCP servers, scoped inline for the
+      # cloudflare / cloudflare-bindings and explore-cloudflare* agents. Like
+      # gitlab they are Cloudflare-managed remote HTTP servers (<server>/mcp),
+      # not local binaries, and all three authenticate the same way with one
+      # shared API token, so a single headersHelper script reads the
+      # sops-decrypted token file at connection time and prints the
+      # Authorization header — only the secret file path ever lands in the
+      # store / config. The blocks are hand-built YAML through a small builder
+      # (the servers share the helper and differ only by name+url). Like the
+      # gitlab pair they are registered only when the per-user cloudflare
+      # instance (dotagents.nix) is enabled; the removeAttrs/genAttrs gating
+      # below keeps disabled ones unevaluated, so no `.url` or secret is ever
+      # forced for a surface that is off.
+      cloudflareServer = config.dotagents.mcpServers.cloudflare;
+      cloudflareHeadersHelper = pkgs.writeShellScriptBin "cloudflare-mcp-headers" ''
+        printf '{"Authorization": "Bearer %s"}' "$(<${
+          config.sops.secrets.${config.dotagents.mcps.cloudflare.tokenSopsKey}.path
+        })"
+      '';
+      mkCloudflareMcpBlock =
+        name: url:
+        let
+          headersHelperLine = lib.optionalString (
+            config.dotagents.mcps.cloudflare.tokenSopsKey != null
+          ) "        headersHelper: ${cloudflareHeadersHelper}/bin/cloudflare-mcp-headers\n";
+        in
+        ''
+          mcpServers:
+            - ${name}:
+                type: http
+                url: ${url}
+          ${headersHelperLine}
+        '';
+      cloudflareMcpBlock = mkCloudflareMcpBlock "cloudflare" cloudflareServer.url;
+      cloudflareBindingsMcpBlock =
+        mkCloudflareMcpBlock "cloudflare-bindings"
+          config.dotagents.mcpServers."cloudflare-bindings".url;
+      cloudflareObservabilityMcpBlock =
+        mkCloudflareMcpBlock "cloudflare-observability"
+          config.dotagents.mcpServers."cloudflare-observability".url;
       argocdServer = config.dotagents.mcpServers.argocd;
       argocdMcpBlock = ''
         mcpServers:
@@ -178,6 +219,43 @@ in
           description = "'Answers questions about GitLab — projects, issues, merge requests, repository files, pipelines and their jobs/logs, users, and work items — using the gitlab MCP server''s read-only tools. Read-only: reports, never mutates.'";
           tools = lib.concatStringsSep ", " (map (t: "mcp__gitlab__${t}") gitlabServer.readOnlyTools);
           extraFrontmatter = gitlabMcpBlock;
+        };
+        cloudflare = {
+          # Single-quoted YAML scalar: the description contains `: ` which a
+          # plain scalar would misparse as a mapping separator.
+          description = "'Write-capable Cloudflare development assistant — reads the developer docs and queries the OpenAPI spec with the cloudflare MCP server, then runs the requested API calls through its execute tool (JavaScript against cloudflare.request()) across the whole Cloudflare API. Write-capable: performs the Cloudflare operations asked of it.'";
+          tools = "mcp__cloudflare__*";
+          extraFrontmatter = cloudflareMcpBlock;
+        };
+        "explore-cloudflare" = {
+          description = "'Answers questions about Cloudflare — how the API, a feature or a resource works, or which endpoint covers a task — using the cloudflare MCP server''s read-only docs and search tools. The cloudflare server also registers execute, but it is not in this agent''s allowlist. Read-only: reports what it finds, never mutates.'";
+          tools = lib.concatStringsSep ", " (map (t: "mcp__cloudflare__${t}") cloudflareServer.readOnlyTools);
+          extraFrontmatter = cloudflareMcpBlock;
+        };
+        "cloudflare-bindings" = {
+          # Single-quoted YAML scalar: the description contains `: ` which a
+          # plain scalar would misparse as a mapping separator.
+          description = "'Write-capable Cloudflare Workers Bindings assistant — manages KV namespaces, Workers, R2 buckets, D1 databases and Hyperdrive configs through the cloudflare-bindings MCP server''s per-resource tools; the server registers create/delete/update/query tools alongside list/get reads. Write-capable: performs the binding operations asked of it.'";
+          tools = "mcp__cloudflare-bindings__*";
+          extraFrontmatter = cloudflareBindingsMcpBlock;
+        };
+        "explore-cloudflare-bindings" = {
+          description = "'Answers questions about Cloudflare Workers bindings state — KV namespaces, Workers, R2 buckets, D1 databases and Hyperdrive configs — using the cloudflare-bindings MCP server''s read-only list/get tools. The bindings server also registers create/delete/update/query tools, but none of them are in this agent''s allowlist. Read-only: reports what it finds, never mutates.'";
+          tools = lib.concatStringsSep ", " (
+            map (
+              t: "mcp__cloudflare-bindings__${t}"
+            ) config.dotagents.mcpServers."cloudflare-bindings".readOnlyTools
+          );
+          extraFrontmatter = cloudflareBindingsMcpBlock;
+        };
+        "explore-cloudflare-observability" = {
+          description = "'Queries worker logs, metrics and schema discovery through the cloudflare-observability MCP server''s read-only tools; the observability server registers query tools only. Read-only: reports what it finds, never mutates.'";
+          tools = lib.concatStringsSep ", " (
+            map (
+              t: "mcp__cloudflare-observability__${t}"
+            ) config.dotagents.mcpServers."cloudflare-observability".readOnlyTools
+          );
+          extraFrontmatter = cloudflareObservabilityMcpBlock;
         };
         "export-kubernetes" = {
           description = "'Answers questions about a Kubernetes cluster - contexts, nodes, namespaces, events, resources, and pod logs - using the kubernetes MCP server''s tools. Read-only: reports what it finds, never mutates.'";
@@ -252,6 +330,17 @@ in
       argocdAgentNames = [
         "explore-argocd"
       ];
+      cloudflareAgentNames = [
+        "explore-cloudflare"
+        "cloudflare"
+      ];
+      cloudflareBindingsAgentNames = [
+        "explore-cloudflare-bindings"
+        "cloudflare-bindings"
+      ];
+      cloudflareObservabilityAgentNames = [
+        "explore-cloudflare-observability"
+      ];
 
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
@@ -320,7 +409,14 @@ in
           # home-manager/claude-code module writes
           # them to ~/.claude/agents/<name>.md.
           agents =
-            (lib.removeAttrs allClaudeAgents (githubAgentNames ++ gitlabAgentNames ++ argocdAgentNames))
+            (lib.removeAttrs allClaudeAgents (
+              githubAgentNames
+              ++ gitlabAgentNames
+              ++ argocdAgentNames
+              ++ cloudflareAgentNames
+              ++ cloudflareBindingsAgentNames
+              ++ cloudflareObservabilityAgentNames
+            ))
             // lib.optionalAttrs config.dotagents.mcps.github.enable (
               lib.genAttrs githubAgentNames (n: allClaudeAgents.${n})
             )
@@ -329,6 +425,15 @@ in
             )
             // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
               lib.genAttrs argocdAgentNames (n: allClaudeAgents.${n})
+            )
+            // lib.optionalAttrs config.dotagents.mcps.cloudflare.enable (
+              lib.genAttrs cloudflareAgentNames (n: allClaudeAgents.${n})
+            )
+            // lib.optionalAttrs config.dotagents.mcps.cloudflare.bindings.enable (
+              lib.genAttrs cloudflareBindingsAgentNames (n: allClaudeAgents.${n})
+            )
+            // lib.optionalAttrs config.dotagents.mcps.cloudflare.observability.enable (
+              lib.genAttrs cloudflareObservabilityAgentNames (n: allClaudeAgents.${n})
             );
           # The upstream gopls-lsp/rust-analyzer-lsp marketplace plugins ship
           # with no .lsp.json manifest (anthropics/claude-plugins-official#379),
@@ -413,6 +518,8 @@ in
               "Agent(fork)"
               "Agent(github)"
               "Agent(gitlab)"
+              "Agent(cloudflare)"
+              "Agent(cloudflare-bindings)"
             ];
             # Read-only cross-tool config access: agents may read the tool
             # config content dirs (claude skills/agents/commands, opencode
