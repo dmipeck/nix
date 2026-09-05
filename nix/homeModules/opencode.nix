@@ -375,12 +375,19 @@ in
           # starts, so every session routes through delegation.
           default_agent = "orchestrate";
 
-          # opencode's built-in `general` subagent is disabled: orchestrate
-          # delegation must pick a purpose-built subagent instead of falling
-          # back to the generic one.
+          # opencode's built-in `general` subagent stays available as a
+          # last-resort generic fallback: orchestrate prefers purpose-built
+          # subagents and falls back to `general` only when nothing else fits
+          # (policy lives in orchestrate's agent file), spawning it prompts
+          # the user (permission.task there), and `general`'s own write tools
+          # ask before running.
           agent = {
             general = {
-              disable = true;
+              description = "Generic fallback subagent. Use only when no purpose-built subagent is suited to the task.";
+              permission = {
+                bash = "ask";
+                edit = "ask";
+              };
             };
             explore = {
               model = "opencode/big-pickle";

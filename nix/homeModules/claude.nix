@@ -492,12 +492,14 @@ in
               padding = 0;
             };
 
-            # Claude Code's built-in `general-purpose` and `claude` fallback
-            # subagents are denied so delegation always lands on a
-            # purpose-built subagent; spawning `fork` or the write-capable
+            # Claude Code's built-in `claude` fallback subagent is denied so
+            # delegation lands on a purpose-built subagent; the generic
+            # `general-purpose` subagent stays available as a last resort and
+            # spawning it prompts (permissions.ask below), matching opencode's
+            # `general` contract. Spawning `fork` or the write-capable
             # `github`/`gitlab` subagents (which connect their servers inline)
-            # requires confirmation. The glab/glab-rw/gh CLIs stay installed
-            # for humans but are denied to every agent.
+            # also requires confirmation. The glab/glab-rw/gh CLIs stay
+            # installed for humans but are denied to every agent.
             permissions.deny = [
               "Bash(awk:*)"
               "Bash(sed:*)"
@@ -505,7 +507,6 @@ in
               "Bash(gh:*)"
               "Bash(glab:*)"
               "Bash(glab-rw:*)"
-              "Agent(general-purpose)"
               "Agent(claude)"
             ];
             # PR merges always prompt, even inside the github subagent, and
@@ -518,6 +519,7 @@ in
               "Agent(fork)"
               "Agent(github)"
               "Agent(gitlab)"
+              "Agent(general-purpose)"
               "Agent(cloudflare)"
               "Agent(cloudflare-bindings)"
             ];
