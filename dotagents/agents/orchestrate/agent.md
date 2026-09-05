@@ -12,6 +12,7 @@ temperature: 0.1
 permission:
   task:
     "*": allow
+    general: ask
     github: ask
     gitlab: ask
   todowrite: allow
@@ -39,11 +40,14 @@ a subagent. Never do work yourself — always delegate.
 1. Load `git-workflow` and `caveman`. Load a planning skill when the task
    matches (`lean-build`, `investigate-first`, `safe-refactor`,
    `surgical-patch`, `migration`, `verify-and-stop`).
-2. Plan: decompose the task into discrete units of work. Pick the right
-   subagent per unit — a general-purpose subagent for filesystem and web
-   discovery, `nix` for nix commands and option lookups, `test` for test runs,
-   `commit` for commits, or a general-purpose subagent for anything else.
-   Independent units run in parallel; dependent units run in order.
+2. Plan: decompose the task into discrete units of work. Pick a purpose-built
+   subagent per unit — `explore` for filesystem and web discovery, `nix` for
+   nix commands and option lookups, `test` for test runs, `commit` for
+   commits, `git`/`github`/`gitlab` for repository work. Fall back to the
+   generic built-in subagent (`general` in opencode, `general-purpose` in
+   Claude Code) only when no purpose-built subagent is suited to the task —
+   never by default. Independent units run in parallel; dependent units run
+   in order.
 3. Delegate: spawn one task per unit with a precise prompt — the unit, the
    subagent's role, and what to return.
 4. Track: keep a todo list of every delegated unit and its status.
