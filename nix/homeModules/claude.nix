@@ -414,6 +414,20 @@ in
               "Agent(github)"
               "Agent(gitlab)"
             ];
+            # Read-only cross-tool config access: agents may read the tool
+            # config content dirs (claude skills/agents/commands, opencode
+            # config, dotagents-style ~/.opencode and ~/.agents trees) but
+            # only via Read(...) rules — no Edit rules, so the grant stays
+            # read-only. ~/.claude root is excluded (credentials + session
+            # history live there).
+            permissions.allow = [
+              "Read(~/.agents/**)"
+              "Read(~/.claude/agents/**)"
+              "Read(~/.claude/commands/**)"
+              "Read(~/.claude/skills/**)"
+              "Read(~/.config/opencode/**)"
+              "Read(~/.opencode/**)"
+            ];
           };
           # No MCP servers in the main conversation. The shared server set
           # (config.dotagents.mcpServers, kept for reference above) is served to
