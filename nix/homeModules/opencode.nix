@@ -390,8 +390,21 @@ in
               "glab-rw *" = "deny";
             };
             external_directory = {
+              # Read-only window into the tool config trees that other agent
+              # tooling (claude / opencode / dotagents) manages, plus the
+              # generated opencode config. Grants the external-directory gate
+              # only; writes still need an `edit` rule, so nothing here is
+              # writeable by agents. Scope is deliberately narrow: only the
+              # opencode subtree of ~/.config, and only the content dirs of
+              # ~/.claude (never its root, which holds .credentials.json and
+              # session history).
               "/nix/store/**" = "allow";
-              "~/.config/**" = "allow";
+              "~/.agents/**" = "allow";
+              "~/.claude/agents/**" = "allow";
+              "~/.claude/commands/**" = "allow";
+              "~/.claude/skills/**" = "allow";
+              "~/.config/opencode/**" = "allow";
+              "~/.opencode/**" = "allow";
             };
           };
         };
