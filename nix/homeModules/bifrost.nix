@@ -1,10 +1,12 @@
-{ config, withSystem, ... }@flakeArgs:
+{ inputs, ... }@flakeArgs:
 let
-  # packages.bifrost-http (nix/packages/bifrost.nix) is a perSystem output;
-  # reach into it via withSystem like nix/dotagents/auto.nix does, since a
-  # top-level flake-parts module (this file) gets no `pkgs` of its own.
-  # Only x86_64-linux is supported by this repo (nix/devShells/default.nix).
-  bifrostHttpPackage = withSystem "x86_64-linux" ({ config, ... }: config.packages.bifrost-http);
+  # bifrost-http now comes from the official maximhq/bifrost flake (flake
+  # input `bifrost`, tracking main) rather than a locally-vendored custom
+  # build (nix/packages/bifrost.nix, deleted). Only x86_64-linux is
+  # supported by this repo (nix/devShells/default.nix), which is also a
+  # supported system upstream. The option remains overridable via
+  # services.bifrost.package.
+  bifrostHttpPackage = inputs.bifrost.packages.x86_64-linux.bifrost-http;
   mkBifrostSettings = flakeArgs.config.dotagents.bifrostSettings;
 in
 {
@@ -97,7 +99,7 @@ in
         package = lib.mkOption {
           type = lib.types.package;
           default = bifrostHttpPackage;
-          description = "The bifrost-http package to run (nix/packages/bifrost.nix).";
+          description = "The bifrost-http package to run (official maximhq/bifrost flake, packages.<system>.bifrost-http).";
         };
 
         stateDir = lib.mkOption {
