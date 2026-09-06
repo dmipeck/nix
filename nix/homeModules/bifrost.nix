@@ -1,8 +1,8 @@
 { inputs, ... }@flakeArgs:
 let
-  # bifrost-http now comes from the official maximhq/bifrost flake (flake
-  # input `bifrost`, tracking main) rather than a locally-vendored custom
-  # build (nix/packages/bifrost.nix, deleted). Only x86_64-linux is
+  # bifrost-http comes from the official maximhq/bifrost flake (flake input
+  # `bifrost`, tracking main); the previously vendored custom build in
+  # nix/packages/bifrost.nix has been removed. Only x86_64-linux is
   # supported by this repo (nix/devShells/default.nix), which is also a
   # supported system upstream. The option remains overridable via
   # services.bifrost.package.
