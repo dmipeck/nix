@@ -17,6 +17,7 @@
       url = "github:nix-community/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    bifrost.url = "github:maximhq/bifrost";
     caveman = {
       url = "github:JuliusBrussee/caveman";
       flake = false;

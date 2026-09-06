@@ -1,5 +1,23 @@
 {
   "nodes": {
+    "bifrost": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1788558051,
+        "narHash": "sha256-pQMF/Tx24uRzLgjjobo9QqCUhXOX4qjFBZo8TFz1oJg=",
+        "owner": "maximhq",
+        "repo": "bifrost",
+        "rev": "03ab391865710462302bbcf52dca2f32682b91b5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "maximhq",
+        "repo": "bifrost",
+        "type": "github"
+      }
+    },
     "caveman": {
       "flake": false,
       "locked": {
@@ -140,16 +158,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1788179007,
-        "narHash": "sha256-hn1oU2rue2SYK8dAr8+WNZWtbsz1S2W5mnHlSEuh3bo=",
+        "lastModified": 1784875910,
+        "narHash": "sha256-UfxGmmJheitip1PVQHHJC3bIicCuVRxjAxB/Bis2kgI=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "34ab99075ac4f7e40cf037eef32cb1c360bb85e9",
+        "rev": "a0f7233e070eb72d7f415eda943a1aa2290427c5",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-unstable",
+        "ref": "staging-next",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -166,6 +184,22 @@
       "original": {
         "owner": "nix-community",
         "repo": "nixpkgs.lib",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1788179007,
+        "narHash": "sha256-hn1oU2rue2SYK8dAr8+WNZWtbsz1S2W5mnHlSEuh3bo=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "34ab99075ac4f7e40cf037eef32cb1c360bb85e9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
         "type": "github"
       }
     },
@@ -193,6 +227,7 @@
     },
     "root": {
       "inputs": {
+        "bifrost": "bifrost",
         "caveman": "caveman",
         "claude-plugins-official": "claude-plugins-official",
         "flake-parts": "flake-parts",
@@ -200,7 +235,7 @@
         "home-manager": "home-manager",
         "import-tree": "import-tree",
         "mattpocock-skills": "mattpocock-skills",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
         "nixvim": "nixvim",
         "skill-optimizer": "skill-optimizer",
         "sops-nix": "sops-nix",
