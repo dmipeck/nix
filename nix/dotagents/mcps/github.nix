@@ -66,9 +66,12 @@ let
 in
 {
   config.dotagents.mcpServers = {
-    # Read-write GitHub server, hosted by GitHub. Authenticates via
-    # interactive OAuth on first use — opencode's default for remote MCP
-    # servers — so no token configuration or local binary is needed.
+    # Read-write GitHub server, hosted by GitHub. The hosted server does not
+    # support dynamic client registration, so a pre-registered OAuth App
+    # (clientId/clientSecret/scope) can be attached per-profile via
+    # `dotagents.mcps.github.oauth`; without one it falls back to interactive
+    # OAuth on first use — opencode's default for remote MCP servers — so no
+    # local binary is needed.
     github = {
       type = "remote";
       url = "https://api.githubcopilot.com/mcp/";

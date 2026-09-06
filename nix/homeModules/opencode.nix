@@ -133,6 +133,15 @@ in
             url = srv.url;
           }
           // lib.optionalAttrs (srv.headers != { }) { inherit (srv) headers; }
+          // lib.optionalAttrs (srv.oauth != null) {
+            # Pre-registered OAuth client (server does not support dynamic client
+            # registration). Emit only the fields that are actually set so a null
+            # clientSecret/scope never reaches the generated config.
+            oauth =
+              lib.optionalAttrs (srv.oauth.clientId != null) { clientId = srv.oauth.clientId; }
+              // lib.optionalAttrs (srv.oauth.clientSecret != null) { clientSecret = srv.oauth.clientSecret; }
+              // lib.optionalAttrs (srv.oauth.scope != null) { scope = srv.oauth.scope; };
+          }
         else
           {
             type = "local";

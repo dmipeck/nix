@@ -159,13 +159,57 @@ in
               description = ''
                 Whether to add the github MCP server to the AI tool's config.
                 The server is GitHub's hosted remote MCP endpoint
-                (https://api.githubcopilot.com/mcp/), which authenticates via
+                (https://api.githubcopilot.com/mcp/), which does not support
+                dynamic client registration. A pre-registered GitHub OAuth App
+                can be configured via `oauth` (clientId,
+                clientSecretSopsKey, scope); without one it falls back to
                 interactive OAuth on first use (opencode performs the OAuth
-                flow client-side); no token configuration is needed. Enabling
+                flow client-side). Enabling
                 adds the `github` server (read-write); the read-only
                 `explore-github` subagent is limited to its read tools by its
                 own tool allowlist.
               '';
+            };
+            oauth = lib.mkOption {
+              type = lib.types.submodule {
+                options = {
+                  clientId = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = ''
+                      Client ID of a pre-registered GitHub OAuth App. Register the app at
+                      https://github.com/settings/developers with the callback URL opencode
+                      uses: http://127.0.0.1:19876/mcp/oauth/callback. Required because
+                      GitHub's hosted MCP server does not support dynamic client
+                      registration. Leave null to fall back to interactive OAuth (which
+                      fails against the hosted server).
+                    '';
+                  };
+                  clientSecretSopsKey = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = ''
+                      Name of the sops-nix secret holding the GitHub OAuth App client
+                      secret. Referenced via opencode's "{file:...}" substitution so the
+                      value never lands in the Nix store or this repo. The secret must be
+                      resolvable at every token refresh, so keep the sops file readable at
+                      runtime (same as other dotagents secrets).
+                    '';
+                  };
+                  scope = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = ''
+                      Space-separated OAuth scopes requested when authorizing. github-mcp-server
+                      default grant set, e.g. "repo read:org read:user user:email read:packages
+                      write:packages read:project project gist notifications". Null requests
+                      whatever the app defaults to.
+                    '';
+                  };
+                };
+              };
+              default = { };
+              description = "Pre-registered GitHub OAuth App config for the hosted remote MCP server.";
             };
           };
           cloudflare = {
@@ -320,7 +364,24 @@ in
           };
         }
         // lib.optionalAttrs mcps.github.enable {
-          github = baseMcpServers.github;
+          # The hosted remote server does not support dynamic client registration, so
+          # when a pre-registered OAuth App is configured its credentials ride on the
+          # server entry as an `oauth` block. The client secret is referenced via
+          # opencode's "{file:...}" substitution pointing at the sops-decrypted file,
+          # so only the file path ever appears in the Nix store / generated config.
+          github =
+            baseMcpServers.github
+            // lib.optionalAttrs (mcps.github.oauth.clientId != null) {
+              oauth = {
+                clientId = mcps.github.oauth.clientId;
+              }
+              // lib.optionalAttrs (mcps.github.oauth.scope != null) {
+                scope = mcps.github.oauth.scope;
+              }
+              // lib.optionalAttrs (mcps.github.oauth.clientSecretSopsKey != null) {
+                clientSecret = "{file:${config.sops.secrets.${mcps.github.oauth.clientSecretSopsKey}.path}}";
+              };
+            };
         }
         // lib.optionalAttrs mcps.cloudflare.enable {
           cloudflare = baseMcpServers.cloudflare // cloudflareHeaders;
