@@ -30,14 +30,14 @@ in
       # else is registered unconditionally (see the `agents` config below).
       # The shared agent.md files are model-neutral; the cheap worker subagents
       # (config.dotagents.cheapSubagents) are rendered into a store file whose
-      # frontmatter carries the opencode model pin (`model: opencode/big-pickle`,
+      # frontmatter carries the opencode model pin (`model: google/gemini-3.1-flash-lite`,
       # inserted as the first line after the opening `---`), every other agent
       # keeps its plain pass-through path.
       opencodeAgent =
         name: src:
         pkgs.runCommand "dotagents-${name}-agent-opencode" { } ''
           mkdir -p "$(dirname "$out")"
-          awk 'NR==1{print; print "model: opencode/big-pickle"; next} {print}' ${src} > "$out"
+          awk 'NR==1{print; print "model: google/gemini-3.1-flash-lite"; next} {print}' ${src} > "$out"
         '';
 
       allAgents = lib.mapAttrs (
@@ -399,7 +399,7 @@ in
               };
             };
             explore = {
-              model = "opencode/big-pickle";
+              model = "google/gemini-3.1-flash-lite";
             };
           };
 
