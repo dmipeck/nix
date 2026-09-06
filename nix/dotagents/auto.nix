@@ -114,6 +114,8 @@ in
       "explore-git"
       "explore-github"
       "explore-nix"
+      "cloudflare"
+      "explore-cloudflare"
     ];
     description = ''
       Names of the cheap worker subagents whose model each client adapter maps
