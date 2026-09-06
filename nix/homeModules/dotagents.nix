@@ -208,19 +208,17 @@ in
                   };
                   callbackPort = lib.mkOption {
                     type = lib.types.nullOr lib.types.port;
-                    default = null;
+                    default = 41349;
                     description = ''
-                      Fixed loopback port for Claude Code's OAuth callback.
-                      Claude Code hardcodes its redirect to
-                      http://localhost:PORT/callback, so the pre-registered
-                      OAuth app's Authorization callback URL must be registered
-                      with the same port. When set together with clientId, the
-                      claude-code adapter renders an `oauth` block on the
-                      github server; null leaves claude-code's github server
-                      unauthenticated (bare url). Only the opencode adapter
-                      consumes clientSecret; claude-code keeps the client
-                      secret out of config entirely (OS keychain, supplied via
-                      --client-secret / MCP_CLIENT_SECRET).
+                      Fixed loopback port for Claude Code's OAuth callback. Claude Code hardcodes
+                      its redirect to http://localhost:PORT/callback, so the pre-registered OAuth
+                      app's Authorization callback URL must be registered with the same port.
+                      Defaults to 41349. When set together with clientId the claude-code adapter
+                      renders an `oauth` block on the github server; set to null to leave
+                      claude-code's github server unauthenticated (bare url, e.g. an
+                      opencode-only app). Only the opencode adapter consumes clientSecret;
+                      claude-code keeps the client secret out of config entirely (OS keychain,
+                      supplied via --client-secret / MCP_CLIENT_SECRET).
                     '';
                   };
                   authServerMetadataUrl = lib.mkOption {
