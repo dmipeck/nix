@@ -121,7 +121,7 @@ in
     ];
     description = ''
       Names of the cheap worker subagents whose model each client adapter maps
-      onto its own cheap model (opencode: big-pickle, claude-code: haiku). The
+      onto its own cheap model (opencode: gemini-3.1-flash-lite, claude-code: haiku). The
       source agent.md files stay model-neutral; each adapter injects its own
       `model:` line at render time. Keep this list in sync with both adapters.
     '';
