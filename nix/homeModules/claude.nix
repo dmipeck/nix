@@ -67,17 +67,31 @@ in
               } > "$out"
         '';
 
-      # The explore-github and github subagents, rendered for Claude Code's
-      # dialect with the github MCP server scoped inline. The server is
-      # GitHub's hosted remote MCP endpoint (config.dotagents.mcpServers.github),
-      # so the block is a plain remote http url — no local command, no token
-      # header — mirroring the gitlab remote block below.
       githubServer = config.dotagents.mcpServers.github;
+      githubOauth = config.dotagents.mcps.github.oauth;
+      # claude-code keeps OAuth client secrets out of config (OS keychain via
+      # --client-secret / MCP_CLIENT_SECRET), so only clientId + callbackPort +
+      # scopes are rendered here. Gate on callbackPort so a profile that sets
+      # only an opencode-style oauth app (clientId without callbackPort) keeps
+      # the bare-url block, unchanged. The rendered oauth keys sit at 6/8
+      # spaces so the spliced YAML nests under the github mapping.
+      githubOauthBlock =
+        lib.optionalString (githubOauth.clientId != null && githubOauth.callbackPort != null)
+          (
+            "      oauth:\n"
+            + "        clientId: ${githubOauth.clientId}\n"
+            + "        callbackPort: ${toString githubOauth.callbackPort}\n"
+            + lib.optionalString (githubOauth.scope != null) "        scopes: ${githubOauth.scope}\n"
+            + lib.optionalString (
+              githubOauth.authServerMetadataUrl != null
+            ) "        authServerMetadataUrl: ${githubOauth.authServerMetadataUrl}\n"
+          );
       githubMcpBlock = ''
         mcpServers:
           - github:
               type: http
               url: ${githubServer.url}
+        ${githubOauthBlock}
       '';
 
       # The gitlab MCP server, scoped inline for the gitlab and explore-gitlab
