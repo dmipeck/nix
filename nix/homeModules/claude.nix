@@ -34,12 +34,13 @@ in
       # Render an opencode agent (dotagents/agents/<name>/agent.md) into Claude
       # Code's dialect: a `name`/`description`/`tools` allowlist frontmatter
       # over the shared system-prompt body (the opencode
-      # `mode`/`permission`/`tools` block is dropped), plus an optional `model`
-      # line (cheap worker subagents run on Claude's cheap model) and optional
-      # extra frontmatter lines (e.g. an inline `mcpServers:` block for agents
-      # that connect a server only while they run).
+      # `mode`/`permission`/`tools` block is dropped), plus optional `model` and
+      # `effort` lines (cheap worker subagents run on Claude's cheap model at
+      # low reasoning effort) and optional extra frontmatter lines (e.g. an
+      # inline `mcpServers:` block for agents that connect a server only while
+      # they run).
       claudeAgent =
-        name: description: tools: model: extra:
+        name: description: tools: model: effort: extra:
         let
           frontmatter = lib.concatStringsSep "\n" (
             [
@@ -49,6 +50,7 @@ in
               "tools: ${tools}"
             ]
             ++ lib.optional (model != "") "model: ${model}"
+            ++ lib.optional (effort != "") "effort: ${effort}"
             ++ lib.optional (extra != "") extra
             ++ [ "---" ]
           );
@@ -306,13 +308,15 @@ in
           spec = agentSpecs.${name} or { };
           extra = spec.extraFrontmatter or "";
           # Cheap worker subagents (config.dotagents.cheapSubagents) get their
-          # model pinned to Claude's cheap model; every other agent stays
-          # byte-identical (no `model:` line in its frontmatter).
-          model = if lib.elem name cheapSubagents then "haiku" else "";
+          # model pinned to Claude's cheap model and run at low reasoning
+          # effort; every other agent stays byte-identical (no `model:` or
+          # `effort:` line in its frontmatter).
+          cheap = lib.elem name cheapSubagents;
+          model = if cheap then "haiku" else "";
+          effort = if cheap then "low" else "";
         in
-        claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools) model (
-          lib.optionalString (extra != "") (lib.trim extra)
-        );
+        claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools
+        ) model effort (lib.optionalString (extra != "") (lib.trim extra));
 
       # All agent definitions (dotagents/agents/<name>/agent.md), rendered for
       # Claude Code's dialect; the github pair is registered only when the
