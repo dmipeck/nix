@@ -489,6 +489,11 @@ in
             # session starts in the delegation-only orchestrate and routes
             # all grunt work through subagents.
             agent = "orchestrate";
+            disableBundledSkills = true;
+            disableWorkflows = true;
+            disableRemoteControl = true;
+            disableClaudeAiConnectors = true;
+            disableArtifact = true;
             statusLine = {
               type = "command";
               command = "${claudeStatusline}/bin/claude-statusline";
@@ -511,6 +516,15 @@ in
               "Bash(glab:*)"
               "Bash(glab-rw:*)"
               "Agent(claude)"
+              "DesignSync"
+              "NotebookEdit"
+              "PushNotification"
+              "RemoteTrigger"
+              "ReportFindings"
+              "ScheduleWakeup"
+              "CronCreate"
+              "CronDelete"
+              "CronList"
             ];
             # PR merges always prompt, even inside the github subagent, and
             # spawning the write-capable github/gitlab subagents always
