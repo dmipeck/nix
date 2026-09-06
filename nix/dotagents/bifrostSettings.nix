@@ -1,15 +1,13 @@
 { lib, ... }:
 {
   # A pure function building a Bifrost `config.json` settings attrset from a
-  # small profile spec, shared by `flake.homeModules.bifrost`
+  # small profile spec, used by `flake.homeModules.bifrost`
   # (nix/homeModules/bifrost.nix, deriving the spec from its own option
-  # values) and the `bifrost-config-*` static schema-validation checks
-  # (nix/checks/bifrost.nix, calling it directly with a hand-written spec per
-  # profile) — so the two never drift out of sync. Exposed as a
-  # `dotagents.*`-style option (like `dotagents.mcpServers`) rather than a
-  # plain library file, since every file under nix/ is auto-imported as a
-  # flake-parts module by import-tree: a bare "return a function" file would
-  # be rejected as an unrecognized flake-parts option.
+  # values). Exposed as a `dotagents.*`-style option (like
+  # `dotagents.mcpServers`) rather than a plain library file, since every
+  # file under nix/ is auto-imported as a flake-parts module by import-tree:
+  # a bare "return a function" file would be rejected as an unrecognized
+  # flake-parts option.
   options.dotagents.bifrostSettings = lib.mkOption {
     type = lib.types.anything;
     description = ''

@@ -12,9 +12,8 @@ in
 {
   # Home-manager config layer for Bifrost (https://github.com/maximhq/bifrost),
   # an LLM gateway: exposes its config.json as nix options and runs it as a
-  # systemd user service. See nix/dotagents/bifrostSettings.nix for the
-  # config.json settings-builder shared with the bifrost-config-* checks
-  # (nix/checks/bifrost.nix).
+  # systemd user service. Config.json is built by the shared settings
+  # builder nix/dotagents/bifrostSettings.nix.
   flake.homeModules.bifrost =
     {
       lib,
@@ -28,8 +27,8 @@ in
 
       # Typed provider options (below) plus the free-form `settings` escape
       # hatch are merged through the one shared builder (mkBifrostSettings,
-      # nix/dotagents/bifrostSettings.nix) also used by the
-      # bifrost-config-* checks, so the module and the checks can't drift.
+      # nix/dotagents/bifrostSettings.nix) — a single source of truth for
+      # the generated config.json.
       generatedSettings = mkBifrostSettings {
         claudeCodePassthrough = cfg.claudeCodePassthrough.enable;
         deepseek =
