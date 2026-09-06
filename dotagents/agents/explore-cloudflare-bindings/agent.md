@@ -11,10 +11,10 @@ description: >-
 mode: subagent
 temperature: 0.1
 permission:
-  read: deny
-  glob: deny
-  grep: deny
-  list: deny
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
   edit: deny
   todowrite: deny
   question: deny
