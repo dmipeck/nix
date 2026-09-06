@@ -272,6 +272,14 @@ in
           description = "Reviews pending changes, decides commit boundaries, and writes conventional + caveman-compressed commit messages.";
           tools = "Read, Grep, Glob, List, Bash, Skill";
         };
+        format = {
+          description = "Runs repository formatters and fixes formatting issues across ecosystems — nixfmt for Nix, gofmt for Go, prettier for JS/TS/JSON/Markdown/YAML, ruff format/black for Python, rustfmt for Rust. Detects the ecosystem, runs the formatter, applies fixes, and re-runs to prove the tree is clean. Write-capable: edits files to fix formatting.";
+          tools = "Read, Grep, Glob, List, Bash, Skill";
+        };
+        lint = {
+          description = "Runs repository linters and fixes lint issues across ecosystems — gitleaks and editorconfig-checker for base hygiene, eslint/tsc for JS/TS, golangci-lint/staticcheck for Go, ruff/flake8 for Python, clippy for Rust, shellcheck for shell. Detects the ecosystem, runs the linters, fixes what is safe to fix, and reports what remains. Write-capable: edits files to fix lint findings.";
+          tools = "Read, Grep, Glob, List, Bash, Skill";
+        };
         "explore-git" = {
           description = "Answers questions about the current git repository — commits, branches, tags, diffs, logs, and working-tree state — using local git commands and read-only file access. Read-only: reports what it finds, never mutates.";
           tools = "Read, Grep, Glob, List, Bash";

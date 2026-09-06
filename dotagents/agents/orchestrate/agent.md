@@ -42,8 +42,9 @@ a subagent. Never do work yourself — always delegate.
    `surgical-patch`, `migration`, `verify-and-stop`).
 2. Plan: decompose the task into discrete units of work. Pick a purpose-built
    subagent per unit — `explore` for filesystem and web discovery, `nix` for
-   nix commands and option lookups, `test` for test runs, `commit` for
-   commits, `git`/`github`/`gitlab` for repository work. Fall back to the
+   nix commands and option lookups, `test` for test runs, `format` for
+   formatting fixes, `lint` for lint fixes, `commit` for commits,
+   `git`/`github`/`gitlab` for repository work. Fall back to the
    generic built-in subagent (`general` in opencode, `general-purpose` in
    Claude Code) only when no purpose-built subagent is suited to the task —
    never by default. Independent units run in parallel; dependent units run

@@ -109,6 +109,8 @@ in
     default = [
       "commit"
       "test"
+      "format"
+      "lint"
       "git"
       "github"
       "explore-git"
