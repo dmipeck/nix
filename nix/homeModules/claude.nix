@@ -66,25 +66,16 @@ in
         '';
 
       # The explore-github and github subagents, rendered for Claude Code's
-      # dialect with the single github MCP server scoped inline. They reuse the
-      # per-user instance config from config.dotagents.mcpServers (dotagents.nix
-      # wraps the server so its PAT is read from a sops-decrypted file at
-      # startup), so they only exist when the github instance is enabled.
-      # explore-github restricts itself to read-only tools via its `tools`
-      # allowlist below — the github server also registers write tools, but
-      # none of them are allow-listed for explore-github. The block is
-      # hand-built YAML (args/env as YAML flow collections) because the args
-      # carry shell-quoted shim text that must not be shell-interpolated;
-      # lib.generators.toYAML is just toJSON in current nixpkgs and would mix
-      # JSON into the YAML frontmatter.
+      # dialect with the github MCP server scoped inline. The server is
+      # GitHub's hosted remote MCP endpoint (config.dotagents.mcpServers.github),
+      # so the block is a plain remote http url — no local command, no token
+      # header — mirroring the gitlab remote block below.
       githubServer = config.dotagents.mcpServers.github;
       githubMcpBlock = ''
         mcpServers:
           - github:
-              type: stdio
-              command: ${githubServer.command}
-              args: ${builtins.toJSON githubServer.args}
-              env: ${builtins.toJSON githubServer.env}
+              type: http
+              url: ${githubServer.url}
       '';
 
       # The gitlab MCP server, scoped inline for the gitlab and explore-gitlab
