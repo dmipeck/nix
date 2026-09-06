@@ -1,44 +1,63 @@
 ---
 description: Scaffold a new project with a flake-parts flake.nix, a Nix
-  devShell full of linters, and pre-commit wired to run them all.
+  devShell full of formatters, linters and language servers, and pre-commit
+  wired to run them all.
 ---
 
 Scaffold a new software project in the current directory. If the directory is
 not already a git repo, run `git init` first (pre-commit requires it).
 
-## Discover languages and linters
+## Identify the repo's languages
 
 Before scaffolding, determine what the project actually is:
 
-1. **Explore the repo** — glob for source files and manifests (e.g. `*.go`,
-  `*.rs`, `package.json`, `go.mod`, `Cargo.toml`,
-  `*.ts`, `*.tsx`, `*.js`, `*.rb`, etc.) to identify the languages in use.
-  Check existing config like `.golangci.yml`, `.eslintrc*`, or build
-  definitions for hints about already-intended tooling. Empty or nearly
-  empty dir means the project is new — infer the intended language from the
-  directory name and any README.
-2. **Search the web** — for each language found, look up the current standard
-  linter/formatter (e.g. Go: golangci-lint, gofmt/goimports; Rust: clippy,
-  rustfmt; Python: ruff; TypeScript/JS: eslint, prettier, biome; Ruby:
-  rubocop; shell: shellcheck). Prefer the tool that is the community default
-  for that language in 2026, and note the exact nixpkgs package name and the
-  pre-commit hook id/repo that wraps it. Skip deprecated or niche tools.
-3. Ask the user for the project name if not obvious from the directory; confirm
-  the detected language set and the linter list before writing files, but
-  proceed with sensible defaults if the user has no preference.
+1. **Glob for sources** — map files to languages: `*.nix` = Nix; `*.md` =
+   Markdown; `*.go` / `go.mod` = Go; `*.rs` / `Cargo.toml` = Rust; `*.py` /
+   `pyproject.toml` = Python; `*.ts` / `*.tsx` / `*.js` / `*.jsx` /
+   `package.json` = TypeScript or JavaScript; `*.sh` = Shell; `*.rb` /
+   `Gemfile` = Ruby. Check existing config like `.golangci.yml`,
+   `.eslintrc*`, or build definitions for hints about already-intended
+   tooling. Empty or nearly empty dir means the project is new — infer the
+   intended language from the directory name and any README.
+2. **Use the tool table** — for each detected language take its formatters,
+   linters and LSP from the table below.
+3. **Verify against nixpkgs** — confirm every tool exists in nixpkgs
+   (`nix search nixpkgs <tool>`) before adding it. Do not invent a tool from
+   memory; the table lists only names verified against nixos-unstable.
+4. Ask the user for the project name if not obvious from the directory; confirm
+   the detected language set and the tool list before writing files, but
+   proceed with sensible defaults if the user has no preference.
 
-"Other relevant linters" below always means the linters discovered here plus
-the Nix tooling. Do not invent a language's linter from memory — verify it
-exists in nixpkgs (e.g. `nix search nixpkgs <tool>`) and that its pre-commit
-hook id is real before including it.
+"Relevant tools" below always means the base Nix tooling (pre-commit,
+gitleaks, nixfmt, editorconfig-checker) plus every formatter, linter and LSP
+listed for the detected languages in the table.
+
+## Tool table (2026 community defaults)
+
+| Language | Formatters | Linters | LSP |
+|---|---|---|---|
+| Nix | `nixfmt` | `statix`, `deadnix` | `nixd` (`nil` alt) |
+| Markdown | `markdownlint-cli2` | `markdownlint-cli2` | `marksman` |
+| Go | `gofmt` in `go`, `goimports` in `gotools` | `golangci-lint` | `gopls` |
+| Rust | `rustfmt`, `clippy` | `clippy` | `rust-analyzer` |
+| Python | `ruff` (format) | `ruff` (lint) | `pyright` (`basedpyright` alt) |
+| TypeScript / JS | `biome` | `biome` | `typescript-language-server` |
+| Shell | `shfmt` | `shellcheck` | `bash-language-server` |
+
+LSPs are editor-side: they belong in the devShell `PATH` only — never in
+pre-commit hooks. Formatters and linters get both a pre-commit hook and a
+devShell entry. For a language missing from the table, web-search its current
+community default, verify the nixpkgs package name, then add a row.
 
 ## What to create
 
 1. `flake.nix` — flake-parts based. A `devShells.default` that installs
-  pre-commit, gitleaks, nixfmt, editorconfig-checker, plus any
-  language-relevant linters. The shell hook installs the pre-commit git hooks.
-2. `.pre-commit-config.yaml` — a `conventional-commits` hook plus one hook per
-  linter, using the binaries from the devShell (`language: system`).
+  pre-commit, gitleaks, nixfmt, editorconfig-checker, plus every
+  language-relevant formatter, linter and LSP from the tool table. The shell
+  hook installs the pre-commit git hooks.
+2. `.pre-commit-config.yaml` — a `conventional-commits` hook plus one hook
+  per formatter/linter, using the binaries from the devShell
+  (`language: system`). LSPs are never hooked.
 3. `.editorconfig` — minimal base that editorconfig-checker can validate
   against.
 4. `.gitignore` — sane defaults (`result`, `.direnv`). Lock files must be
@@ -67,16 +86,24 @@ portable.
 
       perSystem = { pkgs, ... }:
         let
-          linters = with pkgs; [
+          # Base Nix tooling always; uncomment the row(s) for each detected
+          # language (formatter, linter, LSP).
+          tools = with pkgs; [
             pre-commit
             gitleaks
             nixfmt
             editorconfig-checker
+            # Go: golangci-lint gopls gotools
+            # Rust: clippy rust-analyzer rustfmt
+            # Python: pyright ruff
+            # TypeScript/JS: biome typescript-language-server
+            # Markdown: markdownlint-cli2 marksman
+            # Shell: bash-language-server shellcheck shfmt
           ];
         in
         {
           devShells.default = pkgs.mkShell {
-            packages = linters;
+            packages = tools;
             shellHook = ''
               pre-commit install --hook-type pre-commit --hook-type \
               commit-msg --overwrite
@@ -121,8 +148,11 @@ repos:
         language: system
 ```
 
-For every language discovered above, append its linters as local
-`language: system` hooks and add their binaries to the devShell too.
+For every language detected, append its formatters and linters as local
+`language: system` hooks (entry = the devShell binary, `files:` regex matching
+the language's extensions) and add the tools to the devShell too. LSPs are
+never hooked — they are editor-side and reach the editor through the
+devShell `PATH`.
 
 ## .editorconfig
 
@@ -176,7 +206,8 @@ file is a top-level flake-parts module implementing a single feature, imported
 automatically, with module internals living under a `./nix` directory.
 
 1. Move each per-system concern into its own module file under `nix/`, e.g.
-  `nix/devshell.nix` (devShell + linters + pre-commit hooks) and
+  `nix/devshell.nix` (devShell + formatters/linters/LSPs + pre-commit hooks)
+  and
   `nix/checks.nix` (anything new).
 2. In `flake.nix`, replace the inline `perSystem` body with an automatic import
   of the module tree:
