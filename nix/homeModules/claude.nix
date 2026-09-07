@@ -205,7 +205,9 @@ in
         };
         "explore-github" = {
           description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s read-only tools. Read-only: reports, never mutates.'";
-          tools = "mcp__github__get_me, mcp__github__get_commit, mcp__github__get_file_contents, mcp__github__get_repository_tree, mcp__github__get_tag, mcp__github__list_branches, mcp__github__list_commits, mcp__github__list_tags, mcp__github__search_code, mcp__github__search_commits";
+          tools = lib.concatStringsSep ", " (
+            map (t: "mcp__github__${t}") config.dotagents.mcpServers.github.readOnlyTools
+          );
           extraFrontmatter = githubMcpBlock;
         };
         gitlab = {
