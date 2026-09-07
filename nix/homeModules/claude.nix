@@ -9,6 +9,9 @@ let
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
+  # Per-client default model + variation (config.dotagents.models); this
+  # adapter reads the `claude` client.
+  models = flakeArgs.config.dotagents.models;
 in
 {
   flake.homeModules.claude =
@@ -325,12 +328,13 @@ in
           spec = agentSpecs.${name} or { };
           extra = spec.extraFrontmatter or "";
           # Cheap worker subagents (config.dotagents.cheapSubagents) get their
-          # model pinned to Claude's cheap model and run at low reasoning
-          # effort; every other agent stays byte-identical (no `model:` or
-          # `effort:` line in its frontmatter).
+          # model + effort pinned from config.dotagents.models.claude.subagent
+          # (Claude Code's effort line carries the variation); every other
+          # agent stays byte-identical (no `model:` or `effort:` line in its
+          # frontmatter).
           cheap = lib.elem name cheapSubagents;
-          model = if cheap then "haiku" else "";
-          effort = if cheap then "low" else "";
+          model = if cheap then models.claude.subagent.model else "";
+          effort = if cheap then (models.claude.subagent.variation or "") else "";
         in
         claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools
         ) model effort (lib.optionalString (extra != "") (lib.trim extra));
@@ -487,6 +491,11 @@ in
       };
 
       claudeSettings = {
+        # Default primary model + effort level (the variation), driven by
+        # config.dotagents.models.claude.primary. The effortLevel field maps
+        # the variation (low/medium/high/max) onto Claude Code's thinking
+        # depth; a null variation omits the field.
+        model = models.claude.primary.model;
         # The orchestrate is the default main-session agent, so every session
         # starts in the delegation-only orchestrate and routes all grunt work
         # through subagents.
@@ -562,6 +571,10 @@ in
           "Read(${ds.configDir}/commands/**)"
           "Read(${ds.configDir}/skills/**)"
         ];
+      }
+      // lib.optionalAttrs (models.claude.primary.variation != null) {
+        # The primary effort level (the variation) only when set.
+        effortLevel = models.claude.primary.variation;
       };
 
       # ---------------------------------------------------------------------

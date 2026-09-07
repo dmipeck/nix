@@ -120,12 +120,74 @@ in
       "explore-cloudflare"
     ];
     description = ''
-      Names of the cheap worker subagents whose model each client adapter maps
-      onto its own cheap model (opencode: gemini-3.1-flash-lite, claude-code: haiku). The
-      source agent.md files stay model-neutral; each adapter injects its own
-      `model:` line at render time. Keep this list in sync with both adapters.
+      Names of the cheap worker subagents whose model + variation each client
+      adapter pulls from config.dotagents.models.<client>.subagent (see the
+      `models` option for the per-client defaults). The source agent.md files
+      stay model-neutral; each adapter injects its own `model:` line at render
+      time. Keep this list in sync with both adapters.
     '';
   };
+  options.dotagents.models = lib.mkOption {
+    type = lib.types.attrsOf (
+      lib.types.submodule {
+        options.primary = lib.mkOption {
+          type = lib.types.submodule {
+            options.model = lib.mkOption {
+              type = lib.types.str;
+            };
+            options.variation = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+            };
+          };
+        };
+        options.subagent = lib.mkOption {
+          type = lib.types.submodule {
+            options.model = lib.mkOption {
+              type = lib.types.str;
+            };
+            options.variation = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+            };
+          };
+        };
+      }
+    );
+    default = {
+      claude = {
+        primary = {
+          model = "sonnet";
+          variation = "high";
+        };
+        subagent = {
+          model = "haiku";
+          variation = "low";
+        };
+      };
+      opencode = {
+        primary = {
+          model = "opencode-go/deepseek-v4-flash";
+          variation = "high";
+        };
+        subagent = {
+          model = "opencode-go/minimax-m3";
+          variation = "none";
+        };
+      };
+    };
+    description = ''
+      Per-client default model + variation for the primary agent and for the
+      cheap worker subagents (config.dotagents.cheapSubagents). Each adapter
+      maps model/variation onto its own dialect: claude uses settings.model +
+      effortLevel for the primary and agent `model:`/`effort:` lines for cheap
+      subagents; opencode uses settings.model + the default agent's `variant:`
+      for the primary and `model:`/`variant:` lines in the rendered cheap
+      subagent files. A null variation means the adapter omits the variation
+      field entirely.
+    '';
+  };
+
   options.dotagents.skillLayouts = lib.mkOption {
     type = lib.types.attrsOf (
       lib.types.enum [

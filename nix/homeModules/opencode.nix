@@ -7,6 +7,9 @@ let
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
+  # Per-client default model + variation (dotagents/models), driven by the
+  # config.dotagents.models option; this adapter reads the `opencode` client.
+  models = flakeArgs.config.dotagents.models.opencode;
 in
 {
   flake.homeModules.opencode =
@@ -29,19 +32,29 @@ in
       # per-user MCP server present, everything
       # else is registered unconditionally (see the `agents` config below).
       # The shared agent.md files are model-neutral; the cheap worker subagents
-      # (config.dotagents.cheapSubagents) are rendered into a store file whose
-      # frontmatter carries the opencode model pin (`model: google/gemini-3.1-flash-lite`,
-      # inserted as the first line after the opening `---`), every other agent
+      # (config.dotagents.cheapSubagents) and the default primary agent
+      # (orchestrate) are rendered into store files whose frontmatter carries
+      # the client's model + variation from config.dotagents.models.opencode
+      # (`model:`/`variant:` inserted as the first lines after the opening
+      # `---`; the variation line is omitted when null), every other agent
       # keeps its plain pass-through path.
       opencodeAgent =
-        name: src:
+        model: variation: name: src:
         pkgs.runCommand "dotagents-${name}-agent-opencode" { } ''
           mkdir -p "$(dirname "$out")"
-          awk 'NR==1{print; print "model: google/gemini-3.1-flash-lite"; next} {print}' ${src} > "$out"
+          awk 'NR==1{print; print "model: ${model}"; ${
+            lib.optionalString (variation != null) "print \"variant: ${variation}\";"
+          } next} {print}' ${src} > "$out"
         '';
 
       allAgents = lib.mapAttrs (
-        name: src: if lib.elem name cheapSubagents then opencodeAgent name src else src
+        name: src:
+        if lib.elem name cheapSubagents then
+          opencodeAgent models.subagent.model models.subagent.variation name src
+        else if name == "orchestrate" then
+          opencodeAgent models.primary.model models.primary.variation name src
+        else
+          src
       ) agents;
 
       # Registered agent set: the same conditional composition as before (github
@@ -380,6 +393,13 @@ in
         programs.opencode.settings = {
           mcp = mcp;
 
+          # Default model for every session (config.dotagents.models.opencode.
+          # primary). mkDefault so a consuming host (e.g. nix-private per-user
+          # config) can pin its own without a module-system conflict. The
+          # primary variation is carried by the rendered orchestrate agent
+          # frontmatter (`variant:`), since opencode has no top-level variant.
+          model = lib.mkDefault models.primary.model;
+
           # The orchestrate (a primary agent) is the default when opencode
           # starts, so every session routes through delegation.
           default_agent = "orchestrate";
@@ -398,8 +418,12 @@ in
                 edit = "ask";
               };
             };
+            # The built-in explorer runs on the subagent model + variation.
             explore = {
-              model = "google/gemini-3.1-flash-lite";
+              model = models.subagent.model;
+            }
+            // lib.optionalAttrs (models.subagent.variation != null) {
+              variant = models.subagent.variation;
             };
           };
 
