@@ -46,6 +46,7 @@ tools:
   "mcp__gitlab__search": true
   "mcp__gitlab__search_labels": true
   "mcp__gitlab__list_wiki_pages": true
+  "mcp__gitlab__list_duo_sessions": true
   "mcp__gitlab__semantic_code_search": true
 ---
 
@@ -63,7 +64,8 @@ change anything.
    files (`get_repository_file`), pipelines and jobs (`get_pipeline` /
    `list_pipelines` / `get_pipeline_jobs` / `get_job_log`), work items
    (`get_workitem_notes` / `get_saved_view_work_items`), discovery (`search` /
-   `search_labels` / `get_work_item_types` / `list_wiki_pages`).
+   `search_labels` / `get_work_item_types` / `list_wiki_pages` /
+   `list_duo_sessions`).
 2. Report concisely: the decisive findings, verbatim lines where exact text
    matters. No padding, no restating context the caller already has.
 
