@@ -504,7 +504,7 @@ in
         # spawning it prompts (permissions.ask below), matching opencode's
         # `general` contract. Spawning `fork` or the write-capable
         # `github`/`gitlab` subagents (which connect their servers inline) also
-        # requires confirmation. The glab/glab-rw/gh CLIs stay installed for
+        # requires confirmation. The glab/gh CLIs stay installed for
         # humans but are denied to every agent.
         permissions.deny = [
           "Bash(awk:*)"
@@ -512,7 +512,6 @@ in
           "Bash(kubectl:*)"
           "Bash(gh:*)"
           "Bash(glab:*)"
-          "Bash(glab-rw:*)"
           "Agent(claude)"
           "DesignSync"
           "NotebookEdit"

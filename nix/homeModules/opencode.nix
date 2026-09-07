@@ -441,7 +441,7 @@ in
           # The github and gitlab MCP servers' tools are denied by default
           # (tools map above); orchestrate asks before spawning the
           # write-capable github/gitlab subagent (permission.task).
-          # glab/glab-rw/gh stay installed for human shell use but are denied
+          # glab/gh stay installed for human shell use but are denied
           # to every agent that inherits this top-level permission. The
           # write-capable cloudflare and cloudflare-bindings subagents ask
           # first too (permission.task); the read-only cloudflare-observability
@@ -462,7 +462,6 @@ in
               "kubectl *" = "deny";
               "gh *" = "deny";
               "glab *" = "deny";
-              "glab-rw *" = "deny";
             };
             external_directory = {
               # Read-only window into the tool config trees that other agent
