@@ -132,23 +132,8 @@ in
               description = ''
                 Base URL of the GitLab instance the gitlab MCP server connects
                 to. The server itself is remote HTTP (served by GitLab at
-                "''${url}/api/v4/mcp"). Authenticates either interactively via
-                OAuth 2.0 on first use, or with a personal access token sent as
-                an Authorization: Bearer header when `tokenSopsKey` is set.
+                "''${url}/api/v4/mcp"). Authenticates via OAuth 2.0 on first use.
                 Only read when `dotagents.mcps.gitlab.enable` is true.
-              '';
-            };
-            tokenSopsKey = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
-              description = ''
-                Name of the sops-nix secret holding the GitLab personal access
-                token. The PAT is sent to the remote MCP server as an
-                Authorization: Bearer header, read from the sops-decrypted file
-                at runtime (the header references the file via opencode's
-                "{file:...}" substitution, so the token value never lands in the
-                Nix store or this repo). Leave as null to fall back to
-                interactive OAuth 2.0 instead.
               '';
             };
             oauth = lib.mkOption {
@@ -161,10 +146,8 @@ in
                       Client ID of a pre-registered non-confidential (public)
                       GitLab OAuth app for the GitLab-native MCP server
                       (<instance>/api/v4/mcp). Setting it selects the
-                      pre-registered OAuth flow for Claude Code and disables the
-                      PAT headersHelper for claude; `tokenSopsKey` may still be
-                      set to keep the PAT flowing to opencode. Leave null to use
-                      the PAT (tokenSopsKey) or interactive OAuth instead.
+                      pre-registered OAuth flow for Claude Code. Leave null to
+                      use interactive OAuth instead.
                     '';
                   };
                   callbackPort = lib.mkOption {
@@ -392,14 +375,6 @@ in
         // lib.optionalAttrs mcps.gitlab.enable {
           gitlab = baseMcpServers.gitlab // {
             url = "${mcps.gitlab.url}/api/v4/mcp";
-            # A read-only PAT (when configured) is sent as an
-            # Authorization: Bearer header on every request. The header value
-            # references the sops-decrypted secret file via opencode's
-            # "{file:...}" substitution, so only the file path ever appears in
-            # the Nix store / generated config, never the token.
-            headers = lib.optionalAttrs (mcps.gitlab.tokenSopsKey != null) {
-              Authorization = "Bearer {file:${config.sops.secrets.${mcps.gitlab.tokenSopsKey}.path}}";
-            };
           };
         }
         // lib.optionalAttrs mcps.github.enable {

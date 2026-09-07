@@ -86,35 +86,20 @@ in
               url: ${githubServer.url}
       '';
 
-      # The gitlab MCP server, scoped inline for the gitlab and explore-gitlab
-      # agents. It is the GitLab-native remote server (<instance>/api/v4/mcp),
-      # not a local binary. Claude Code has no {file:...} substitution for
-      # header values, so a tiny headersHelper script reads the sops-decrypted
-      # PAT file at connection time and prints the Authorization header — only
-      # the secret file path ever lands in the store / config.
       gitlabServer = config.dotagents.mcpServers.gitlab;
-      gitlabHeadersHelper = pkgs.writeShellScriptBin "gitlab-mcp-headers" ''
-        printf '{"Authorization": "Bearer %s"}' "$(<${
-          config.sops.secrets.${config.dotagents.mcps.gitlab.tokenSopsKey}.path
-        })"
-      '';
       gitlabMcpBlock =
         let
           oauth = config.dotagents.mcps.gitlab.oauth;
           # For Claude Code only. When a pre-registered (non-confidential)
           # GitLab OAuth app is configured (oauth.clientId set), emit the
-          # nested `oauth` block and omit the PAT headersHelper — even if
-          # tokenSopsKey is still set for opencode. Otherwise keep today's
-          # behaviour: a headersHelper when a PAT tokenSopsKey is set, else a
-          # bare remote server.
+          # nested `oauth` block; otherwise emit nothing and Claude Code
+          # falls back to interactive OAuth on first use.
           authBlock =
             if oauth.clientId != null then
               "      oauth:\n"
               + "        clientId: ${oauth.clientId}\n"
               + "        callbackPort: ${toString oauth.callbackPort}"
               + lib.optionalString (oauth.scopes != null) "\n        scopes: ${oauth.scopes}"
-            else if config.dotagents.mcps.gitlab.tokenSopsKey != null then
-              "        headersHelper: ${gitlabHeadersHelper}/bin/gitlab-mcp-headers\n"
             else
               "";
         in
