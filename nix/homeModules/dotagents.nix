@@ -151,6 +151,45 @@ in
                 interactive OAuth 2.0 instead.
               '';
             };
+            oauth = lib.mkOption {
+              type = lib.types.submodule {
+                options = {
+                  clientId = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = ''
+                      Client ID of a pre-registered non-confidential (public)
+                      GitLab OAuth app for the GitLab-native MCP server
+                      (<instance>/api/v4/mcp). Setting it selects the
+                      pre-registered OAuth flow for Claude Code and disables the
+                      PAT headersHelper for claude; `tokenSopsKey` may still be
+                      set to keep the PAT flowing to opencode. Leave null to use
+                      the PAT (tokenSopsKey) or interactive OAuth instead.
+                    '';
+                  };
+                  callbackPort = lib.mkOption {
+                    type = lib.types.port;
+                    default = 8765;
+                    description = ''
+                      Loopback port Claude Code uses for the OAuth callback.
+                      Must match the redirect URI registered on the OAuth app:
+                      http://localhost:<port>/callback
+                    '';
+                  };
+                  scopes = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = ''
+                      Space-separated OAuth scope(s) requested when
+                      authorizing. GitLab's MCP server advertises "mcp".
+                      Null requests whatever the app defaults to.
+                    '';
+                  };
+                };
+              };
+              default = { };
+              description = "Pre-registered GitLab OAuth app config for the GitLab-native remote MCP server (Claude Code).";
+            };
           };
           github = {
             enable = lib.mkOption {
