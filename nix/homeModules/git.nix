@@ -58,6 +58,7 @@
             url = lib.mapAttrs' (
               rewrite: insteadOf: lib.nameValuePair rewrite { inherit insteadOf; }
             ) cfg.rewriteUrls;
+            core.excludesFile = "~/.config/git/ignore";
           };
           ignores = [
             "/.claude/"
@@ -70,7 +71,6 @@
             "/result-*"
             "*.log"
           ];
-          extraConfig.core.excludesFile = "~/.config/git/ignore";
         };
 
         home.sessionVariables = lib.mkIf (cfg.goprivate != null) {
