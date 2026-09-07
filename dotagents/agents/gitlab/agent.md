@@ -24,7 +24,7 @@ permission:
   bash:
     "*": deny
 tools:
-  "gitlab_*": true
+  "mcp__gitlab__*": true
 ---
 
 You are the gitlab subagent. Do GitLab development work end to end: read the
