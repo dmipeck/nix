@@ -26,27 +26,27 @@ permission:
   bash:
     "*": deny
 tools:
-  "gitlab_get_mcp_server_version": true
-  "gitlab_get_issue": true
-  "gitlab_get_merge_request": true
-  "gitlab_list_merge_requests": true
-  "gitlab_get_merge_request_commits": true
-  "gitlab_get_merge_request_diffs": true
-  "gitlab_get_merge_request_conflicts": true
-  "gitlab_get_merge_request_pipelines": true
-  "gitlab_get_merge_request_notes": true
-  "gitlab_get_repository_file": true
-  "gitlab_get_pipeline": true
-  "gitlab_get_pipeline_jobs": true
-  "gitlab_get_job_log": true
-  "gitlab_list_pipelines": true
-  "gitlab_get_workitem_notes": true
-  "gitlab_get_work_item_types": true
-  "gitlab_get_saved_view_work_items": true
-  "gitlab_search": true
-  "gitlab_search_labels": true
-  "gitlab_list_wiki_pages": true
-  "gitlab_semantic_code_search": true
+  "mcp__gitlab__get_mcp_server_version": true
+  "mcp__gitlab__get_issue": true
+  "mcp__gitlab__get_merge_request": true
+  "mcp__gitlab__list_merge_requests": true
+  "mcp__gitlab__get_merge_request_commits": true
+  "mcp__gitlab__get_merge_request_diffs": true
+  "mcp__gitlab__get_merge_request_conflicts": true
+  "mcp__gitlab__get_merge_request_pipelines": true
+  "mcp__gitlab__get_merge_request_notes": true
+  "mcp__gitlab__get_repository_file": true
+  "mcp__gitlab__get_pipeline": true
+  "mcp__gitlab__get_pipeline_jobs": true
+  "mcp__gitlab__get_job_log": true
+  "mcp__gitlab__list_pipelines": true
+  "mcp__gitlab__get_workitem_notes": true
+  "mcp__gitlab__get_work_item_types": true
+  "mcp__gitlab__get_saved_view_work_items": true
+  "mcp__gitlab__search": true
+  "mcp__gitlab__search_labels": true
+  "mcp__gitlab__list_wiki_pages": true
+  "mcp__gitlab__semantic_code_search": true
 ---
 
 You are the explore-gitlab subagent. Answer questions about GitLab using the
