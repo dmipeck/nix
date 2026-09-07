@@ -70,6 +70,7 @@
             "/result-*"
             "*.log"
           ];
+          extraConfig.core.excludesFile = "~/.config/git/ignore";
         };
 
         home.sessionVariables = lib.mkIf (cfg.goprivate != null) {
