@@ -97,16 +97,30 @@ in
       '';
       gitlabMcpBlock =
         let
-          headersHelperLine = lib.optionalString (
-            config.dotagents.mcps.gitlab.tokenSopsKey != null
-          ) "        headersHelper: ${gitlabHeadersHelper}/bin/gitlab-mcp-headers\n";
+          oauth = config.dotagents.mcps.gitlab.oauth;
+          # For Claude Code only. When a pre-registered (non-confidential)
+          # GitLab OAuth app is configured (oauth.clientId set), emit the
+          # nested `oauth` block and omit the PAT headersHelper — even if
+          # tokenSopsKey is still set for opencode. Otherwise keep today's
+          # behaviour: a headersHelper when a PAT tokenSopsKey is set, else a
+          # bare remote server.
+          authBlock =
+            if oauth.clientId != null then
+              "      oauth:\n"
+              + "        clientId: ${oauth.clientId}\n"
+              + "        callbackPort: ${toString oauth.callbackPort}"
+              + lib.optionalString (oauth.scopes != null) "\n        scopes: ${oauth.scopes}"
+            else if config.dotagents.mcps.gitlab.tokenSopsKey != null then
+              "        headersHelper: ${gitlabHeadersHelper}/bin/gitlab-mcp-headers\n"
+            else
+              "";
         in
         ''
           mcpServers:
             - gitlab:
                 type: http
                 url: ${gitlabServer.url}
-          ${headersHelperLine}
+          ${authBlock}
         '';
 
       # The three Cloudflare remote MCP servers, scoped inline for the
