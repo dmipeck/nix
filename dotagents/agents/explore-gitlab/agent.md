@@ -27,6 +27,7 @@ permission:
     "*": deny
 tools:
   "mcp__gitlab__get_mcp_server_version": true
+  "mcp__gitlab__get_project": true
   "mcp__gitlab__get_issue": true
   "mcp__gitlab__get_merge_request": true
   "mcp__gitlab__list_merge_requests": true
@@ -36,17 +37,26 @@ tools:
   "mcp__gitlab__get_merge_request_pipelines": true
   "mcp__gitlab__get_merge_request_notes": true
   "mcp__gitlab__get_repository_file": true
+  "mcp__gitlab__get_commit": true
+  "mcp__gitlab__list_branches": true
+  "mcp__gitlab__list_releases": true
+  "mcp__gitlab__list_tags": true
   "mcp__gitlab__get_pipeline": true
   "mcp__gitlab__get_pipeline_jobs": true
   "mcp__gitlab__get_job_log": true
   "mcp__gitlab__list_pipelines": true
+  "mcp__gitlab__get_work_item": true
   "mcp__gitlab__get_workitem_notes": true
   "mcp__gitlab__get_work_item_types": true
   "mcp__gitlab__get_saved_view_work_items": true
+  "mcp__gitlab__list_work_items": true
+  "mcp__gitlab__get_user": true
+  "mcp__gitlab__list_project_members": true
+  "mcp__gitlab__list_duo_sessions": true
+  "mcp__gitlab__get_duo_session": true
   "mcp__gitlab__search": true
   "mcp__gitlab__search_labels": true
   "mcp__gitlab__list_wiki_pages": true
-  "mcp__gitlab__list_duo_sessions": true
   "mcp__gitlab__semantic_code_search": true
 ---
 
@@ -57,15 +67,18 @@ change anything.
 ## Job
 
 1. Identify the project (namespace/project) and any issue/MR numbers from the
-   caller's prompt. Query the relevant state with the read tools: issues
-   (`get_issue`), merge requests (`get_merge_request` / `list_merge_requests`
-   plus `get_merge_request_diffs`, `get_merge_request_commits`,
-   `get_merge_request_notes`, `get_merge_request_pipelines`), repository
-   files (`get_repository_file`), pipelines and jobs (`get_pipeline` /
-   `list_pipelines` / `get_pipeline_jobs` / `get_job_log`), work items
-   (`get_workitem_notes` / `get_saved_view_work_items`), discovery (`search` /
-   `search_labels` / `get_work_item_types` / `list_wiki_pages` /
-   `list_duo_sessions`).
+   caller's prompt. Query the relevant state with the read tools: projects
+   (`get_project`), issues (`get_issue`), merge requests (`get_merge_request` /
+   `list_merge_requests` plus `get_merge_request_diffs`,
+   `get_merge_request_commits`, `get_merge_request_notes`,
+   `get_merge_request_pipelines`), repository files and history
+   (`get_repository_file` / `get_commit` / `list_branches` / `list_releases` /
+   `list_tags`), pipelines and jobs (`get_pipeline` / `list_pipelines` /
+   `get_pipeline_jobs` / `get_job_log`), work items (`get_work_item` /
+   `get_workitem_notes` / `list_work_items` / `get_saved_view_work_items`),
+   users and members (`get_user` / `list_project_members`), discovery
+   (`search` / `search_labels` / `get_work_item_types` / `list_wiki_pages` /
+   `list_duo_sessions` / `get_duo_session`).
 2. Report concisely: the decisive findings, verbatim lines where exact text
    matters. No padding, no restating context the caller already has.
 
