@@ -297,6 +297,15 @@ in
         orchestrate = {
           description = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent.";
           tools = "Agent, AskUserQuestion, TodoWrite, Skill";
+          # gh/glab are denied on orchestrate (the main-session agent) rather
+          # than top-level: gh/glab work must flow through the github/gitlab
+          # subagents, while every other Bash-capable agent keeps the CLIs.
+          permission = ''
+            permission:
+              deny:
+                - "Bash(gh:*)"
+                - "Bash(glab:*)"
+          '';
         };
         test = {
           description = "Runs the test suite for one testing ecosystem, reviews the output, and reports pass/fail results. Reports failures only; never takes corrective action.";
@@ -533,18 +542,16 @@ in
         # `general` contract. Spawning `fork` or the write-capable
         # `github`/`gitlab` subagents (which connect their servers inline) also
         # requires confirmation. The gh/glab CLIs stay installed for human
-        # shell use but stay denied to every agent and the main session by the
-        # top-level permissions.deny below; the github/explore-github subagents
-        # lift the gh denial and the gitlab/explore-gitlab subagents the glab
-        # denial with their own `permission:` allow block in the agent's
-        # frontmatter, using gh/glab as a fallback when the github/gitlab MCP
-        # server is unavailable.
+        # shell use but are denied only on the orchestrate main-session agent
+        # (its frontmatter above), not in the top-level permissions.deny:
+        # delegation of gh/glab work routes through the
+        # github/explore-github and gitlab/explore-gitlab subagents, which
+        # allow the CLIs explicitly as a fallback when their MCP servers are
+        # unavailable, and every other Bash-capable agent keeps them usable.
         permissions.deny = [
           "Bash(awk:*)"
           "Bash(sed:*)"
           "Bash(kubectl:*)"
-          "Bash(gh:*)"
-          "Bash(glab:*)"
           "Agent(claude)"
           "DesignSync"
           "NotebookEdit"
