@@ -23,6 +23,7 @@ permission:
   skill: deny
   bash:
     "*": deny
+    "gh *": allow
 tools:
   "github_actions_get": true
   "github_actions_list": true
@@ -104,9 +105,13 @@ find, never change anything.
    `get_secret_scanning_alert` / `get_dependabot_alert` / security
    advisories), orgs/teams/users (`get_me` / `get_team_members` / `get_teams` /
    `search_users` / `search_orgs`), notifications, projects, copilot spaces
-   (`get_copilot_space` / `list_copilot_spaces`), and support docs
-   (`github_support_docs_search`).
-2. Report concisely: the decisive findings, verbatim lines where exact text
+    (`get_copilot_space` / `list_copilot_spaces`), and support docs
+    (`github_support_docs_search`).
+2. Fallback: if the github MCP read tools error out or are unavailable,
+   retry the same read with `gh` (read-only commands only — `gh api`,
+   `gh pr view`, `gh issue list`, `gh repo view`, `gh search ...`) before
+   reporting failure.
+3. Report concisely: the decisive findings, verbatim lines where exact text
    matters. No padding, no restating context the caller already has.
 
 ## Never
@@ -125,5 +130,7 @@ find, never change anything.
   unstar_repository, create_pull_request_with_copilot) or take corrective
   action. None of them are in this agent's allowlist, even though the github
   server registers them.
-- Reach for bash or `gh` — all bash is denied here; this agent only reads
-  GitHub state via the github MCP server.
+- Prefer the github MCP read tools for everything they cover. Reach for `gh`
+  via bash only as a fallback when the MCP server is unavailable — and only
+  for read-only commands (`gh api`, `gh pr view`, `gh issue list`, `gh repo
+  view`, `gh search ...`), never anything that mutates GitHub state.
