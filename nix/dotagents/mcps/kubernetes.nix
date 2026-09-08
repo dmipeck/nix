@@ -5,20 +5,23 @@ let
   # skills modules. The package is a nixpkgs derivation; evaluation stays lazy
   # until a consumer forces it.
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
+
+  readTools = [
+    "get-k8s-pod-logs"
+    "get-k8s-resource"
+    "list-k8s-contexts"
+    "list-k8s-events"
+    "list-k8s-namespaces"
+    "list-k8s-nodes"
+    "list-k8s-resources"
+  ];
 in
 {
   config.dotagents.mcpServers.kubernetes = {
     type = "local";
     command = "${pkgs.mcp-k8s-go}/bin/mcp-k8s-go";
     args = [ "--readonly" ];
-    readOnlyTools = [
-      "get-k8s-pod-logs"
-      "get-k8s-resource"
-      "list-k8s-contexts"
-      "list-k8s-events"
-      "list-k8s-namespaces"
-      "list-k8s-nodes"
-      "list-k8s-resources"
-    ];
+    _module.args.mcpToolEnum = lib.types.enum readTools;
+    tools.read = readTools;
   };
 }

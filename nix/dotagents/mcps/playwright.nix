@@ -10,6 +10,5 @@ in
   config.dotagents.mcpServers.playwright = {
     type = "local";
     command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
-    readOnlyTools = [ ];
   };
 }

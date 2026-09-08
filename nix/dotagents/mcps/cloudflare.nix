@@ -1,4 +1,44 @@
 { lib, ... }:
+let
+  cloudflareReadTools = [
+    "docs"
+    "search"
+  ];
+  cloudflareWriteTools = [
+    "execute"
+  ];
+  bindingsReadTools = [
+    "kv_namespaces_list"
+    "kv_namespace_get"
+    "workers_list"
+    "workers_get_worker"
+    "workers_get_worker_code"
+    "r2_buckets_list"
+    "r2_bucket_get"
+    "d1_databases_list"
+    "d1_database_get"
+    "hyperdrive_configs_list"
+    "hyperdrive_configs_get"
+  ];
+  bindingsWriteTools = [
+    "kv_namespace_create"
+    "kv_namespace_delete"
+    "kv_namespace_update"
+    "r2_bucket_create"
+    "r2_bucket_delete"
+    "d1_database_create"
+    "d1_database_delete"
+    "d1_database_query"
+    "hyperdrive_configs_create"
+    "hyperdrive_configs_delete"
+    "hyperdrive_configs_edit"
+  ];
+  observabilityReadTools = [
+    "query_worker_observability"
+    "observability_keys"
+    "observability_values"
+  ];
+in
 {
   # Cloudflare's managed MCP servers (stateless streamable HTTP at /mcp,
   # documented at developers.cloudflare.com/agents/model-context-protocol/
@@ -18,13 +58,9 @@
     cloudflare = {
       type = "remote";
       url = "https://mcp.cloudflare.com/mcp";
-      readOnlyTools = [
-        "docs"
-        "search"
-      ];
-      writableTools = [
-        "execute"
-      ];
+      _module.args.mcpToolEnum = lib.types.enum (cloudflareReadTools ++ cloudflareWriteTools);
+      tools.read = cloudflareReadTools;
+      tools.write = cloudflareWriteTools;
     };
     # Workers Bindings server — discrete per-resource tools over KV
     # namespaces, Workers, R2 buckets, D1 databases and Hyperdrive configs.
@@ -33,44 +69,17 @@
     "cloudflare-bindings" = {
       type = "remote";
       url = "https://bindings.mcp.cloudflare.com/mcp";
-      readOnlyTools = [
-        "kv_namespaces_list"
-        "kv_namespace_get"
-        "workers_list"
-        "workers_get_worker"
-        "workers_get_worker_code"
-        "r2_buckets_list"
-        "r2_bucket_get"
-        "d1_databases_list"
-        "d1_database_get"
-        "hyperdrive_configs_list"
-        "hyperdrive_configs_get"
-      ];
-      writableTools = [
-        "kv_namespace_create"
-        "kv_namespace_delete"
-        "kv_namespace_update"
-        "r2_bucket_create"
-        "r2_bucket_delete"
-        "d1_database_create"
-        "d1_database_delete"
-        "d1_database_query"
-        "hyperdrive_configs_create"
-        "hyperdrive_configs_delete"
-        "hyperdrive_configs_edit"
-      ];
+      _module.args.mcpToolEnum = lib.types.enum (bindingsReadTools ++ bindingsWriteTools);
+      tools.read = bindingsReadTools;
+      tools.write = bindingsWriteTools;
     };
     # Observability server — worker logs, metrics and schema discovery
     # queries. Entirely read-only.
     "cloudflare-observability" = {
       type = "remote";
       url = "https://observability.mcp.cloudflare.com/mcp";
-      readOnlyTools = [
-        "query_worker_observability"
-        "observability_keys"
-        "observability_values"
-      ];
-      writableTools = [ ];
+      _module.args.mcpToolEnum = lib.types.enum observabilityReadTools;
+      tools.read = observabilityReadTools;
     };
   };
 }

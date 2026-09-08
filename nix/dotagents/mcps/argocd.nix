@@ -53,6 +53,18 @@ let
       mainProgram = "argocd-mcp";
     };
   });
+
+  readTools = [
+    "list_clusters"
+    "get_appproject"
+    "list_applications"
+    "get_application"
+    "get_application_resource_tree"
+    "get_application_managed_resources"
+    "get_application_workload_logs"
+    "get_resource_events"
+    "get_resource_actions"
+  ];
 in
 {
   options.dotagents.mcpPackages."argocd-mcp" = lib.mkOption {
@@ -77,16 +89,7 @@ in
     # Mirrors the "never make changes directly to the cluster" principle:
     # block create/update/delete/sync/run-action tools, leaving only
     # inspection. Cluster changes still flow through ./kustomize and ArgoCD.
-    readOnlyTools = [
-      "list_clusters"
-      "get_appproject"
-      "list_applications"
-      "get_application"
-      "get_application_resource_tree"
-      "get_application_managed_resources"
-      "get_application_workload_logs"
-      "get_resource_events"
-      "get_resource_actions"
-    ];
+    _module.args.mcpToolEnum = lib.types.enum readTools;
+    tools.read = readTools;
   };
 }

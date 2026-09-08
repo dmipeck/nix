@@ -1,4 +1,4 @@
-{ ... }:
+{ lib, ... }:
 let
   # The GitHub-hosted remote MCP server — https://api.githubcopilot.com/mcp/
   # serves the same github-mcp-server tool surface, hosted by GitHub. The
@@ -122,8 +122,9 @@ in
     github = {
       type = "remote";
       url = "https://api.githubcopilot.com/mcp/x/all";
-      readOnlyTools = readTools;
-      writableTools = writeTools;
+      _module.args.mcpToolEnum = lib.types.enum (readTools ++ writeTools);
+      tools.read = readTools;
+      tools.write = writeTools;
     };
   };
 }

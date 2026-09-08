@@ -10,6 +10,5 @@ in
   config.dotagents.mcpServers.nixos = {
     type = "local";
     command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
-    readOnlyTools = [ ];
   };
 }

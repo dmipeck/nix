@@ -217,7 +217,7 @@ in
         };
         "explore-gitlab" = {
           description = "'Answers questions about GitLab — projects, issues, merge requests, repository files, pipelines and their jobs/logs, users, and work items — using the gitlab MCP server''s read-only tools. Read-only: reports, never mutates.'";
-          tools = lib.concatStringsSep ", " (map (t: "mcp__gitlab__${t}") gitlabServer.readOnlyTools);
+          tools = lib.concatStringsSep ", " (map (t: "mcp__gitlab__${t}") gitlabServer.tools.read);
           extraFrontmatter = gitlabMcpBlock;
         };
         cloudflare = {
@@ -229,7 +229,7 @@ in
         };
         "explore-cloudflare" = {
           description = "'Answers questions about Cloudflare — how the API, a feature or a resource works, or which endpoint covers a task — using the cloudflare MCP server''s read-only docs and search tools. The cloudflare server also registers execute, but it is not in this agent''s allowlist. Read-only: reports what it finds, never mutates.'";
-          tools = lib.concatStringsSep ", " (map (t: "mcp__cloudflare__${t}") cloudflareServer.readOnlyTools);
+          tools = lib.concatStringsSep ", " (map (t: "mcp__cloudflare__${t}") cloudflareServer.tools.read);
           extraFrontmatter = cloudflareMcpBlock;
         };
         "cloudflare-bindings" = {
@@ -244,7 +244,7 @@ in
           tools = lib.concatStringsSep ", " (
             map (
               t: "mcp__cloudflare-bindings__${t}"
-            ) config.dotagents.mcpServers."cloudflare-bindings".readOnlyTools
+            ) config.dotagents.mcpServers."cloudflare-bindings".tools.read
           );
           extraFrontmatter = cloudflareBindingsMcpBlock;
         };
@@ -253,7 +253,7 @@ in
           tools = lib.concatStringsSep ", " (
             map (
               t: "mcp__cloudflare-observability__${t}"
-            ) config.dotagents.mcpServers."cloudflare-observability".readOnlyTools
+            ) config.dotagents.mcpServers."cloudflare-observability".tools.read
           );
           extraFrontmatter = cloudflareObservabilityMcpBlock;
         };
