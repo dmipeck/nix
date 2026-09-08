@@ -42,11 +42,13 @@ in
       # over the shared system-prompt body (the opencode
       # `mode`/`permission`/`tools` block is dropped), plus optional `model` and
       # `effort` lines (cheap worker subagents run on Claude's cheap model at
-      # low reasoning effort) and optional extra frontmatter lines (e.g. an
-      # inline `mcpServers:` block for agents that connect a server only while
-      # they run).
+      # low reasoning effort), optional extra frontmatter lines (e.g. an inline
+      # `mcpServers:` block for agents that connect a server only while they
+      # run) and an optional `permission:` block lifting a top-level deny for
+      # that one agent (the github/gitlab subagents allow their gh/glab CLI as
+      # an MCP fallback this way).
       claudeAgent =
-        name: description: tools: model: effort: extra:
+        name: description: tools: model: effort: extra: permission:
         let
           frontmatter = lib.concatStringsSep "\n" (
             [
@@ -58,6 +60,7 @@ in
             ++ lib.optional (model != "") "model: ${model}"
             ++ lib.optional (effort != "") "effort: ${effort}"
             ++ lib.optional (extra != "") extra
+            ++ lib.optional (permission != "") permission
             ++ [ "---" ]
           );
         in
@@ -200,23 +203,47 @@ in
           # Single-quoted YAML scalar: the description contains `: ` which a
           # plain scalar would misparse as a mapping separator.
           description = "'Full GitHub development assistant — reads repos, commits, branches and code; creates and updates pull requests, issues and discussions; triggers and inspects Actions runs and logs. Write-capable: performs the GitHub operations asked of it.'";
-          tools = "mcp__github__*";
+          tools = "mcp__github__*, Bash";
           extraFrontmatter = githubMcpBlock;
+          permission = ''
+            permission:
+              allow:
+                - "Bash(gh:*)"
+          '';
         };
         "explore-github" = {
           description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s read-only tools. Read-only: reports, never mutates.'";
-          tools = lib.concatStringsSep ", " (map (t: "mcp__github__${t}") githubServer.tools.read);
+          tools = lib.concatStringsSep ", " (
+            [ "Bash" ] ++ map (t: "mcp__github__${t}") githubServer.tools.read
+          );
           extraFrontmatter = githubMcpBlock;
+          permission = ''
+            permission:
+              allow:
+                - "Bash(gh:*)"
+          '';
         };
         gitlab = {
           description = "'Write-capable GitLab development assistant — reads projects, issues, merge requests and pipelines with the gitlab MCP server, then creates issues, merge requests and notes, adds branches, manages pipelines and work items through its write tools. Write-capable: performs the GitLab operations asked of it.'";
-          tools = "mcp__gitlab__*";
+          tools = "mcp__gitlab__*, Bash";
           extraFrontmatter = gitlabMcpBlock;
+          permission = ''
+            permission:
+              allow:
+                - "Bash(glab:*)"
+          '';
         };
         "explore-gitlab" = {
           description = "'Answers questions about GitLab — projects, issues, merge requests, repository files, pipelines and their jobs/logs, users, and work items — using the gitlab MCP server''s read-only tools. Read-only: reports, never mutates.'";
-          tools = lib.concatStringsSep ", " (map (t: "mcp__gitlab__${t}") gitlabServer.tools.read);
+          tools = lib.concatStringsSep ", " (
+            [ "Bash" ] ++ map (t: "mcp__gitlab__${t}") gitlabServer.tools.read
+          );
           extraFrontmatter = gitlabMcpBlock;
+          permission = ''
+            permission:
+              allow:
+                - "Bash(glab:*)"
+          '';
         };
         cloudflare = {
           # Single-quoted YAML scalar: the description contains `: ` which a
@@ -312,6 +339,7 @@ in
         let
           spec = agentSpecs.${name} or { };
           extra = spec.extraFrontmatter or "";
+          permission = spec.permission or "";
           # Cheap worker subagents (config.dotagents.cheapSubagents) get their
           # model + effort pinned from config.dotagents.models.claude.subagent
           # (Claude Code's effort line carries the variation); every other
@@ -321,8 +349,10 @@ in
           model = if cheap then models.claude.subagent.model else "";
           effort = if cheap then (models.claude.subagent.variation or "") else "";
         in
-        claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools
-        ) model effort (lib.optionalString (extra != "") (lib.trim extra));
+        claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools) model
+          effort
+          (lib.optionalString (extra != "") (lib.trim extra))
+          (lib.optionalString (permission != "") (lib.trim permission));
 
       # All agent definitions (dotagents/agents/<name>/agent.md), rendered for
       # Claude Code's dialect; the github pair is registered only when the
@@ -502,8 +532,13 @@ in
         # spawning it prompts (permissions.ask below), matching opencode's
         # `general` contract. Spawning `fork` or the write-capable
         # `github`/`gitlab` subagents (which connect their servers inline) also
-        # requires confirmation. The glab/gh CLIs stay installed for
-        # humans but are denied to every agent.
+        # requires confirmation. The gh/glab CLIs stay installed for human
+        # shell use but stay denied to every agent and the main session by the
+        # top-level permissions.deny below; the github/explore-github subagents
+        # lift the gh denial and the gitlab/explore-gitlab subagents the glab
+        # denial with their own `permission:` allow block in the agent's
+        # frontmatter, using gh/glab as a fallback when the github/gitlab MCP
+        # server is unavailable.
         permissions.deny = [
           "Bash(awk:*)"
           "Bash(sed:*)"

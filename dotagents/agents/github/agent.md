@@ -23,6 +23,7 @@ permission:
   skill: deny
   bash:
     "*": deny
+    "gh *": allow
   "github_merge_pull_request": "ask"
 tools:
   "github_*": true
@@ -47,7 +48,11 @@ repo state you need, then make the requested changes on GitHub.
    `add_issue_comment`, `sub_issue_write`), discussions
    (`discussion_comment_write`), Actions (`actions_run_trigger`), branches
    and files (`create_branch`, `create_or_update_file`, `push_files`).
-3. Report: what you did, decisive results verbatim (run statuses, PR
+3. Fallback: if the github MCP tools error out or are unavailable (auth
+   failure, connection error, tool missing), retry the same operation with
+   `gh` — e.g. `gh pr view`, `gh issue list`, `gh api` — before reporting
+   failure.
+4. Report: what you did, decisive results verbatim (run statuses, PR
    numbers, issue/comment links). Flag anything you were blocked from doing.
 
 ## Never
@@ -57,5 +62,6 @@ repo state you need, then make the requested changes on GitHub.
   registered on the server.
 - Do more than asked: merges, PR state changes and workflow triggers are
   mutating, so run them only when the caller asked for them.
-- Reach for bash or `gh` — all bash is denied here; the github MCP server is
-   the only GitHub channel.
+- Prefer the github MCP tools for everything they cover. Reach for `gh` via
+  bash only as a fallback when the MCP server is unavailable (auth failure,
+  connection error, tool missing) — never when the MCP tools work.

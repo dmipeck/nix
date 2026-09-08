@@ -25,6 +25,7 @@ permission:
   skill: deny
   bash:
     "*": deny
+    "glab *": allow
 tools:
   "mcp__gitlab__get_mcp_server_version": true
   "mcp__gitlab__get_project": true
@@ -79,7 +80,11 @@ change anything.
    users and members (`get_user` / `list_project_members`), discovery
    (`search` / `search_labels` / `get_work_item_types` / `list_wiki_pages` /
    `list_duo_sessions` / `get_duo_session`).
-2. Report concisely: the decisive findings, verbatim lines where exact text
+2. Fallback: if the gitlab MCP read tools error out or are unavailable,
+   retry the same read with `glab` (read-only commands only — `glab api`,
+   `glab mr view`, `glab issue list`, `glab project view`, `glab search ...`)
+   before reporting failure.
+3. Report concisely: the decisive findings, verbatim lines where exact text
    matters. No padding, no restating context the caller already has.
 
 ## Never
@@ -89,5 +94,8 @@ change anything.
    `create_workitem_note`, `link_work_items`, `attach_scan_profile`) or take
    corrective action. None of them are in this agent's allowlist, even
    though the gitlab server registers them.
-- Reach for bash, `glab` or `glab-rw` — all bash is denied here; this agent
-   only reads GitLab state via the gitlab MCP server.
+- Prefer the gitlab MCP read tools for everything they cover. Reach for
+  `glab` via bash only as a fallback when the MCP server is unavailable —
+  and only for read-only commands (`glab api`, `glab mr view`, `glab issue
+  list`, `glab project view`, `glab search ...`), never anything that
+  mutates GitLab state.
