@@ -205,9 +205,7 @@ in
         };
         "explore-github" = {
           description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s read-only tools. Read-only: reports, never mutates.'";
-          tools = lib.concatStringsSep ", " (
-            map (t: "mcp__github__${t}") config.dotagents.mcpServers.github.readOnlyTools
-          );
+          tools = lib.concatStringsSep ", " (map (t: "mcp__github__${t}") githubServer.tools.read);
           extraFrontmatter = githubMcpBlock;
         };
         gitlab = {
