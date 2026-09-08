@@ -444,6 +444,9 @@ in
           # glab/gh CLIs stay installed for human shell use; orchestrate
           # already denies all bash in its own agent file, so they need no
           # top-level deny here and every Bash-capable agent may use them.
+          # sops stays denied at the top level because agents have no need
+          # to decrypt secrets; sops-nix already hands them the decrypted
+          # file paths, so a top-level deny is the simplest gate.
           # The write-capable cloudflare and cloudflare-bindings subagents
           # ask first too (permission.task); the read-only
           # cloudflare-observability subagent needs no gate. The wrangler
@@ -461,6 +464,7 @@ in
               "awk *" = "deny";
               "sed *" = "deny";
               "kubectl *" = "deny";
+              "sops *" = "deny";
             };
             external_directory = {
               # Read-only window into the tool config trees that other agent

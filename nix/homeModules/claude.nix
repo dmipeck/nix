@@ -548,10 +548,14 @@ in
         # github/explore-github and gitlab/explore-gitlab subagents, which
         # allow the CLIs explicitly as a fallback when their MCP servers are
         # unavailable, and every other Bash-capable agent keeps them usable.
+        # sops stays denied at the top level because agents have no need to
+        # decrypt secrets; sops-nix already hands them the decrypted file
+        # paths, so a top-level deny is the simplest gate.
         permissions.deny = [
           "Bash(awk:*)"
           "Bash(sed:*)"
           "Bash(kubectl:*)"
+          "Bash(sops:*)"
           "Agent(claude)"
           "DesignSync"
           "NotebookEdit"
