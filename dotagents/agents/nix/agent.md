@@ -25,15 +25,10 @@ permission:
   skill: deny
   bash:
     "*": deny
+    "nix *": allow
     "nixos-rebuild *": allow
     "sudo nixos-rebuild *": allow
     "home-manager *": allow
-    "nix build *": allow
-    "nix flake lock*": allow
-    "nix flake update*": allow
-    "nix flake metadata*": allow
-    "nix profile *": allow
-    "nix store *": allow
     "nix-collect-garbage *": allow
 ---
 
