@@ -440,15 +440,16 @@ in
 
           # The github and gitlab MCP servers' tools are denied by default
           # (tools map above); orchestrate asks before spawning the
-          # write-capable github/gitlab subagent (permission.task).
-          # glab/gh stay installed for human shell use but are denied
-          # to every agent that inherits this top-level permission. The
-          # write-capable cloudflare and cloudflare-bindings subagents ask
-          # first too (permission.task); the read-only cloudflare-observability
-          # subagent needs no gate. The wrangler CLI is deliberately not
-          # denied here: the cloudflare agents never reach bash (their own
-          # agent files deny all bash), so a top-level deny would be dead
-          # weight.
+          # write-capable github/gitlab subagent (permission.task). The
+          # glab/gh CLIs stay installed for human shell use; orchestrate
+          # already denies all bash in its own agent file, so they need no
+          # top-level deny here and every Bash-capable agent may use them.
+          # The write-capable cloudflare and cloudflare-bindings subagents
+          # ask first too (permission.task); the read-only
+          # cloudflare-observability subagent needs no gate. The wrangler
+          # CLI is deliberately not denied here: the cloudflare agents never
+          # reach bash (their own agent files deny all bash), so a top-level
+          # deny would be dead weight.
           permission = {
             task = {
               github = "ask";
@@ -460,8 +461,6 @@ in
               "awk *" = "deny";
               "sed *" = "deny";
               "kubectl *" = "deny";
-              "gh *" = "deny";
-              "glab *" = "deny";
             };
             external_directory = {
               # Read-only window into the tool config trees that other agent
