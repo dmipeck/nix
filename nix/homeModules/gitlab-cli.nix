@@ -48,8 +48,11 @@
 
         host = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
-          default = null;
-          description = "GitLab base URL, e.g. https://gitlab.example.com.";
+          default = "https://gitlab.littlemonkey.co.nz";
+          description = ''
+            GitLab base URL, e.g. https://gitlab.example.com. Defaults to
+            https://gitlab.littlemonkey.co.nz.
+          '';
         };
 
         user = lib.mkOption {
@@ -70,12 +73,14 @@
 
         clientId = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
-          default = null;
+          default = "9fd1013ec5b9bb00aeb14332656c0b84bd152c79e74e2488af5334e5db58f69c";
           description = ''
             OAuth client_id (Application ID) for glab auth login against this
-            host. Register the OAuth app with redirect
-            http://localhost:7171/auth/redirect and scopes openid profile
-            read_user write_repository api (Confidential NOT selected).
+            host. Defaults to the pre-configured OAuth client_id for
+            gitlab.littlemonkey.co.nz, so `glab auth login` works without a
+            manual OAuth app registration (redirect
+            http://localhost:7171/auth/redirect, scopes openid profile
+            read_user write_repository api, Confidential NOT selected).
           '';
         };
       };
