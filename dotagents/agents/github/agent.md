@@ -57,6 +57,8 @@ repo state you need, then make the requested changes on GitHub.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Create or delete repositories, fork, or delete files outside a normal git
   flow — `create_repository`, `delete_file` and `fork_repository` are not
   registered on the server.

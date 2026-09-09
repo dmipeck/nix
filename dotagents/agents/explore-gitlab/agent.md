@@ -89,6 +89,8 @@ change anything.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a write tool (`create_issue`, `create_merge_request`,
    `create_merge_request_note`, `add_branch`, `manage_pipeline`,
    `create_workitem_note`, `link_work_items`, `attach_scan_profile`) or take

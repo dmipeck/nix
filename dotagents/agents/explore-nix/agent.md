@@ -66,6 +66,8 @@ anything.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a state-changing nix command — `nix build`, `nix develop`,
   `nix shell`, `nix run`, `nix profile`, `nix copy`, `nix store` writes
   (`delete`, `gc`, `optimise`), `nix flake lock`, `nix flake update`,

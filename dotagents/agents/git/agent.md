@@ -50,6 +50,8 @@ write path.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Do more than asked: merges, rebases, resets, and history rewrites are
   destructive, so run them only when the caller asked for them.
 - `--no-verify`, `--amend`, or rewrite pushed history unless explicitly asked.

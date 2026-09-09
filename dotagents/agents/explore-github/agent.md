@@ -116,6 +116,8 @@ find, never change anything.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a write tool (actions_run_trigger, assign_copilot_to_issue,
   request_copilot_review, assign_copilot_to_issue_with_intent,
   discussion_comment_write, create_gist, update_gist,

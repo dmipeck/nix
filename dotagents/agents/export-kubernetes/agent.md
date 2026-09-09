@@ -48,6 +48,8 @@ find, never change anything.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a write tool (`apply-k8s-resource`, `k8s-pod-exec`) or take corrective
   action against the cluster.
 - Edit files or run local commands (kubectl etc.); this agent only queries

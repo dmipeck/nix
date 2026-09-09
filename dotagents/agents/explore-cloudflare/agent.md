@@ -43,6 +43,8 @@ Read-only: report what you find, never change anything.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Never run execute — not in this agent's allowlist; execute can mutate
    anything the token can reach, even though the cloudflare server registers
    it.

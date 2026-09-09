@@ -54,6 +54,8 @@ change anything.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a write tool (create_*, update_*, delete_*, sync, run-action) or take
   corrective action; the argocd server is started with `MCP_READ_ONLY=true`
   and only exposes read-only tools, so write tools do not exist to be called.

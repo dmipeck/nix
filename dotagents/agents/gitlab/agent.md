@@ -65,6 +65,8 @@ requested changes on GitLab with its write tools.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a mutating operation beyond what was asked: the write tools
    (`create_issue`, `create_merge_request`, `create_merge_request_note`,
    `save_merge_request_review`, `accept_merge_request`, `add_branch`,

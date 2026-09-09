@@ -52,6 +52,8 @@ with its write tools.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a mutating operation beyond what was asked: the write tools
    (`kv_namespace_create`, `kv_namespace_delete`, `kv_namespace_update`,
    `r2_bucket_create`, `r2_bucket_delete`, `d1_database_create`,

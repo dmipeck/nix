@@ -45,6 +45,8 @@ You are only allowed to use git commands and file-system commands/tools
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a mutating git command — `add`, `commit`, `push`, `pull`, `reset`,
   `checkout`, `switch`, `restore`, `merge`, `rebase`, `revert`, `cherry-pick`,
   `stash`, `clean`, `branch -d`/`-D`, `tag -d`, `gc` — or take corrective

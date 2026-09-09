@@ -43,6 +43,8 @@ execute.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Do not reach for bash or wrangler — all bash is denied here; the cloudflare
    MCP server is the only Cloudflare channel.
 - Execute's capability is exactly the token's capability, and execute is

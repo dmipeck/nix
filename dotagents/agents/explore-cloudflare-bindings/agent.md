@@ -58,6 +58,8 @@ anything.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Run a create/delete/update/query tool — none are in this agent's allowlist,
    even though the bindings server registers them. Report what you find; take
    no corrective action.

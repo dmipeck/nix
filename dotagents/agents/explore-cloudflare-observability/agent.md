@@ -46,5 +46,7 @@ anything.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Never mutate anything — the observability server registers query tools
    only, and all bash is denied here.

@@ -59,6 +59,8 @@ the result.
 
 ## Never
 
+- Do not attempt to fix errors. Never investigate permission failures. If
+  additional permissions are required, report that.
 - Explore configuration, answer questions, or look up options and packages —
   that is the explore-nix subagent's job.
 - Edit files or modify the working tree beyond what the given command
