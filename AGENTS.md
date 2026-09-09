@@ -55,7 +55,8 @@ flakes. `CLAUDE.md` is a symlink to this file.
   telling adapters whether a skill key is a plain skill or a whole bundle —
   and `config.dotagents.skillCommands` (list of skill names): each listed
   plain skill gets a hard-copied slash-command (description + body from
-  `SKILL.md`; see `scripts/skill-md-to-command.sh` / ADR 0001). Local and
+  `SKILL.md` via `nix/dotagents/hard-copy-skill-md.nix` / ADR 0001;
+  sources in `config.dotagents.skillCommandSources`). Local and
   mattpocock discovery both scan `disable-model-invocation: true` to
   populate that list; adapters omit those names from the product skill
   surface so slash entry is the only runtime path. Auto values are

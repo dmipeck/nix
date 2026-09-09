@@ -42,7 +42,8 @@ let
       builtins.readFile (mattpocockSkillsSrc + "/skills/" + category + "/" + name + "/SKILL.md")
     ) != null;
 
-  userInvokedNames = map (s: s.name) (lib.filter hasInvocationFlag discovered);
+  userInvoked = lib.filter hasInvocationFlag discovered;
+  userInvokedNames = map (s: s.name) userInvoked;
 
   # Copy an upstream sub-directory into $out/skills/<name>, producing the
   # shared $out/skills/<name>/SKILL.md layout both Claude plugins and opencode
@@ -59,4 +60,12 @@ in
     map (s: lib.nameValuePair s.name (mkSkill s)) discovered
   );
   config.dotagents.skillCommands = lib.mkOptionDefault userInvokedNames;
+  config.dotagents.skillCommandSources = builtins.listToAttrs (
+    map (
+      s:
+      lib.nameValuePair s.name (
+        lib.mkOptionDefault (mattpocockSkillsSrc + "/skills/" + s.category + "/" + s.name + "/SKILL.md")
+      )
+    ) userInvoked
+  );
 }

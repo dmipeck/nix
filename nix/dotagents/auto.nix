@@ -40,14 +40,12 @@ let
       cp ${commandsDir}/${name}.md "$out"
     '';
   # Skill-command: hard-copy SKILL.md description + body into a slash-command
-  # file (see scripts/skill-md-to-command.sh / ADR 0001).
-  skillMdToCommand = ../../scripts/skill-md-to-command.sh;
+  # file (see ./hard-copy-skill-md.nix / ADR 0001). Source paths come from
+  # config.dotagents.skillCommandSources (no IFD on skill packages).
+  hardCopySkillMd = import ./hard-copy-skill-md.nix lib;
   skillCommandPkg =
-    name: skill:
-    pkgs.runCommand "dotagents-command-${name}" { } ''
-      mkdir -p "$(dirname "$out")"
-      bash ${skillMdToCommand} ${skill}/skills/${name}/SKILL.md > "$out"
-    '';
+    name: skillMdPath:
+    pkgs.writeText "dotagents-command-${name}" (hardCopySkillMd (builtins.readFile skillMdPath));
 
   # Local skills with disable-model-invocation: true join skillCommands (same
   # discovery rule as mattpocock-skills.nix).
@@ -111,6 +109,14 @@ in
       SKILL.md). Membership is the sole switch: tool adapters omit these
       names from the product skill surface. disable-model-invocation in
       SKILL.md is only a discovery signal for populating this list.
+    '';
+  };
+  options.dotagents.skillCommandSources = lib.mkOption {
+    type = discovered lib.types.path;
+    description = ''
+      SKILL.md source paths used to hard-copy skill-commands, keyed by skill
+      name. Discovery modules set these alongside skillCommands so evaluation
+      reads source trees (not skill package store paths).
     '';
   };
   options.dotagents.cheapSubagents = lib.mkOption {
@@ -223,18 +229,32 @@ in
     name: lib.mkOptionDefault (agentsDir + "/${name}/agent.md")
   );
   config.dotagents.skillCommands = lib.mkOptionDefault localSkillCommands;
+  config.dotagents.skillCommandSources = lib.genAttrs localSkillCommands (
+    name: lib.mkOptionDefault (skillsDir + "/${name}/SKILL.md")
+  );
   config.dotagents.commands =
     let
-      # Plain skills listed in skillCommands (not collection bundles).
+      # Plain skills listed in skillCommands with a source SKILL.md path.
       hardCopiedSkillNames = lib.filter (
         name:
-        (config.dotagents.skills ? ${name}) && (config.dotagents.skillLayouts.${name} or "skill") == "skill"
+        (config.dotagents.skills ? ${name})
+        && (config.dotagents.skillLayouts.${name} or "skill") == "skill"
+        && (config.dotagents.skillCommandSources ? ${name})
+      ) config.dotagents.skillCommands;
+      missingSources = lib.filter (
+        name:
+        (config.dotagents.skills ? ${name})
+        && (config.dotagents.skillLayouts.${name} or "skill") == "skill"
+        && !(config.dotagents.skillCommandSources ? ${name})
       ) config.dotagents.skillCommands;
     in
-    lib.genAttrs commandNames (name: lib.mkOptionDefault (commandPkg name))
-    // lib.genAttrs hardCopiedSkillNames (
-      name: lib.mkOptionDefault (skillCommandPkg name config.dotagents.skills.${name})
-    );
+    if missingSources != [ ] then
+      throw "dotagents.skillCommands missing skillCommandSources for: ${lib.concatStringsSep ", " missingSources}"
+    else
+      lib.genAttrs commandNames (name: lib.mkOptionDefault (commandPkg name))
+      // lib.genAttrs hardCopiedSkillNames (
+        name: lib.mkOptionDefault (skillCommandPkg name config.dotagents.skillCommandSources.${name})
+      );
 
   config.dotagents.localPackages = {
     whole-tree = wholeTree;

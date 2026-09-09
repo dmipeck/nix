@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
-# Seam: scripts/skill-md-to-command.sh — SKILL.md path → command markdown on stdout.
+# Seam: nix/dotagents/hard-copy-skill-md.nix — SKILL.md text → command markdown.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SCRIPT="$ROOT/scripts/skill-md-to-command.sh"
 FIX="$(cd "$(dirname "$0")" && pwd)/fixtures"
+LIB="$ROOT/nix/dotagents/hard-copy-skill-md.nix"
 fail=0
+
+eval_copy() {
+  local src=$1
+  nix-instantiate --eval --strict --json --expr "
+    let
+      pkgs = import <nixpkgs> { };
+      hardCopy = import ${LIB} pkgs.lib;
+      text = builtins.readFile ${src};
+    in
+    hardCopy text
+  " | sed -e 's/^"//' -e 's/"$//' -e 's/\\n/\n/g' -e 's/\\"/"/g' -e 's/\\\\/\\/g'
+}
 
 assert_eq() {
   local name="$1" expected="$2" actual="$3"
@@ -21,9 +33,8 @@ assert_eq() {
 }
 
 assert_fails() {
-  local name="$1"
-  shift
-  if "$@" >/dev/null 2>&1; then
+  local name="$1" src="$2"
+  if eval_copy "$src" >/dev/null 2>&1; then
     echo "not ok - $name (expected non-zero exit)"
     fail=1
   else
@@ -31,21 +42,16 @@ assert_fails() {
   fi
 }
 
-# --- happy: multiline description, strips skill-only keys ---
-got=$("$SCRIPT" "$FIX/with-flag.md")
+got=$(eval_copy "$FIX/with-flag.md")
 want=$(cat "$FIX/with-flag.want.md")
 assert_eq "multiline description hard-copy" "$want" "$got"
 
-# --- happy: plain single-line description ---
-got=$("$SCRIPT" "$FIX/plain-desc.md")
+got=$(eval_copy "$FIX/plain-desc.md")
 want=$(cat "$FIX/plain-desc.want.md")
 assert_eq "plain description hard-copy" "$want" "$got"
 
-# --- missing description fails ---
-assert_fails "missing description" "$SCRIPT" "$FIX/no-desc.md"
-
-# --- no frontmatter fails ---
-assert_fails "no frontmatter" "$SCRIPT" "$FIX/no-fm.md"
+assert_fails "missing description" "$FIX/no-desc.md"
+assert_fails "no frontmatter" "$FIX/no-fm.md"
 
 if [[ "$fail" -ne 0 ]]; then
   echo "FAILED"
