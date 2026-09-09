@@ -40,13 +40,13 @@ let
       cp ${commandsDir}/${name}.md "$out"
     '';
   # Skill-command: hard-copy SKILL.md description + body into a slash-command
-  # file (see scripts/skill-md-to-command.py / ADR 0001).
-  skillMdToCommand = ../../scripts/skill-md-to-command.py;
+  # file (see scripts/skill-md-to-command.sh / ADR 0001).
+  skillMdToCommand = ../../scripts/skill-md-to-command.sh;
   skillCommandPkg =
     name: skill:
-    pkgs.runCommand "dotagents-command-${name}" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+    pkgs.runCommand "dotagents-command-${name}" { } ''
       mkdir -p "$(dirname "$out")"
-      python3 ${skillMdToCommand} ${skill}/skills/${name}/SKILL.md > "$out"
+      bash ${skillMdToCommand} ${skill}/skills/${name}/SKILL.md > "$out"
     '';
 
   # Local skills with disable-model-invocation: true join skillCommands (same
