@@ -58,7 +58,8 @@ in
       ) agents;
 
       # Registered agent set: the same conditional composition as before (github
-      # pair / argocd / gitlab gating), over `allAgents`.
+      # pair / argocd / gitlab gating), over `allAgents`. plane is a write-only
+      # agent gated on `dotagents.mcps.plane.enable` whose spawning asks first.
       opencodeAgents =
         (lib.removeAttrs allAgents (
           githubAgentNames
@@ -67,6 +68,7 @@ in
           ++ cloudflareAgentNames
           ++ cloudflareBindingsAgentNames
           ++ cloudflareObservabilityAgentNames
+          ++ planeAgentNames
         ))
         // lib.optionalAttrs config.dotagents.mcps.github.enable (
           lib.genAttrs githubAgentNames (n: allAgents.${n})
@@ -85,6 +87,9 @@ in
         )
         // lib.optionalAttrs config.dotagents.mcps.cloudflare.observability.enable (
           lib.genAttrs cloudflareObservabilityAgentNames (n: allAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.plane.enable (
+          lib.genAttrs planeAgentNames (n: allAgents.${n})
         );
 
       # opencode's home-manager module writes an agent value to
@@ -125,6 +130,9 @@ in
       ];
       cloudflareObservabilityAgentNames = [
         "explore-cloudflare-observability"
+      ];
+      planeAgentNames = [
+        "plane"
       ];
 
       # opencode namespaces every MCP tool as `<server>_<tool>`. By default the
@@ -459,6 +467,7 @@ in
               gitlab = "ask";
               cloudflare = "ask";
               cloudflare-bindings = "ask";
+              plane = "ask";
             };
             bash = {
               "awk *" = "deny";
