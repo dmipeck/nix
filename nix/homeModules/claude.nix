@@ -154,6 +154,32 @@ in
       cloudflareObservabilityMcpBlock =
         mkCloudflareMcpBlock "cloudflare-observability"
           config.dotagents.mcpServers."cloudflare-observability".url;
+      # The self-hosted Plane remote MCP server (makeplane/plane-mcp-server,
+      # PAT streamable-HTTP endpoint) authenticates with a Plane API PAT sent
+      # as an Authorization: Bearer header and needs X-Workspace-slug to
+      # select the workspace. As with cloudflare the token is read at
+      # connection time from the sops-decrypted file via a headersHelper
+      # script, so only the secret file path lands in the store; the slug is
+      # a plain string baked into the script. The plane agent registers only
+      # when the per-user plane instance (`dotagents.mcps.plane.enable`) is
+      # enabled (gating below), so a disabled instance never surfaces.
+      planeServer = config.dotagents.mcpServers.plane;
+      planeHeadersHelper = pkgs.writeShellScriptBin "plane-mcp-headers" ''
+        out='{"X-Workspace-slug": "${config.dotagents.mcps.plane.workspaceSlug}"'
+        ${lib.optionalString (config.dotagents.mcps.plane.tokenSopsKey != null) ''
+          token="$(<"${config.sops.secrets.${config.dotagents.mcps.plane.tokenSopsKey}.path}")"
+          out="$out, \"Authorization\": \"Bearer $token\""
+        ''}
+        out="$out}"
+        printf '%s' "$out"
+      '';
+      planeMcpBlock = ''
+        mcpServers:
+          - plane:
+              type: http
+              url: ${planeServer.url}
+              headersHelper: ${planeHeadersHelper}/bin/plane-mcp-headers
+      '';
       argocdServer = config.dotagents.mcpServers.argocd;
       argocdMcpBlock = ''
         mcpServers:
@@ -294,6 +320,13 @@ in
           tools = "mcp__argocd__list_clusters, mcp__argocd__get_appproject, mcp__argocd__list_applications, mcp__argocd__get_application, mcp__argocd__get_application_resource_tree, mcp__argocd__get_application_managed_resources, mcp__argocd__get_application_workload_logs, mcp__argocd__get_resource_events, mcp__argocd__get_resource_actions";
           extraFrontmatter = argocdMcpBlock;
         };
+        plane = {
+          # Single-quoted YAML scalar: the description contains `: ` which a
+          # plain scalar would misparse as a mapping separator.
+          description = "'Full Plane project management assistant — reads and writes Plane workspaces, projects, cycles, modules, work items, comments, labels, members, intake, releases, work logs, attachments, links, relations and custom properties through the plane MCP server. Write-capable: performs the Plane operations asked of it.'";
+          tools = "mcp__plane__*";
+          extraFrontmatter = planeMcpBlock;
+        };
         orchestrate = {
           description = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent.";
           tools = "Agent, AskUserQuestion, TodoWrite, Skill";
@@ -389,6 +422,9 @@ in
       cloudflareObservabilityAgentNames = [
         "explore-cloudflare-observability"
       ];
+      planeAgentNames = [
+        "plane"
+      ];
 
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
@@ -447,6 +483,7 @@ in
           ++ cloudflareAgentNames
           ++ cloudflareBindingsAgentNames
           ++ cloudflareObservabilityAgentNames
+          ++ planeAgentNames
         ))
         // lib.optionalAttrs config.dotagents.mcps.github.enable (
           lib.genAttrs githubAgentNames (n: allClaudeAgents.${n})
@@ -465,6 +502,9 @@ in
         )
         // lib.optionalAttrs config.dotagents.mcps.cloudflare.observability.enable (
           lib.genAttrs cloudflareObservabilityAgentNames (n: allClaudeAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.plane.enable (
+          lib.genAttrs planeAgentNames (n: allClaudeAgents.${n})
         );
 
       claudeLspServers = {
@@ -579,6 +619,7 @@ in
           "Agent(general-purpose)"
           "Agent(cloudflare)"
           "Agent(cloudflare-bindings)"
+          "Agent(plane)"
         ];
         # Read-only cross-tool config access: agents may read the tool config
         # content dirs (claude skills/agents/commands, opencode config,
