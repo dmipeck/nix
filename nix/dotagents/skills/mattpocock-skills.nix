@@ -58,5 +58,5 @@ in
   config.dotagents.skills = builtins.listToAttrs (
     map (s: lib.nameValuePair s.name (mkSkill s)) discovered
   );
-  config.dotagents.skillCommands = userInvokedNames;
+  config.dotagents.skillCommands = lib.mkOptionDefault userInvokedNames;
 }

@@ -222,18 +222,17 @@ in
   config.dotagents.agents = lib.genAttrs agentNames (
     name: lib.mkOptionDefault (agentsDir + "/${name}/agent.md")
   );
-  config.dotagents.skillCommands = localSkillCommands;
+  config.dotagents.skillCommands = lib.mkOptionDefault localSkillCommands;
   config.dotagents.commands =
     let
-      # Names from config.dotagents.skillCommands that resolve to a plain skill
-      # (present in config.dotagents.skills, not a "collection" bundle).
-      invokedSkillNames = lib.filter (
+      # Plain skills listed in skillCommands (not collection bundles).
+      hardCopiedSkillNames = lib.filter (
         name:
         (config.dotagents.skills ? ${name}) && (config.dotagents.skillLayouts.${name} or "skill") == "skill"
       ) config.dotagents.skillCommands;
     in
     lib.genAttrs commandNames (name: lib.mkOptionDefault (commandPkg name))
-    // lib.genAttrs invokedSkillNames (
+    // lib.genAttrs hardCopiedSkillNames (
       name: lib.mkOptionDefault (skillCommandPkg name config.dotagents.skills.${name})
     );
 
