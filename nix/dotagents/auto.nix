@@ -40,9 +40,10 @@ let
       cp ${commandsDir}/${name}.md "$out"
     '';
   # Skill-command: hard-copy SKILL.md description + body into a slash-command
-  # file (see ./hard-copy-skill-md.nix / ADR 0001). Source paths come from
-  # config.dotagents.skillCommandSources (no IFD on skill packages).
-  hardCopySkillMd = import ./hard-copy-skill-md.nix lib;
+  # file (see lib/hard-copy-skill-md.nix / ADR 0001). Source paths come from
+  # config.dotagents.skillCommandSources (no IFD on skill packages). Lives
+  # under lib/ (not nix/) so import-tree does not treat it as a module.
+  hardCopySkillMd = import ../../lib/hard-copy-skill-md.nix lib;
   skillCommandPkg =
     name: skillMdPath:
     pkgs.writeText "dotagents-command-${name}" (hardCopySkillMd (builtins.readFile skillMdPath));
