@@ -124,7 +124,7 @@ in
       adapter pulls from config.dotagents.models.<client>.subagent (see the
       `models` option for the per-client defaults). The source agent.md files
       stay model-neutral; each adapter injects its own `model:` line at render
-      time. Keep this list in sync with both adapters.
+      time.       Keep this list in sync with every adapter.
     '';
   };
   options.dotagents.models = lib.mkOption {
@@ -175,6 +175,19 @@ in
           variation = "none";
         };
       };
+      cursor = {
+        primary = {
+          # Cursor session model is usually picked in the UI/CLI; inherit
+          # keeps orchestrate on whatever the parent is running.
+          model = "inherit";
+          variation = null;
+        };
+        subagent = {
+          # Fast Composer for cheap worker subagents.
+          model = "composer-2.5";
+          variation = null;
+        };
+      };
     };
     description = ''
       Per-client default model + variation for the primary agent and for the
@@ -183,8 +196,9 @@ in
       effortLevel for the primary and agent `model:`/`effort:` lines for cheap
       subagents; opencode uses settings.model + the default agent's `variant:`
       for the primary and `model:`/`variant:` lines in the rendered cheap
-      subagent files. A null variation means the adapter omits the variation
-      field entirely.
+      subagent files; cursor writes `model:` (and optional `[effort=…]`
+      brackets from variation) into `~/.cursor/agents/<name>.md`. A null
+      variation means the adapter omits the variation field entirely.
     '';
   };
 
