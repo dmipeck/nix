@@ -11,6 +11,7 @@ description: >-
   adopt-family phrases ("adopt this repo", "onboard a new project") still
   route here — adopting is just what you call it once every gate is green —
   even when they never say Nix or devshell.
+disable-model-invocation: true
 ---
 
 # Check Repo

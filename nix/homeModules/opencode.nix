@@ -5,6 +5,7 @@ let
   # home-manager module below can reference the packages.
   agentSkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
+  skillCommands = flakeArgs.config.dotagents.skillCommands;
   agents = flakeArgs.config.dotagents.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Per-client default model + variation (dotagents/models), driven by the
@@ -187,9 +188,13 @@ in
       # skill into dotagents/skills/ needs no adapter edit. Collection keys
       # (whole bundles whose $out/skills/ holds many constituent skills) are
       # skipped: opencode has no single-skill form for them, and their
-      # constituents are already registered as separate keys.
+      # constituents are already registered as separate keys. skillCommands
+      # names are hard-copied slash-commands only — omit from the skill
+      # surface (ADR 0001).
       skills = lib.mapAttrs' (name: pkg: lib.nameValuePair name "${pkg}/skills/${name}") (
-        lib.filterAttrs (name: _: (skillLayouts.${name} or "skill") != "collection") agentSkills
+        lib.filterAttrs (
+          name: _: (skillLayouts.${name} or "skill") != "collection" && !(builtins.elem name skillCommands)
+        ) agentSkills
       );
 
       # Both themes share the opencode theme schema and mapping; only the

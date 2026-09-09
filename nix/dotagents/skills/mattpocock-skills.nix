@@ -34,8 +34,8 @@ let
   ) categories;
 
   # User-invoked skills carry `disable-model-invocation: true` in their SKILL.md
-  # frontmatter; those get an auto-generated slash-command via
-  # config.dotagents.skillCommands.
+  # frontmatter; those join config.dotagents.skillCommands (hard-copied
+  # slash-commands; adapters omit them from the skill surface — ADR 0001).
   hasInvocationFlag =
     { name, category }:
     builtins.match ".*disable-model-invocation:[ \t]*true.*" (

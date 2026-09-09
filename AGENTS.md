@@ -52,11 +52,17 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `agent.md`), `config.dotagents.commands` (attrsOf package, `$out` = the
   command file), plus `config.dotagents.skillLayouts` (attrsOf
   `"skill" | "collection"`, default `"skill"`) — per-key layout metadata
-  telling adapters whether a skill key is a plain skill or a whole bundle.
-  Auto values are `lib.mkOptionDefault` (priority 1500, same as
-  an option default) so a profile can still override them;
-  `config.dotagents.localPackages.whole-tree` is the whole content tree in one
-  store path.
+  telling adapters whether a skill key is a plain skill or a whole bundle —
+  and `config.dotagents.skillCommands` (list of skill names): each listed
+  plain skill gets a hard-copied slash-command (description + body from
+  `SKILL.md`; see `scripts/skill-md-to-command.py` / ADR 0001). Local and
+  mattpocock discovery both scan `disable-model-invocation: true` to
+  populate that list; adapters omit those names from the product skill
+  surface so slash entry is the only runtime path. Auto values are
+  `lib.mkOptionDefault` (priority 1500, same as an option default) so a
+  profile can still override them;
+  `config.dotagents.localPackages.whole-tree` is the whole content tree in
+  one store path.
 - `nix/dotagents/` is the flakeModule machinery for the AI-agent stack: the
   neutral `dotagents.mcpServers` option model (`nix/dotagents/dotagents.nix`),
   per-server configs (`nix/dotagents/mcps/*.nix`), the local content
@@ -86,17 +92,19 @@ flakes. `CLAUDE.md` is a symlink to this file.
   server → edit `nix/dotagents/mcps/`.
 - `nix/homeModules/opencode.nix` and `claude.nix` are thin adapters: each
   iterates `config.dotagents.skills`, `config.dotagents.agents` and
-  `config.dotagents.commands` generically and maps them onto the tool's config
-  dialect. Every skill becomes a `$out/skills/<name>` entry (opencode `skills`,
-  claude `plugins`); a collection key (layout `"collection"`) is a whole bundle
-  — claude renders the package root as a plugin, opencode skips it (its
-  constituents are registered as separate keys already); every agent is
-  rendered from its `agent.md` — opencode
-  passes the files through, claude re-renders them with a generic renderer plus
-  a per-agent override map (e.g. `nix`, `explore-github` and `github` carry
-  inline `mcpServers` blocks); commands pass straight through to each tool's
-  custom-command set. The github pair (`explore-github`, `github`) is
-  registered only when `config.dotagents.mcps.github.enable` is set.
+  `config.dotagents.commands` generically and maps them onto the tool's
+  config dialect. Every skill becomes a `$out/skills/<name>` entry
+  (opencode `skills`, claude `plugins`) except names in
+  `skillCommands`, which are omitted (slash-only); a collection key
+  (layout `"collection"`) is a whole bundle — claude renders the package
+  root as a plugin, opencode skips it (its constituents are registered as
+  separate keys already); every agent is rendered from its `agent.md` —
+  opencode passes the files through, claude re-renders them with a generic
+  renderer plus a per-agent override map (e.g. `nix`, `explore-github` and
+  `github` carry inline `mcpServers` blocks); commands pass straight
+  through to each tool's custom-command set. The github pair
+  (`explore-github`, `github`) is registered only when
+  `config.dotagents.mcps.github.enable` is set.
 - Auto-pickup: to add a skill, agent or command, just drop the content into
   `dotagents/skills/<name>/SKILL.md`, `dotagents/agents/<name>/agent.md` or
   `dotagents/commands/<file>.md` — both tools pick it up on the next

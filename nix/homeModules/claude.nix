@@ -7,6 +7,7 @@ let
   # can reference the packages.
   skills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
+  skillCommands = flakeArgs.config.dotagents.skillCommands;
   agents = flakeArgs.config.dotagents.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Per-client default model + variation (config.dotagents.models); this
@@ -427,12 +428,14 @@ in
       # ---------------------------------------------------------------------
       claudeContext = config.dotagents.context;
 
+      # skillCommands names are hard-copied slash-commands only — omit from
+      # the Claude plugin/skill surface (ADR 0001).
       claudePlugins = lib.mapAttrs' (
         name: pkg:
         lib.nameValuePair name (
           if (skillLayouts.${name} or "skill") == "collection" then pkg else "${pkg}/skills/${name}"
         )
-      ) skills;
+      ) (lib.filterAttrs (name: _: !(builtins.elem name skillCommands)) skills);
 
       claudeCommands = {
         set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
@@ -770,12 +773,14 @@ in
           context = claudeContext;
           # Every key of config.dotagents.skills (local auto-discovered skills +
           # every upstream skill package) becomes a Claude plugin named after the
-          # skill, referenced by its $out/skills/<name> directory. The package
-          # values coerce to paths, so no hand-curated name→package map lives
-          # here — dropping a new skill into dotagents/skills/ needs no adapter
-          # edit. Collection keys (layout "collection") are whole bundles
-          # ($out/skills/ holds many constituent skills): they're rendered as
-          # the package root (a whole plugin), not $out/skills/<name>.
+          # skill, referenced by its $out/skills/<name> directory — except names
+          # in skillCommands, which are hard-copied slash-commands only (ADR
+          # 0001). The package values coerce to paths, so no hand-curated
+          # name→package map lives here — dropping a new skill into
+          # dotagents/skills/ needs no adapter edit. Collection keys (layout
+          # "collection") are whole bundles ($out/skills/ holds many constituent
+          # skills): they're rendered as the package root (a whole plugin), not
+          # $out/skills/<name>.
           plugins = claudePlugins;
           commands = claudeCommands;
           # The subagents, re-rendered for Claude Code's agent dialect from the
