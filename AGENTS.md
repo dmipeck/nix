@@ -84,22 +84,27 @@ flakes. `CLAUDE.md` is a symlink to this file.
   auto-imported `nix/dotagents/` modules.
   Add an instance option → edit `nix/homeModules/dotagents.nix`; add a
   server → edit `nix/dotagents/mcps/`.
-- `nix/homeModules/opencode.nix` and `claude.nix` are thin adapters: each
-  iterates `config.dotagents.skills`, `config.dotagents.agents` and
-  `config.dotagents.commands` generically and maps them onto the tool's config
-  dialect. Every skill becomes a `$out/skills/<name>` entry (opencode `skills`,
-  claude `plugins`); a collection key (layout `"collection"`) is a whole bundle
-  — claude renders the package root as a plugin, opencode skips it (its
-  constituents are registered as separate keys already); every agent is
-  rendered from its `agent.md` — opencode
-  passes the files through, claude re-renders them with a generic renderer plus
-  a per-agent override map (e.g. `nix`, `explore-github` and `github` carry
-  inline `mcpServers` blocks); commands pass straight through to each tool's
-  custom-command set. The github pair (`explore-github`, `github`) is
-  registered only when `config.dotagents.mcps.github.enable` is set.
+- `nix/homeModules/opencode.nix`, `claude.nix` and `cursor.nix` are thin
+  adapters: each iterates `config.dotagents.skills`, `config.dotagents.agents`
+  and `config.dotagents.commands` generically and maps them onto the tool's
+  config dialect. Every skill becomes a `$out/skills/<name>` entry (opencode
+  `skills`, claude `plugins`, cursor `~/.cursor/skills/<name>`); a collection
+  key (layout `"collection"`) is a whole bundle — claude renders the package
+  root as a plugin, opencode and cursor skip it (constituents are registered
+  as separate keys already); every agent is rendered from its `agent.md` —
+  opencode passes the files through, claude/cursor re-render them with a
+  generic renderer plus a per-agent override map (e.g. `nix`, `explore-github`
+  and `github` carry inline `mcpServers` blocks on claude; cursor writes
+  `name`/`description`/`model`/`readonly` frontmatter under
+  `~/.cursor/agents/`); commands pass through to each tool's custom-command
+  set (cursor: slash-only skills with `disable-model-invocation: true`). The
+  github pair (`explore-github`, `github`) is registered only when
+  `config.dotagents.mcps.github.enable` is set. Cursor also writes shared
+  context to `~/.cursor/rules/dotagents.mdc` and MCP servers to
+  `~/.cursor/mcp.json`.
 - Auto-pickup: to add a skill, agent or command, just drop the content into
   `dotagents/skills/<name>/SKILL.md`, `dotagents/agents/<name>/agent.md` or
-  `dotagents/commands/<file>.md` — both tools pick it up on the next
+  `dotagents/commands/<file>.md` — every adapter picks it up on the next
   `home-manager switch`, with no nix edits.
 
 ## VSCode special case
