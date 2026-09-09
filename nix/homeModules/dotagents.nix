@@ -45,6 +45,20 @@ in
       cloudflareHeaders = lib.optionalAttrs (mcps.cloudflare.tokenSopsKey != null) {
         Authorization = "Bearer {file:${config.sops.secrets.${mcps.cloudflare.tokenSopsKey}.path}}";
       };
+
+      # The self-hosted Plane MCP server authenticates with a Plane API PAT
+      # sent as an Authorization: Bearer header, plus a required
+      # X-Workspace-slug header. The token header value references the
+      # sops-decrypted secret file via opencode's "{file:...}" substitution,
+      # so only the file path ever appears in the Nix store / generated
+      # config, never the token. The workspace slug comes from the per-user
+      # `dotagents.mcps.plane.workspaceSlug` option (default "littlemonkey").
+      planeHeaders = {
+        "X-Workspace-slug" = mcps.plane.workspaceSlug;
+      }
+      // lib.optionalAttrs (mcps.plane.tokenSopsKey != null) {
+        Authorization = "Bearer {file:${config.sops.secrets.${mcps.plane.tokenSopsKey}.path}}";
+      };
     in
     {
       options.dotagents = {
@@ -292,6 +306,40 @@ in
               '';
             };
           };
+          plane = {
+            enable = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
+                Whether to add the plane MCP server to the AI tool's config.
+                The server is the self-hosted remote Plane MCP endpoint
+                (https://mcp.plane.littlemonkey.co.nz). Off by default since
+                not every profile has a Plane instance; set to true and
+                provide `tokenSopsKey` to enable it.
+              '';
+            };
+            workspaceSlug = lib.mkOption {
+              type = lib.types.str;
+              default = "littlemonkey";
+              description = ''
+                Plane workspace slug sent as the X-Workspace-slug header to
+                the remote MCP server. The server requires this header to
+                select the workspace. Defaults to "littlemonkey".
+              '';
+            };
+            tokenSopsKey = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                Name of the sops-nix secret holding the Plane API PAT. The
+                token is sent to the remote MCP server as an Authorization:
+                Bearer header, read from the sops-decrypted file at runtime
+                (the header references the file via opencode's "{file:...}"
+                substitution, so the token value never lands in the Nix store
+                or this repo). Leave as null to connect without a token.
+              '';
+            };
+          };
         };
 
         mcpServers = lib.mkOption {
@@ -405,6 +453,11 @@ in
         }
         // lib.optionalAttrs mcps.cloudflare.observability.enable {
           "cloudflare-observability" = baseMcpServers."cloudflare-observability" // cloudflareHeaders;
+        }
+        // lib.optionalAttrs mcps.plane.enable {
+          plane = baseMcpServers.plane // {
+            headers = planeHeaders;
+          };
         };
 
         # Agent command files (defined in nix/dotagents/commands/*.nix) passed
