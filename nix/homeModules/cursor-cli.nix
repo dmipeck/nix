@@ -24,6 +24,8 @@
         # Auth is interactive via `cursor-agent auth` (or CURSOR_API_KEY),
         # stored in the CLI's own config. This module only installs the CLI.
         home.packages = [ cfg.package ];
+
+        home.shellAliases.cursor = "cursor-agent";
       };
     };
 }
