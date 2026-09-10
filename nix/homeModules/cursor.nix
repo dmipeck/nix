@@ -32,7 +32,9 @@ in
       # the matching env var is exported from the sops-decrypted file at
       # session start (Cursor has no {file:} substitution).
       # -----------------------------------------------------------------
-      fileRefMatch = builtins.match ".*\\{file:([^}]+)\\}.*";
+      # POSIX ERE (builtins.match): literal braces via character classes — "\{"
+      # is invalid and throws at eval time.
+      fileRefMatch = builtins.match ".*[{]file:([^}]+)[}].*";
 
       # Stable env var name for a "{file:...}" value keyed by server + field.
       fileEnvName =
