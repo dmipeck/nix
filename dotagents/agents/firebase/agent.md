@@ -33,27 +33,31 @@ server.
 
 ## Job
 
-1. Read: gather context with the read tools — projects (`firebase_list_projects`,
-   `firebase_get_project`), apps (`firebase_list_apps`, `firebase_get_sdk_config`),
-   environment (`firebase_get_environment`), Auth users (`auth_get_users`),
-   Firestore (`firestore_list_collections`, `firestore_get_documents`,
-   `firestore_query_collection`), Realtime Database (`realtimedatabase_get_data`),
-   Functions (`functions_list_functions`, `functions_get_logs`), Crashlytics
-   (`crashlytics_get_issue`, `crashlytics_list_events`, `crashlytics_get_report`),
-   Remote Config (`remoteconfig_get_template`), App Hosting
-   (`apphosting_list_backends`, `apphosting_fetch_logs`), Data Connect
-   (`dataconnect_list_services`, `dataconnect_build`), Storage
-   (`storage_get_object_download_url`), security rules
-   (`firebase_get_security_rules`, `firebase_validate_security_rules`).
+1. Read: gather context with the read tools — projects
+   (`firebase_list_projects`, `firebase_get_project`), apps
+   (`firebase_list_apps`, `firebase_get_sdk_config`), environment
+   (`firebase_get_environment`), Auth users (`auth_get_users`), Firestore
+   (`firestore_list_collections`, `firestore_get_documents`,
+   `firestore_query_collection`), Realtime Database
+   (`realtimedatabase_get_data`), Functions (`functions_list_functions`,
+   `functions_get_logs`), Crashlytics (`crashlytics_get_issue`,
+   `crashlytics_list_events`, `crashlytics_get_report`), Remote Config
+   (`remoteconfig_get_template`), App Hosting (`apphosting_list_backends`,
+   `apphosting_fetch_logs`), Data Connect (`dataconnect_list_services`,
+   `dataconnect_build`), Storage (`storage_get_object_download_url`),
+   security rules (`firebase_get_security_rules`,
+   `firebase_validate_security_rules`).
 2. Act: perform what was asked with the matching write tool — Auth
    (`auth_update_user`, `auth_set_sms_region_policy`), project/app init
    (`firebase_init`, `firebase_create_project`, `firebase_create_app`,
    `firebase_create_android_sha`, `firebase_update_environment`), Firestore
-   (`firestore_delete_document`), Realtime Database (`realtimedatabase_set_data`),
-   Crashlytics notes/state (`crashlytics_create_note`, `crashlytics_delete_note`,
-   `crashlytics_update_issue`), Remote Config (`remoteconfig_update_template`),
-   Messaging (`messaging_send_message`), Data Connect (`dataconnect_execute`),
-   login/logout (`firebase_login`, `firebase_logout`).
+   (`firestore_delete_document`), Realtime Database
+   (`realtimedatabase_set_data`), Crashlytics notes/state
+   (`crashlytics_create_note`, `crashlytics_delete_note`,
+   `crashlytics_update_issue`), Remote Config
+   (`remoteconfig_update_template`), Messaging (`messaging_send_message`),
+   Data Connect (`dataconnect_execute`), login/logout (`firebase_login`,
+   `firebase_logout`).
 3. Report: what you did, decisive results verbatim (project IDs, app IDs,
    document paths, issue keys). Flag anything you were blocked from doing.
 
