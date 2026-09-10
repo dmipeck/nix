@@ -60,6 +60,8 @@ in
       # Registered agent set: the same conditional composition as before (github
       # pair / argocd / gitlab gating), over `allAgents`. plane is a write-only
       # agent gated on `dotagents.mcps.plane.enable` whose spawning asks first.
+      # firebase is a read/write pair gated on `dotagents.mcps.firebase.enable`;
+      # spawning the write-capable firebase agent asks first.
       opencodeAgents =
         (lib.removeAttrs allAgents (
           githubAgentNames
@@ -69,6 +71,7 @@ in
           ++ cloudflareBindingsAgentNames
           ++ cloudflareObservabilityAgentNames
           ++ planeAgentNames
+          ++ firebaseAgentNames
         ))
         // lib.optionalAttrs config.dotagents.mcps.github.enable (
           lib.genAttrs githubAgentNames (n: allAgents.${n})
@@ -90,6 +93,9 @@ in
         )
         // lib.optionalAttrs config.dotagents.mcps.plane.enable (
           lib.genAttrs planeAgentNames (n: allAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.firebase.enable (
+          lib.genAttrs firebaseAgentNames (n: allAgents.${n})
         );
 
       # opencode's home-manager module writes an agent value to
@@ -127,6 +133,10 @@ in
       ];
       planeAgentNames = [
         "plane"
+      ];
+      firebaseAgentNames = [
+        "explore-firebase"
+        "firebase"
       ];
 
       # opencode namespaces every MCP tool as `<server>_<tool>`. By default the
@@ -450,6 +460,7 @@ in
               cloudflare = "ask";
               cloudflare-bindings = "ask";
               plane = "ask";
+              firebase = "ask";
             };
             bash = {
               "awk *" = "deny";

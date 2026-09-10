@@ -180,6 +180,18 @@ in
               url: ${planeServer.url}
               headersHelper: ${planeHeadersHelper}/bin/plane-mcp-headers
       '';
+      # Official Firebase MCP (firebase-tools `firebase mcp`, local stdio).
+      # Authenticates with the Firebase CLI credentials in the environment;
+      # no headersHelper. The firebase / explore-firebase pair registers only
+      # when `dotagents.mcps.firebase.enable` is set (gating below).
+      firebaseServer = config.dotagents.mcpServers.firebase;
+      firebaseMcpBlock = ''
+        mcpServers:
+          - firebase:
+              type: stdio
+              command: ${firebaseServer.command}
+              args: ${builtins.toJSON firebaseServer.args}
+      '';
       argocdServer = config.dotagents.mcpServers.argocd;
       argocdMcpBlock = ''
         mcpServers:
@@ -327,6 +339,18 @@ in
           tools = "mcp__plane__*";
           extraFrontmatter = planeMcpBlock;
         };
+        firebase = {
+          # Single-quoted YAML scalar: the description contains `: ` which a
+          # plain scalar would misparse as a mapping separator.
+          description = "'Full Firebase development assistant — reads and writes Firebase projects through the firebase MCP server (Auth, Firestore, Realtime Database, Cloud Functions, Crashlytics, Remote Config, Cloud Messaging, App Hosting, Data Connect, Storage). Write-capable: performs the Firebase operations asked of it.'";
+          tools = "mcp__firebase__*";
+          extraFrontmatter = firebaseMcpBlock;
+        };
+        "explore-firebase" = {
+          description = "'Answers questions about Firebase — projects, apps, Auth users, Firestore, Realtime Database, Functions logs, Crashlytics, Remote Config, App Hosting, Data Connect, Storage and security rules — using the firebase MCP server''s read-only tools. The firebase server also registers write tools, but none of them are in this agent''s allowlist. Read-only: reports what it finds, never mutates.'";
+          tools = lib.concatStringsSep ", " (map (t: "mcp__firebase__${t}") firebaseServer.tools.read);
+          extraFrontmatter = firebaseMcpBlock;
+        };
         orchestrate = {
           description = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent.";
           tools = "Agent, AskUserQuestion, TodoWrite, Skill";
@@ -425,6 +449,10 @@ in
       planeAgentNames = [
         "plane"
       ];
+      firebaseAgentNames = [
+        "explore-firebase"
+        "firebase"
+      ];
 
       # claude-statusline isn't packaged as a Claude Code plugin (no
       # .claude-plugin manifest) — statusLine is a top-level settings.json
@@ -483,6 +511,7 @@ in
           ++ cloudflareBindingsAgentNames
           ++ cloudflareObservabilityAgentNames
           ++ planeAgentNames
+          ++ firebaseAgentNames
         ))
         // lib.optionalAttrs config.dotagents.mcps.github.enable (
           lib.genAttrs githubAgentNames (n: allClaudeAgents.${n})
@@ -504,6 +533,9 @@ in
         )
         // lib.optionalAttrs config.dotagents.mcps.plane.enable (
           lib.genAttrs planeAgentNames (n: allClaudeAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.firebase.enable (
+          lib.genAttrs firebaseAgentNames (n: allClaudeAgents.${n})
         );
 
       claudeLspServers = {
@@ -619,6 +651,7 @@ in
           "Agent(cloudflare)"
           "Agent(cloudflare-bindings)"
           "Agent(plane)"
+          "Agent(firebase)"
         ];
         # Read-only cross-tool config access: agents may read the tool config
         # content dirs (claude skills/agents/commands, opencode config,
