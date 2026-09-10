@@ -158,6 +158,7 @@ in
         "explore-cloudflare"
         "explore-cloudflare-bindings"
         "explore-cloudflare-observability"
+        "explore-firebase"
         "export-kubernetes"
       ];
 
@@ -184,6 +185,9 @@ in
         "export-kubernetes" =
           "Answers questions about a Kubernetes cluster via the kubernetes MCP server. Read-only.";
         "explore-argocd" = "Answers questions about ArgoCD via the argocd MCP server. Read-only.";
+        firebase = "Write-capable Firebase assistant via the firebase MCP server (Auth, Firestore, Functions, Crashlytics, Remote Config, …).";
+        "explore-firebase" =
+          "Answers questions about Firebase projects and data via the firebase MCP read tools. Read-only.";
         orchestrate = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles results. Default primary agent.";
         test = "Runs the test suite for one testing ecosystem and reports pass/fail. Never takes corrective action.";
         commit = "Reviews pending changes, decides commit boundaries, and writes conventional + caveman-compressed commit messages.";
@@ -273,6 +277,10 @@ in
         "cloudflare-bindings"
       ];
       cloudflareObservabilityAgentNames = [ "explore-cloudflare-observability" ];
+      firebaseAgentNames = [
+        "explore-firebase"
+        "firebase"
+      ];
 
       allCursorAgents = lib.mapAttrs (name: _: renderAgent name) agents;
 
@@ -284,6 +292,7 @@ in
           ++ cloudflareAgentNames
           ++ cloudflareBindingsAgentNames
           ++ cloudflareObservabilityAgentNames
+          ++ firebaseAgentNames
         ))
         // lib.optionalAttrs config.dotagents.mcps.github.enable (
           lib.genAttrs githubAgentNames (n: allCursorAgents.${n})
@@ -302,6 +311,9 @@ in
         )
         // lib.optionalAttrs config.dotagents.mcps.cloudflare.observability.enable (
           lib.genAttrs cloudflareObservabilityAgentNames (n: allCursorAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.firebase.enable (
+          lib.genAttrs firebaseAgentNames (n: allCursorAgents.${n})
         );
 
       agentFiles = lib.mapAttrs' (

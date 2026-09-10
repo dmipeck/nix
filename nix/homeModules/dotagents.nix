@@ -333,6 +333,20 @@ in
               '';
             };
           };
+          firebase = {
+            enable = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
+                Whether to add the firebase MCP server to the AI tool's
+                config. The server is the official Firebase MCP shipped in
+                firebase-tools (`firebase mcp`, local stdio). Off by default;
+                set to true to enable it. Authenticates with the Firebase CLI
+                credentials already present in the environment (`firebase
+                login`) — no sops token.
+              '';
+            };
+          };
         };
 
         mcpServers = lib.mkOption {
@@ -442,6 +456,9 @@ in
           plane = baseMcpServers.plane // {
             headers = planeHeaders;
           };
+        }
+        // lib.optionalAttrs mcps.firebase.enable {
+          firebase = baseMcpServers.firebase;
         };
       };
     };
