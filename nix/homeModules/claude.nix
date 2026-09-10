@@ -472,8 +472,7 @@ in
 
       claudeCommands = {
         set-budget = "${claudeStatuslineSrc}/.claude/commands/set-budget.md";
-      }
-      // config.dotagents.commands;
+      };
 
       claudeAgents =
         (lib.removeAttrs allClaudeAgents (

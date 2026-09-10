@@ -99,7 +99,7 @@ Toolchain → nixpkgs packages:
 | JVM | `jdk` `gradle` / `maven` |
 
 Use plain flake for third-party checkouts; flake-parts optional. Want the full
-linter + pre-commit rig too → that is `/scaffold`, not here — do not
+linter + pre-commit rig too → use the `scaffold` skill, not here — do not
 duplicate it. If `flake.lock` is missing, run `nix flake lock`.
 
 **Gate:** `nix develop --command true` must exit 0 (non-interactive eval

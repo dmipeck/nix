@@ -95,20 +95,14 @@ in
       # opencode's home-manager module writes an agent value to
       # opencode/agents/<name>.md as `source` only when it `lib.isPath`; a
       # derivation (the rendered cheap-subagent store file) lands in `text` and
-      # fails the string type check. Mirror the derivation-backed-commands
-      # workaround below: path-valued agents keep the normal
-      # programs.opencode.agents route, derivation-valued ones are written via
+      # fails the string type check. Path-valued agents keep the normal
+      # programs.opencode.agents route; derivation-valued ones are written via
       # xdg.configFile directly (its `source` accepts derivations).
       pathAgents = lib.filterAttrs (_: a: !lib.isDerivation a) opencodeAgents;
       derivedAgents = lib.filterAttrs (_: a: lib.isDerivation a) opencodeAgents;
       derivedAgentFiles = lib.mapAttrs' (
         name: drv: lib.nameValuePair "opencode/agents/${name}.md" { source = drv; }
       ) derivedAgents;
-      # Derivation-backed slash commands (see the note in the config below),
-      # written into the opencode commands dir via xdg.configFile.
-      commandFiles = lib.mapAttrs' (
-        name: drv: lib.nameValuePair "opencode/commands/${name}.md" { source = drv; }
-      ) (lib.filterAttrs (_: c: lib.isDerivation c) config.dotagents.commands);
       githubAgentNames = [
         "explore-github"
         "github"
@@ -306,25 +300,13 @@ in
         # commands, so they're always registered.
         programs.opencode.agents = pathAgents;
 
-        # Custom slash commands, e.g. scaffold (built by dmipeck/agents
-        # from commands/scaffold.md, passed through config.dotagents.commands).
-        # home-manager maps each name to opencode/commands/<name>.md — but its
-        # commands option only routes `lib.isPath` values to `source`; a
-        # derivation (the command package) lands in `text` and fails the string
-        # type check. Derivation-backed commands are therefore wired through
-        # xdg.configFile directly (its `source` accepts derivations, same as
-        # claude-code's mkSourceEntry), while plain text/path commands keep the
-        # normal programs.opencode.commands path.
-        programs.opencode.commands = lib.filterAttrs (_: c: !lib.isDerivation c) config.dotagents.commands;
-
         # The rendered cheap-subagent store files (model-pinned agent.md copies)
-        # and the derivation-backed commands are written into the opencode
-        # config dir via xdg.configFile directly (its `source` accepts
-        # derivations), alongside the plain pass-through content that keeps the
-        # normal programs.opencode.agents/commands routes.
-        xdg.configFile = lib.mkIf (commandFiles != { } || derivedAgentFiles != { }) (
-          commandFiles // derivedAgentFiles
-        );
+        # are written into the opencode config dir via xdg.configFile directly
+        # (its `source` accepts derivations), alongside the plain pass-through
+        # content that keeps the normal programs.opencode.agents route.
+        # User-invoked workflows live as skills with
+        # `disable-model-invocation: true` — no separate commands layer.
+        xdg.configFile = lib.mkIf (derivedAgentFiles != { }) derivedAgentFiles;
 
         programs.opencode.themes = {
           vitesse-dark = {

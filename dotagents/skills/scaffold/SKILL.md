@@ -1,7 +1,9 @@
 ---
-description: Scaffold a new project with a flake-parts flake.nix, a Nix
-  devShell full of formatters, linters and language servers, and pre-commit
-  wired to run them all.
+name: scaffold
+description: >-
+  Scaffold a new project with flake-parts, a Nix
+  devShell of formatters/linters/LSPs, and pre-commit wired to them.
+disable-model-invocation: true
 ---
 
 Scaffold a new software project in the current directory. If the directory is
