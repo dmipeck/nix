@@ -10,19 +10,15 @@ let
 
   skillsDir = ../../dotagents/skills;
   agentsDir = ../../dotagents/agents;
-  commandsDir = ../../dotagents/commands;
   dotagentsDir = ../../dotagents;
 
-  # Discover content by directory/file presence. Public name = directory
-  # name (skills/agents) or filename minus .md (commands). No index files.
+  # Discover content by directory presence. Public name = directory name.
+  # No index files.
   skillNames = builtins.attrNames (
     lib.filterAttrs (_: v: v == "directory") (builtins.readDir skillsDir)
   );
   agentNames = builtins.attrNames (
     lib.filterAttrs (_: v: v == "directory") (builtins.readDir agentsDir)
-  );
-  commandNames = map (lib.removeSuffix ".md") (
-    builtins.attrNames (lib.filterAttrs (_: v: v == "regular") (builtins.readDir commandsDir))
   );
 
   # Standardized skill package layout: $out/skills/<name>/SKILL.md
@@ -32,37 +28,15 @@ let
       mkdir -p $out/skills
       cp -rL ${skillsDir}/${name} $out/skills/
     '';
-  # Command package: $out IS the command file itself (matches existing scaffold pkg contract).
-  commandPkg =
-    name:
-    pkgs.runCommand "dotagents-${name}" { } ''
-      mkdir -p "$(dirname "$out")"
-      cp ${commandsDir}/${name}.md "$out"
-    '';
-  # Generic skill → command wrapper: $out IS a slash-command markdown file that
-  # prompts the agent to invoke a skill by name via the Skill tool.
-  skillCommandPkg =
-    name:
-    pkgs.runCommand "dotagents-command-${name}" { } ''
-            mkdir -p "$(dirname "$out")"
-            cat > "$out" <<EOF
-      ---
-      description: Invoke the ${name} skill.
-      ---
 
-      Call the Skill tool with "${name}".
-      EOF
-    '';
-
-  # The whole dotagents content tree (skills/ + commands/ + agents/) in one
-  # package; historically the golang/postgres skills and the commit/test
-  # subagents were sliced out of it by the adapters via $out/skills/<name> /
+  # The whole dotagents content tree (skills/ + agents/) in one package;
+  # historically the golang/postgres skills and the commit/test subagents were
+  # sliced out of it by the adapters via $out/skills/<name> /
   # $out/agents/<name>/agent.md. Kept for downstream consumers that want the
   # whole tree in a single store path.
   wholeTree = pkgs.runCommand "dotagents" { } ''
     mkdir -p $out
     cp -r ${dotagentsDir}/skills $out/skills
-    cp -r ${dotagentsDir}/commands $out/commands
     cp -r ${dotagentsDir}/agents $out/agents
   '';
 
@@ -89,20 +63,11 @@ in
 {
   options.dotagents.skills = lib.mkOption {
     type = discovered lib.types.package;
-    description = "AI skills. Local skills under dotagents/skills/ are discovered automatically; upstream skill collections add their own keys.";
+    description = "AI skills. Local skills under dotagents/skills/ are discovered automatically; upstream skill collections add their own keys. User-invoked (slash-only) skills set `disable-model-invocation: true` in SKILL.md frontmatter — no separate commands layer.";
   };
   options.dotagents.agents = lib.mkOption {
     type = discovered lib.types.path;
     description = "AI agent definitions (agent.md files), discovered automatically from dotagents/agents/.";
-  };
-  options.dotagents.commands = lib.mkOption {
-    type = discovered lib.types.package;
-    description = "AI tool command files, discovered automatically from dotagents/commands/.";
-  };
-  options.dotagents.skillCommands = lib.mkOption {
-    type = lib.types.listOf lib.types.str;
-    default = [ ];
-    description = "Skills that get an auto-generated slash-command prompting the agent to invoke the skill.";
   };
   options.dotagents.cheapSubagents = lib.mkOption {
     type = lib.types.listOf lib.types.str;
@@ -220,24 +185,13 @@ in
   };
   options.dotagents.localPackages = lib.mkOption {
     type = lib.types.attrsOf lib.types.package;
-    description = "Local AI content packages built from ../dotagents (skills/, commands/, agents/).";
+    description = "Local AI content packages built from ../dotagents (skills/, agents/).";
   };
 
   config.dotagents.skills = lib.genAttrs skillNames (name: lib.mkOptionDefault (skillPkg name));
   config.dotagents.agents = lib.genAttrs agentNames (
     name: lib.mkOptionDefault (agentsDir + "/${name}/agent.md")
   );
-  config.dotagents.commands =
-    let
-      # Names from config.dotagents.skillCommands that resolve to a plain skill
-      # (present in config.dotagents.skills, not a "collection" bundle).
-      invokedSkillNames = lib.filter (
-        name:
-        (config.dotagents.skills ? ${name}) && (config.dotagents.skillLayouts.${name} or "skill") == "skill"
-      ) config.dotagents.skillCommands;
-    in
-    lib.genAttrs commandNames (name: lib.mkOptionDefault (commandPkg name))
-    // lib.genAttrs invokedSkillNames (name: lib.mkOptionDefault (skillCommandPkg name));
 
   config.dotagents.localPackages = {
     whole-tree = wholeTree;

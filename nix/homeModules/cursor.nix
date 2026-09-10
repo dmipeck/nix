@@ -4,15 +4,15 @@ let
   # captured once so the home-manager module below can reference them.
   agentSkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
-  skillCommands = flakeArgs.config.dotagents.skillCommands;
   agents = flakeArgs.config.dotagents.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Per-client default model + variation; this adapter reads the `cursor` client.
   models = flakeArgs.config.dotagents.models.cursor;
 in
 {
-  # Thin adapter: maps neutral dotagents skills / agents / commands / MCP /
-  # context onto Cursor's config dialect under ~/.cursor/.
+  # Thin adapter: maps neutral dotagents skills / agents / MCP / context onto
+  # Cursor's config dialect under ~/.cursor/. User-invoked skills carry
+  # `disable-model-invocation: true` in SKILL.md (slash-only; no commands dir).
   flake.homeModules.cursor =
     {
       lib,
@@ -132,65 +132,17 @@ in
 
       # -----------------------------------------------------------------
       # Skills → ~/.cursor/skills/<name>/
-      # Skip collection bundles (constituents are separate keys) and skills
-      # listed in skillCommands (those become slash-only skills below).
+      # Skip collection bundles (constituents are separate keys). Skills with
+      # `disable-model-invocation: true` in frontmatter are slash-only; that
+      # flag is preserved as written in SKILL.md (no commands layer).
       # -----------------------------------------------------------------
       plainSkills = lib.filterAttrs (
-        name: _: (skillLayouts.${name} or "skill") != "collection" && !(lib.elem name skillCommands)
+        name: _: (skillLayouts.${name} or "skill") != "collection"
       ) agentSkills;
 
       skillFiles = lib.mapAttrs' (
         name: pkg: lib.nameValuePair ".cursor/skills/${name}" { source = "${pkg}/skills/${name}"; }
       ) plainSkills;
-
-      # -----------------------------------------------------------------
-      # Commands → ~/.cursor/skills/<name>/SKILL.md with
-      # disable-model-invocation: true (Cursor's slash-command dialect;
-      # .cursor/commands/ is legacy).
-      #
-      # - skillCommands: hard-copy the skill body (ADR); omitted from
-      #   plainSkills above so slash is the only path.
-      # - other commands that share a skill name: skip — the skill is already
-      #   slash-invokable as /<name>, and emitting both would collide on
-      #   ~/.cursor/skills/<name>.
-      # - command-only names: convert the command markdown.
-      # -----------------------------------------------------------------
-      commandSkillFiles =
-        lib.mapAttrs'
-          (
-            name: cmd:
-            let
-              isSkillCommand =
-                (lib.elem name skillCommands)
-                && (agentSkills ? ${name})
-                && (skillLayouts.${name} or "skill") == "skill";
-              src = if isSkillCommand then "${agentSkills.${name}}/skills/${name}/SKILL.md" else cmd;
-            in
-            lib.nameValuePair ".cursor/skills/${name}/SKILL.md" {
-              source = pkgs.runCommand "dotagents-${name}-cursor-command" { } ''
-                mkdir -p "$(dirname "$out")"
-                {
-                  # Ensure name + disable-model-invocation sit in frontmatter; keep
-                  # the body (and any existing description) intact.
-                  awk -v name="${name}" '
-                    BEGIN { in_fm=0 }
-                    NR==1 && /^---$/ { in_fm=1; print; print "name: " name; print "disable-model-invocation: true"; next }
-                    in_fm && /^---$/ { in_fm=0; print; next }
-                    in_fm && /^name:/ { next }
-                    in_fm && /^disable-model-invocation:/ { next }
-                    { print }
-                  ' ${src}
-                } > "$out"
-              '';
-            }
-          )
-          (
-            lib.filterAttrs (
-              name: _:
-              (lib.elem name skillCommands)
-              || !((agentSkills ? ${name}) && (skillLayouts.${name} or "skill") == "skill")
-            ) config.dotagents.commands
-          );
 
       # -----------------------------------------------------------------
       # Agents → ~/.cursor/agents/<name>.md
@@ -379,12 +331,11 @@ in
       '') allFileRefs;
     in
     {
-      options.cursor.enable = lib.mkEnableOption "Cursor as a dotagents target (skills, agents, commands, MCP, rules under ~/.cursor/)";
+      options.cursor.enable = lib.mkEnableOption "Cursor as a dotagents target (skills, agents, MCP, rules under ~/.cursor/)";
 
       config = lib.mkIf config.cursor.enable {
         home.file =
           skillFiles
-          // commandSkillFiles
           // agentFiles
           // rulesFile
           // {
