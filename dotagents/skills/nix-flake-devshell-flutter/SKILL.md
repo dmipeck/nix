@@ -3,9 +3,9 @@ name: nix-flake-devshell-flutter
 description: >-
   Build or fix a Nix flake-parts devShell for a Flutter/Android app — pinning
   nixpkgs' flutterPackages to a specific version, composing an androidenv
-  Android SDK, wiring a writable Flutter SDK overlay for Gradle 9
-  includeBuild, JAVA_HOME/ANDROID_SDK_ROOT/PUB_CACHE, and proving the result
-  with a real headless-emulator build-and-run. Use when the user says
+  Android SDK, wiring a writable Flutter SDK overlay when includeBuild +
+  Gradle needs it, JAVA_HOME/ANDROID_SDK_ROOT/PUB_CACHE, and proving the
+  result with a real headless-emulator build-and-run. Use when the user says
   "flutter devshell", "nix flake for flutter", "flutter android nix",
   "flake-parts flutter", "flutter nix shell", "nix develop flutter build fails",
   "Gradle projectDir not writable", or asks to reproduce/pin a Flutter+Android
@@ -172,10 +172,10 @@ commit.
               export PATH="$_sdk_bin:$PATH"
               unset _sdk_bin
 
-              # Gradle 9 rejects includeBuild() of a non-writable projectDir.
-              # nixpkgs redirects .gradle/build into ~/.cache, but still sets
-              # rootProject.projectDir to the store path — so copy only
-              # packages/flutter_tools/gradle into a local writable SDK overlay.
+              # Writable overlay when includeBuild + Gradle ≥ 8.9 / 9 needs a
+              # writable projectDir (section 3a). Copy only
+              # packages/flutter_tools/gradle; nixpkgs cache redirect alone is
+              # not enough for Gradle 9.
               FLUTTER_SDK_SRC="${flutterPkg}"
               FLUTTER_SDK_RW="$PWD/.flutter-sdk-rw"
               if [ ! -e "$FLUTTER_SDK_RW/.built" ]; then
@@ -213,24 +213,49 @@ commit.
 Ignore `.flutter-sdk-rw/` (and usually `.pub-cache/`) in `.gitignore`. Do not
 commit `android/build/` or local SDK overlays.
 
-### 3a. Writable Flutter overlay — keep it, keep it small (Gradle 9)
+### 3a. Writable Flutter overlay — when and how
 
-Modern apps (`android/settings.gradle`) do:
+**Prerequisite:** the RW workaround only applies to the modern Flutter Android
+setup (Flutter ~3.16/3.19+):
 
 ```groovy
 includeBuild("${settings.ext.flutterSdkPath}/packages/flutter_tools/gradle")
 ```
 
-`includeBuild` treats that path as a Gradle project. Gradle 9 refuses a
-non-writable `projectDir` ("does not exist, can't be written to or is not a
-directory") when that path is in `/nix/store`.
+`includeBuild` treats that path as a Gradle project. Older
+`apply from: .../flutter.gradle` never does, so no Gradle version needs the
+overlay for that layout. Check first:
 
-nixpkgs already patches `flutter_tools/gradle/settings.gradle` to redirect
-`.gradle` / `build` under `~/.cache/flutter/nix-flutter-tools-gradle/<engine>/`
-and passes `--project-cache-dir` / `-Pkotlin.project.persistent.dir`. It still
-sets `rootProject.projectDir` to the store path — on Gradle 9 that remains
-fatal. Older apps that used `apply from: .../flutter.gradle` may not need the
-overlay; modern `includeBuild` apps do.
+```bash
+grep -E 'includeBuild|flutter\.gradle' android/settings.gradle \
+  android/app/build.gradle 2>/dev/null
+cat android/gradle/wrapper/gradle-wrapper.properties
+```
+
+nixpkgs patches `flutter_tools/gradle` to redirect `.gradle` / `build` under
+`~/.cache/flutter/nix-flutter-tools-gradle/<engine>/` and passes
+`--project-cache-dir` / `-Pkotlin.project.persistent.dir`. That is not always
+enough — whether you also need a writable `projectDir` depends on Gradle:
+
+- **Gradle ≤ 8.8** — usually **no** overlay. The nixpkgs cache redirect is
+  enough. Community last-known-good was 8.8 (+ AGP ~8.6.1).
+- **Gradle 8.9–8.x** — **often yes** (or a newer nixpkgs pin). 8.9 started
+  reading the project cache dir earlier; the old in-`build.gradle.kts` hack
+  broke. [nixpkgs#412907](https://github.com/NixOS/nixpkgs/pull/412907) tries
+  to fix via CLI args; without that (or an overlay), builds fail writing under
+  the store.
+- **Gradle 9.x** — **yes**. Even with the cache redirect, Gradle 9 rejects a
+  non-writable `rootProject.projectDir` still pointed at
+  `/nix/store/.../flutter_tools/gradle` ("can't be written to").
+
+**Practical takeaway:**
+
+- Skip the overlay: pre-`includeBuild` Flutter, or `includeBuild` + Gradle
+  ≤ 8.8 on a nixpkgs with the flutter_tools gradle patches.
+- Need it (or an equivalent writable projectDir): Gradle 9, and often 8.9+ if
+  nixpkgs' 8.9+ fix isn't enough for your pin.
+- Downgrading the wrapper to 8.8 might drop the overlay, but that is an app
+  pin change (Option B territory), not a free win under Option A.
 
 **Minimal overlay that works** (peel symlinks, copy only `gradle`):
 
@@ -250,7 +275,7 @@ project root.
 
 When stripping a "heavy" shellHook: prove with a clean
 `rm -rf .flutter-sdk-rw` and a fresh `flutter build apk` — theory about
-nixpkgs patches is not enough on Gradle 9.
+nixpkgs patches is not enough on Gradle 9 (and often not on 8.9+ either).
 
 ### 3b. NDK pin comes from FlutterExtension, not guesswork
 
@@ -381,12 +406,14 @@ the next.
 4. **Symptom:** Gradle fails with projectDir "does not exist, can't be written
    to or is not a directory" under `/nix/store/.../flutter_tools/gradle`
 
-   **Cause:** Gradle 9 `includeBuild` requires a writable Flutter tools gradle
-   projectDir; nixpkgs' cache-dir patches are not enough alone
+   **Cause:** `includeBuild` + Gradle 9 (often 8.9+) needs a writable Flutter
+   tools gradle projectDir; nixpkgs' cache-dir patches alone are not enough
+   (see section 3a matrix)
 
    **Fix:** Use the minimal `.flutter-sdk-rw` overlay (section 3a). Prove by
    `rm -rf .flutter-sdk-rw` then rebuilding — do not strip the overlay on
-   theory alone
+   theory alone. Downgrading the wrapper to ≤ 8.8 is an app pin change
+   (Option B), not the default Option A fix
 
 5. **Symptom:** Gradle tries to `sdkmanager`-install a missing SDK component
    into the nix store path and fails: `The SDK directory is not writable`
@@ -485,8 +512,9 @@ subprojects {
 - [ ] `includeEmulator = true` if `emulatorVersion` is set; NDK version taken
       from pinned Flutter's `FlutterExtension.kt`, not web search
 - [ ] `shellHook` sets `PUB_CACHE`, `JAVA_HOME`, `ANDROID_SDK_ROOT`/`HOME`,
-      `ANDROID_NDK_HOME`/`ROOT`, SDK tool PATH, and a minimal `.flutter-sdk-rw`
-      overlay (Gradle 9 `includeBuild`); `.flutter-sdk-rw/` gitignored
+      `ANDROID_NDK_HOME`/`ROOT`, SDK tool PATH; and a minimal `.flutter-sdk-rw`
+      overlay when `includeBuild` + Gradle ≥ 8.9 / 9 needs it (section 3a);
+      `.flutter-sdk-rw/` gitignored
 - [ ] `nix flake check` passes
 - [ ] `flutter --version` inside `nix develop` matches the intended
       Option A/B target
