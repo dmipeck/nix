@@ -172,40 +172,33 @@ commit.
               export PATH="$_sdk_bin:$PATH"
               unset _sdk_bin
 
-              # Writable Flutter overlay for Gradle 9 includeBuild (section 3a)
-              FLUTTER_STORE="${flutterPkg}"
-              OVERLAY="$PWD/.flutter-sdk-rw"
-              if [ ! -d "$OVERLAY/packages/flutter_tools/gradle" ]; then
-                rm -rf "$OVERLAY"
-                mkdir -p "$OVERLAY"
-                # symlink store SDK top-level; make packages/ + flutter_tools/
-                # real dirs so only gradle is a writable copy
-                for e in "$FLUTTER_STORE"/*; do
-                  bn=$(basename "$e")
-                  [ "$bn" = "packages" ] && continue
-                  ln -s "$e" "$OVERLAY/$bn"
-                done
-                mkdir -p "$OVERLAY/packages"
-                for e in "$FLUTTER_STORE"/packages/*; do
-                  bn=$(basename "$e")
-                  if [ "$bn" = "flutter_tools" ]; then
-                    mkdir -p "$OVERLAY/packages/flutter_tools"
-                    for te in "$e"/*; do
-                      tbn=$(basename "$te")
-                      if [ "$tbn" = "gradle" ]; then
-                        cp -a "$te" "$OVERLAY/packages/flutter_tools/gradle"
-                        chmod -R u+w "$OVERLAY/packages/flutter_tools/gradle"
-                      else
-                        ln -s "$te" "$OVERLAY/packages/flutter_tools/$tbn"
-                      fi
-                    done
-                  else
-                    ln -s "$e" "$OVERLAY/packages/$bn"
-                  fi
-                done
+              # Gradle 9 rejects includeBuild() of a non-writable projectDir.
+              # nixpkgs redirects .gradle/build into ~/.cache, but still sets
+              # rootProject.projectDir to the store path — so copy only
+              # packages/flutter_tools/gradle into a local writable SDK overlay.
+              FLUTTER_SDK_SRC="${flutterPkg}"
+              FLUTTER_SDK_RW="$PWD/.flutter-sdk-rw"
+              if [ ! -e "$FLUTTER_SDK_RW/.built" ]; then
+                rm -rf "$FLUTTER_SDK_RW"
+                mkdir -p "$FLUTTER_SDK_RW"
+                ln -s "$FLUTTER_SDK_SRC"/* "$FLUTTER_SDK_RW/"
+                rm -f "$FLUTTER_SDK_RW/packages"
+                mkdir -p "$FLUTTER_SDK_RW/packages"
+                ln -s "$FLUTTER_SDK_SRC"/packages/* \
+                  "$FLUTTER_SDK_RW/packages/"
+                rm -f "$FLUTTER_SDK_RW/packages/flutter_tools"
+                mkdir -p "$FLUTTER_SDK_RW/packages/flutter_tools"
+                ln -s "$FLUTTER_SDK_SRC"/packages/flutter_tools/* \
+                  "$FLUTTER_SDK_RW/packages/flutter_tools/"
+                rm -f "$FLUTTER_SDK_RW/packages/flutter_tools/gradle"
+                cp -a "$FLUTTER_SDK_SRC/packages/flutter_tools/gradle" \
+                  "$FLUTTER_SDK_RW/packages/flutter_tools/gradle"
+                chmod -R u+w \
+                  "$FLUTTER_SDK_RW/packages/flutter_tools/gradle"
+                touch "$FLUTTER_SDK_RW/.built"
               fi
-              export FLUTTER_ROOT="$OVERLAY"
-              export PATH="$FLUTTER_ROOT/bin:$PATH"
+              export FLUTTER_ROOT="$FLUTTER_SDK_RW"
+              export PATH="$FLUTTER_SDK_RW/bin:$PATH"
 
               flutter config --no-analytics >/dev/null 2>&1 || true
               flutter config --android-sdk "$ANDROID_HOME" >/dev/null 2>&1 \
@@ -239,19 +232,21 @@ sets `rootProject.projectDir` to the store path — on Gradle 9 that remains
 fatal. Older apps that used `apply from: .../flutter.gradle` may not need the
 overlay; modern `includeBuild` apps do.
 
-**Minimal overlay that works:**
+**Minimal overlay that works** (peel symlinks, copy only `gradle`):
 
-- Do **not** rewrite `HOME` or sed `android/local.properties` for mythical
-  "sibling contamination". Symlink paths (e.g. `driven` → `fleet-app-modular`)
-  look like other projects; they are the same tree.
-- Keep shell cwd on the real project root; symlinked alternate names confuse
-  path reading in logs.
-- Symlink the store Flutter SDK into `.flutter-sdk-rw`, but **copy** only
-  `packages/flutter_tools/gradle` and `chmod -R u+w`. Nested `rm` + `mkdir` +
-  `ln -s` is required so `packages` and `flutter_tools` are real directories
-  (not store symlinks) before replacing `gradle`.
-- Point `FLUTTER_ROOT` + PATH at that overlay; run `flutter config
-  --android-sdk`.
+1. `ln -s "$FLUTTER_SDK_SRC"/*` into `.flutter-sdk-rw/`.
+2. `rm` + `mkdir` `packages/`, then `ln -s` each
+   `$FLUTTER_SDK_SRC/packages/*`.
+3. Same peel for `packages/flutter_tools/`.
+4. `rm` the `gradle` symlink; `cp -a` the store `gradle` dir and
+   `chmod -R u+w`.
+5. Touch a `.built` sentinel so later `nix develop` entries skip the copy.
+6. Export `FLUTTER_ROOT` + PATH at the overlay; `flutter config --android-sdk`.
+
+Do **not** rewrite `HOME` or sed `android/local.properties` for mythical
+"sibling contamination". Symlink paths (e.g. `driven` → `fleet-app-modular`)
+look like other projects; they are the same tree. Keep shell cwd on the real
+project root.
 
 When stripping a "heavy" shellHook: prove with a clean
 `rm -rf .flutter-sdk-rw` and a fresh `flutter build apk` — theory about
