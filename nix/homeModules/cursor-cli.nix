@@ -439,6 +439,12 @@
             keys are allowed for CLI fields not yet typed here.
           '';
         };
+
+        agentAlias = lib.mkOption {
+          type = types.bool;
+          default = false;
+          description = "Whether to create a shell alias `agent` for `cursor-agent`.";
+        };
       };
 
       config = lib.mkIf cfg.enable {
@@ -475,6 +481,10 @@
             fi
           ''
         );
+
+        home.shellAliases = lib.mkIf cfg.agentAlias {
+          agent = "cursor-agent";
+        };
       };
     };
 }
