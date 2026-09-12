@@ -404,13 +404,24 @@
           };
         };
       };
+
+      # Upstream ships `cursor-agent`; expose it as `cursor` so the CLI owns
+      # that name (desktop is wrapped to `cursor-desktop` instead).
+      cursorPackage = pkgs.symlinkJoin {
+        name = "cursor";
+        paths = [ cfg.package ];
+        postBuild = ''
+          ln -sf ../share/cursor-agent/cursor-agent "$out/bin/cursor"
+          rm -f "$out/bin/cursor-agent"
+        '';
+      };
     in
     {
       options.programs.cursor-cli = {
         package = lib.mkOption {
           type = types.package;
           default = pkgs.cursor-cli;
-          description = "The cursor-cli package to install.";
+          description = "The cursor-cli package to wrap (binary installed as `cursor`).";
         };
 
         settings = lib.mkOption {
@@ -437,19 +448,13 @@
             keys are allowed for CLI fields not yet typed here.
           '';
         };
-
-        agentAlias = lib.mkOption {
-          type = types.bool;
-          default = false;
-          description = "Whether to create a shell alias `agent` for `cursor-agent`.";
-        };
       };
 
       config = {
-        # Auth is interactive via `cursor-agent auth` (or CURSOR_API_KEY),
-        # stored in the CLI's own config. This module installs the CLI and
+        # Auth is interactive via `cursor auth` (or CURSOR_API_KEY), stored in
+        # the CLI's own config. This module installs the CLI as `cursor` and
         # merges `settings` into cli-config.json without owning the whole file.
-        home.packages = [ cfg.package ];
+        home.packages = [ cursorPackage ];
 
         home.activation.cursorCliConfig = lib.mkIf (settingsAttrs != { }) (
           lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -479,10 +484,6 @@
             fi
           ''
         );
-
-        home.shellAliases = lib.mkIf cfg.agentAlias {
-          agent = "cursor-agent";
-        };
       };
     };
 }
