@@ -112,9 +112,10 @@ in
 {
   config.dotagents.mcpServers = {
     # Local Docker stdio GitHub MCP. OAuth uses the image's baked-in app and
-    # GITHUB_OAUTH_CALLBACK_PORT on loopback 8085 — no host-side clientId /
-    # clientSecret on the Server Definition. Per-profile enable remains
-    # `dotagents.mcps.github.enable`.
+    # GITHUB_OAUTH_CALLBACK_PORT on loopback (default 8085 here; Instance
+    # `dotagents.mcps.github.callbackPort` overlays the publish mapping + env).
+    # No host-side clientId / clientSecret on the Server Definition.
+    # Per-profile enable: `dotagents.mcps.github.enable`.
     github = {
       type = "local";
       command = "docker";

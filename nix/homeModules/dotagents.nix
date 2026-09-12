@@ -209,6 +209,18 @@ in
                 own tool allowlist.
               '';
             };
+            callbackPort = lib.mkOption {
+              type = lib.types.port;
+              default = 8085;
+              description = ''
+                Loopback port published into the Local GitHub MCP Docker
+                container for OAuth (`-p 127.0.0.1:<port>:<port>` and
+                `GITHUB_OAUTH_CALLBACK_PORT`). Default 8085 matches the
+                official image's baked-in app callback URL
+                (http://localhost:8085/callback). Change only if that port
+                is taken or you bring your own app registered on another port.
+              '';
+            };
             oauth = lib.mkOption {
               type = lib.types.submodule {
                 options = {
@@ -425,13 +437,37 @@ in
           };
         }
         // lib.optionalAttrs mcps.github.enable {
-          # The hosted remote server does not support dynamic client registration, so
-          # when a pre-registered OAuth App is configured its credentials ride on the
-          # server entry as an `oauth` block. The client secret is referenced via
-          # opencode's "{file:...}" substitution pointing at the sops-decrypted file,
-          # so only the file path ever appears in the Nix store / generated config.
+          # Local GitHub MCP: Instance callbackPort overlays the Docker publish
+          # mapping and GITHUB_OAUTH_CALLBACK_PORT. Remote OAuth credentials
+          # (clientId/secret) can still ride on as an `oauth` block until that
+          # Instance wiring is stripped; the client secret uses opencode's
+          # "{file:...}" substitution so only the path lands in the store.
           github =
-            baseMcpServers.github
+            let
+              port = toString mcps.github.callbackPort;
+              base = baseMcpServers.github;
+              image = lib.findFirst (lib.hasPrefix "ghcr.io/github/github-mcp-server:") null base.args;
+            in
+            assert image != null;
+            base
+            // {
+              args = [
+                "run"
+                "-i"
+                "--rm"
+                "-p"
+                "127.0.0.1:${port}:${port}"
+                "-e"
+                "GITHUB_OAUTH_CALLBACK_PORT"
+                image
+                "stdio"
+                "--toolsets"
+                "all"
+              ];
+              env = {
+                GITHUB_OAUTH_CALLBACK_PORT = port;
+              };
+            }
             // lib.optionalAttrs (mcps.github.oauth.clientId != null) {
               oauth = {
                 clientId = mcps.github.oauth.clientId;
