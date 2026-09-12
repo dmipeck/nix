@@ -405,23 +405,61 @@
         };
       };
 
-      # Upstream ships `cursor-agent`; expose it as `cursor` so the CLI owns
-      # that name (desktop is wrapped to `cursor-desktop` instead).
-      cursorPackage = pkgs.symlinkJoin {
-        name = "cursor";
-        paths = [ cfg.package ];
-        postBuild = ''
-          ln -sf ../share/cursor-agent/cursor-agent "$out/bin/cursor"
-          rm -f "$out/bin/cursor-agent"
-        '';
-      };
+      # Upstream ships `cursor-agent`; default binaryName is `cursor` so the
+      # CLI owns that name (desktop is wrapped to `cursor-desktop` instead).
+      upstreamBin = "cursor-agent";
+      needsWrap = cfg.binaryName != upstreamBin || cfg.aliases != [ ];
+      cursorPackage =
+        if !needsWrap then
+          cfg.package
+        else
+          pkgs.symlinkJoin {
+            name = "cursor-cli-${cfg.binaryName}";
+            paths = [ cfg.package ];
+            postBuild =
+              let
+                target = "../share/cursor-agent/cursor-agent";
+                link = name: ''
+                  ln -sf ${target} "$out/bin/"${lib.escapeShellArg name}
+                '';
+                aliasNames = lib.filter (a: a != cfg.binaryName) cfg.aliases;
+              in
+              ''
+                mkdir -p "$out/bin"
+                ${lib.optionalString (cfg.binaryName != upstreamBin) ''
+                  ${link cfg.binaryName}
+                  rm -f "$out/bin/"${lib.escapeShellArg upstreamBin}
+                ''}
+                ${lib.concatMapStrings link aliasNames}
+              '';
+          };
     in
     {
       options.programs.cursor-cli = {
         package = lib.mkOption {
           type = types.package;
           default = pkgs.cursor-cli;
-          description = "The cursor-cli package to wrap (binary installed as `cursor`).";
+          description = "The cursor-cli package to install / wrap.";
+        };
+
+        binaryName = lib.mkOption {
+          type = types.str;
+          default = "cursor";
+          description = ''
+            Primary binary name installed on PATH. Upstream ships
+            `cursor-agent`; default `cursor` keeps that name for the CLI.
+          '';
+          example = "cursor-agent";
+        };
+
+        aliases = lib.mkOption {
+          type = types.listOf types.str;
+          default = [ ];
+          description = ''
+            Extra names symlinked to the same binary (in addition to
+            `binaryName`).
+          '';
+          example = [ "cursor-agent" ];
         };
 
         settings = lib.mkOption {
@@ -452,8 +490,9 @@
 
       config = {
         # Auth is interactive via `cursor auth` (or CURSOR_API_KEY), stored in
-        # the CLI's own config. This module installs the CLI as `cursor` and
-        # merges `settings` into cli-config.json without owning the whole file.
+        # the CLI's own config. This module installs the CLI (default binary
+        # `cursor`, optional aliases) and merges `settings` into
+        # cli-config.json without owning the whole file.
         home.packages = [ cursorPackage ];
 
         home.activation.cursorCliConfig = lib.mkIf (settingsAttrs != { }) (
