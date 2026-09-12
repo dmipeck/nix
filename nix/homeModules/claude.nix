@@ -84,16 +84,17 @@ in
         '';
 
       # The explore-github and github subagents, rendered for Claude Code's
-      # dialect with the github MCP server scoped inline. The server is
-      # GitHub's hosted remote MCP endpoint (config.dotagents.mcpServers.github),
-      # so the block is a plain remote http url — no local command, no token
-      # header — mirroring the gitlab remote block below.
+      # dialect with the github MCP server scoped inline. Local GitHub MCP
+      # (config.dotagents.mcpServers.github) is Docker stdio with loopback
+      # OAuth on 8085 — same shape as firebase/argocd/kubernetes blocks.
       githubServer = config.dotagents.mcpServers.github;
       githubMcpBlock = ''
         mcpServers:
           - github:
-              type: http
-              url: ${githubServer.url}
+              type: stdio
+              command: ${githubServer.command}
+              args: ${builtins.toJSON githubServer.args}
+              env: ${builtins.toJSON githubServer.env}
       '';
 
       gitlabServer = config.dotagents.mcpServers.gitlab;
