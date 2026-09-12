@@ -12,12 +12,16 @@ flakes. `CLAUDE.md` is a symlink to this file.
 - `flake.nix:14` is a flake-parts `mkFlake` over `inputs.import-tree ./nix`.
   **Every file under `nix/` is auto-imported as a flake-parts module**
   — nothing is wired by hand. To add a module, drop a file under the right
-  subdir that returns `{ flake.<category>.<name> = ...; }`.
+  subdir that returns `{ flake.<category>.<name> = ...; }`. Leading `_`
+  in a filename (e.g. `_package.nix`) is skipped by import-tree.
 - Contribution categories: `flake.homeModules.<name>`,
   `flake.nixosModules.<name>`,
   `flake.vscodeModules.<name>`. The public name is the option key, not the
   filename; one file may export several (e.g. `desktop/firefox.nix` exports
   `firefox` and `firefoxNixGL`).
+- Shared flake-parts helpers live under `nix/lib/` and reach other
+  flakeModules via `_module.args` (e.g. `nix/lib/sops.nix` → `sopsLib`),
+  same pattern as `mcpToolEnum` in `nix/dotagents/`.
 - `systems = [ "x86_64-linux" ]` only (nix/devShells/default.nix:20).
 - `nix/homeModules/desktop/` = GUI apps (nixGL-wrapped variants under
   `<app>NixGL`); top-level homeModules = tooling / AI stack / dev env.
@@ -119,7 +123,8 @@ harmless noise.
 
 ## Secrets
 
-- Consistent per-module sops contract (`nix/lib/_sops.nix`):
+- Consistent per-module sops contract (`sopsLib` from `nix/lib/sops.nix`,
+  injected into flakeModules via `_module.args.sopsLib`):
   `<module>.sops.enable` gates wiring; then
   `<module>.sops.secrets.<program-key-name>.key = "<sops-key-name>"` and
   optionally `.keyFile` for a path override. Examples:

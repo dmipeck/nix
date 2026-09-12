@@ -1,6 +1,6 @@
 {
   config,
-  lib,
+  sopsLib,
   ...
 }@flakeArgs:
 let
@@ -16,7 +16,6 @@ let
   # Per-client default model + variation (config.dotagents.models); this
   # adapter reads the `claude` client.
   models = flakeArgs.config.dotagents.models;
-  sopsLib = import ../lib/_sops.nix { inherit lib; };
 in
 {
   flake.homeModules.claude =
