@@ -261,8 +261,6 @@ in
       };
     in
     {
-      options.opencode.enable = lib.mkEnableOption "Enable opencode AI coding agent";
-
       options.opencode.experimental.workspaces = {
         enable = lib.mkEnableOption ''
           the experimental opencode workspaces feature (`/warp`, `/workspaces`).
@@ -270,7 +268,7 @@ in
         '';
       };
 
-      config = lib.mkIf config.opencode.enable {
+      config = {
         programs.opencode.enable = true;
 
         # Workspaces is env-var gated; enable it by wrapping the binary.

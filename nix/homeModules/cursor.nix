@@ -343,9 +343,7 @@ in
       '') allFileRefs;
     in
     {
-      options.cursor.enable = lib.mkEnableOption "Cursor as a dotagents target (skills, agents, MCP, rules under ~/.cursor/)";
-
-      config = lib.mkIf config.cursor.enable {
+      config = {
         home.file =
           skillFiles
           // agentFiles

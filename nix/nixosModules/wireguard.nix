@@ -17,8 +17,6 @@
     in
     {
       options.wireguard = {
-        enable = lib.mkEnableOption "Enable WireGuard module";
-
         interfaces = lib.mkOption {
           type = lib.types.attrsOf (
             lib.types.submodule {
@@ -62,7 +60,7 @@
       };
 
       config.networking.wireguard = {
-        enable = cfg.enable;
+        enable = true;
 
         interfaces = lib.mapAttrs' (
           name: iface:

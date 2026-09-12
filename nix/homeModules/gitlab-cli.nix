@@ -38,8 +38,6 @@
     in
     {
       options.programs.gitlab-cli = {
-        enable = lib.mkEnableOption "the glab GitLab CLI";
-
         package = lib.mkOption {
           type = lib.types.package;
           default = pkgs.glab;
@@ -85,7 +83,7 @@
         };
       };
 
-      config = lib.mkIf cfg.enable {
+      config = {
         # No PAT config: auth is interactive OAuth via `glab auth login`,
         # stored in glab's own config/keyring. This module only installs glab
         # and pre-seeds the host (plus container registry domains and OAuth
