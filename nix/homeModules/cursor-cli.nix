@@ -407,8 +407,6 @@
     in
     {
       options.programs.cursor-cli = {
-        enable = lib.mkEnableOption "the Cursor CLI (cursor-agent)";
-
         package = lib.mkOption {
           type = types.package;
           default = pkgs.cursor-cli;
@@ -447,7 +445,7 @@
         };
       };
 
-      config = lib.mkIf cfg.enable {
+      config = {
         # Auth is interactive via `cursor-agent auth` (or CURSOR_API_KEY),
         # stored in the CLI's own config. This module installs the CLI and
         # merges `settings` into cli-config.json without owning the whole file.

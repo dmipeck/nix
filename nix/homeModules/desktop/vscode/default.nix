@@ -31,8 +31,6 @@ in
       ...
     }:
     {
-      options.vscode.enable = lib.mkEnableOption "Enable Visual Studio Code module";
-
       options.vscode.profiles = lib.mkOption {
         type = lib.types.attrsOf (
           lib.types.submodule {
@@ -50,9 +48,7 @@ in
       config = {
         _module.args.vscodeModules = self.vscodeModules;
 
-        vscode.enable = lib.mkDefault false;
-
-        programs.vscode = lib.mkIf config.vscode.enable {
+        programs.vscode = {
           enable = true;
           mutableExtensionsDir = false;
           profiles = lib.mapAttrs (

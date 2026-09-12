@@ -14,7 +14,6 @@
     in
     {
       options.kubernetesNode = {
-        enable = lib.mkEnableOption "Kubernetes cluster member";
         localIP = lib.mkOption {
           type = lib.types.str;
           description = "The node's local IP address for Kubernetes proxy binding";
@@ -53,7 +52,7 @@
         };
       };
 
-      config = lib.mkIf cfg.enable {
+      config = {
         boot.kernelModules = [ "ceph" ];
 
         networking.firewall = {

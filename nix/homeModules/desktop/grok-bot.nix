@@ -16,8 +16,6 @@
     in
     {
       options.programs.grok-bot = {
-        enable = lib.mkEnableOption "the Grok Bot desktop agent";
-
         package = lib.mkOption {
           type = lib.types.package;
           default = defaultPackage;
@@ -25,7 +23,7 @@
         };
       };
 
-      config = lib.mkIf cfg.enable {
+      config = {
         home.packages = [ cfg.package ];
       };
     };

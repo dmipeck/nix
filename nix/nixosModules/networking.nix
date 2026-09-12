@@ -5,7 +5,6 @@
     { lib, config, ... }:
     {
       options.clusterNetworking = {
-        enable = lib.mkEnableOption "cluster networking";
         nameservers = lib.mkOption {
           type = lib.types.listOf lib.types.str;
         };
@@ -15,7 +14,7 @@
         };
       };
 
-      config = lib.mkIf config.clusterNetworking.enable {
+      config = {
         services.openssh.enable = true;
         services.resolved.enable = true;
         networking.useNetworkd = true;
