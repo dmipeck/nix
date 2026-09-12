@@ -1,4 +1,4 @@
-{ ... }:
+{ sopsLib, ... }:
 
 {
   flake.nixosModules.comin =
@@ -10,7 +10,6 @@
     }:
     let
       cfg = config.comin;
-      sopsLib = import ../lib/_sops.nix { inherit lib; };
       accessTokenPath = sopsLib.pathOrNull config cfg.sops "accessToken";
     in
     {

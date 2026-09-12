@@ -1,6 +1,6 @@
 {
   config,
-  lib,
+  sopsLib,
   ...
 }@flakeArgs:
 let
@@ -15,8 +15,6 @@ let
   # as the default for the shared `context` written to each AI tool's global
   # rules file.
   rules = flakeArgs.config.dotagents.rules;
-
-  sopsLib = import ../lib/_sops.nix { inherit lib; };
 in
 {
 

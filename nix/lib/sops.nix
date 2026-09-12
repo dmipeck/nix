@@ -1,8 +1,9 @@
-# Shared sops option contract for modules (import-tree skips `_*.nix`):
+# Shared sops option contract for modules, exposed to other flake-parts
+# modules via `_module.args.sopsLib` (same pattern as mcpToolEnum):
 #   <module>.sops.enable
 #   <module>.sops.secrets.<program-key-name>.key = "<sops-key-name>"
 #   <module>.sops.secrets.<program-key-name>.keyFile = ...  # optional path override
-{ lib }:
+{ lib, ... }:
 let
   secretType = lib.types.submodule {
     options = {
@@ -66,11 +67,13 @@ let
     if secretConfigured sopsCfg name then resolvePath config sopsCfg.secrets.${name} else null;
 in
 {
-  inherit
-    secretType
-    mkType
-    secretConfigured
-    resolvePath
-    pathOrNull
-    ;
+  _module.args.sopsLib = {
+    inherit
+      secretType
+      mkType
+      secretConfigured
+      resolvePath
+      pathOrNull
+      ;
+  };
 }
