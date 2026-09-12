@@ -1,4 +1,8 @@
-{ config, ... }@flakeArgs:
+{
+  config,
+  lib,
+  ...
+}@flakeArgs:
 let
   # Shared MCP server configs (neutral model + concrete servers) live in
   # nix/dotagents/ (option model in dotagents.nix, per-server configs in mcps/);
@@ -11,6 +15,8 @@ let
   # as the default for the shared `context` written to each AI tool's global
   # rules file.
   rules = flakeArgs.config.dotagents.rules;
+
+  sopsLib = import ../lib/_sops.nix { inherit lib; };
 in
 {
 
@@ -30,13 +36,19 @@ in
     let
       mcps = config.dotagents.mcps;
 
+      grafanaTokenPath = sopsLib.pathOrNull config mcps.grafana.sops "serviceAccountToken";
+      argocdTokenPath = sopsLib.pathOrNull config mcps.argocd.sops "token";
+      githubClientSecretPath = sopsLib.pathOrNull config mcps.github.sops "clientSecret";
+      cloudflareTokenPath = sopsLib.pathOrNull config mcps.cloudflare.sops "token";
+      planeTokenPath = sopsLib.pathOrNull config mcps.plane.sops "token";
+
       # Cloudflare's managed MCP servers all authenticate with one Cloudflare
       # API token sent as an Authorization: Bearer header. The header value
       # references the sops-decrypted secret file via opencode's "{file:...}"
       # substitution, so only the file path ever appears in the Nix store /
       # generated config, never the token.
-      cloudflareHeaders = lib.optionalAttrs (mcps.cloudflare.tokenSopsKey != null) {
-        Authorization = "Bearer {file:${config.sops.secrets.${mcps.cloudflare.tokenSopsKey}.path}}";
+      cloudflareHeaders = lib.optionalAttrs (cloudflareTokenPath != null) {
+        Authorization = "Bearer {file:${cloudflareTokenPath}}";
       };
 
       # The self-hosted Plane MCP server authenticates with a Plane API PAT
@@ -49,8 +61,8 @@ in
       planeHeaders = {
         "X-Workspace-slug" = mcps.plane.workspaceSlug;
       }
-      // lib.optionalAttrs (mcps.plane.tokenSopsKey != null) {
-        Authorization = "Bearer {file:${config.sops.secrets.${mcps.plane.tokenSopsKey}.path}}";
+      // lib.optionalAttrs (planeTokenPath != null) {
+        Authorization = "Bearer {file:${planeTokenPath}}";
       };
     in
     {
@@ -77,14 +89,15 @@ in
               type = lib.types.str;
               description = "Grafana instance URL passed as GRAFANA_URL to the mcp-grafana MCP server.";
             };
-            serviceAccountTokenSopsKey = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
+            sops = lib.mkOption {
+              type = sopsLib.mkType;
+              default = { };
               description = ''
-                Name of the sops-nix secret holding the Grafana service account
-                token. Its decrypted path is exposed to the mcp-grafana server
-                via GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE. Leave as null to omit the
-                token (empty string) — e.g. for anonymous/unauthenticated access.
+                Sops-backed secrets for mcp-grafana. Gate with
+                `dotagents.mcps.grafana.sops.enable`, then set
+                `secrets.serviceAccountToken.key` (exposed as
+                GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE). Leave disabled for
+                anonymous/unauthenticated access.
               '';
             };
           };
@@ -96,7 +109,7 @@ in
                 Whether to add the argocd MCP server to the AI tool's config.
                 Off by default since not every profile has an ArgoCD instance to
                 point it at; set to true and provide `dotagents.mcps.argocd.url`
-                and/or `dotagents.mcps.argocd.tokenSopsKey` to configure it.
+                and/or `dotagents.mcps.argocd.sops` to configure it.
               '';
             };
             url = lib.mkOption {
@@ -108,17 +121,16 @@ in
                 environment instead.
               '';
             };
-            tokenSopsKey = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
+            sops = lib.mkOption {
+              type = sopsLib.mkType;
+              default = { };
               description = ''
-                Name of the sops-nix secret holding the ArgoCD API token.
-                argocd-mcp reads the token value from ARGOCD_API_TOKEN (no
-                token-file env exists), so the server is wrapped in a small
-                bash shim that reads the sops-decrypted file into that env var
-                at startup — the token value itself never lands in the Nix
-                store or this repo. Leave as null to inherit ARGOCD_API_TOKEN
-                from the shell environment instead.
+                Sops-backed secrets for argocd-mcp. Gate with
+                `dotagents.mcps.argocd.sops.enable`, then set
+                `secrets.token.key`. argocd-mcp reads ARGOCD_API_TOKEN (no
+                token-file env), so the server is wrapped in a bash shim that
+                reads the decrypted file at startup. Leave disabled to inherit
+                ARGOCD_API_TOKEN from the shell.
               '';
             };
           };
@@ -190,8 +202,8 @@ in
                 The server is GitHub's hosted remote MCP endpoint
                 (https://api.githubcopilot.com/mcp/), which does not support
                 dynamic client registration. A pre-registered GitHub OAuth App
-                can be configured via `oauth` (clientId,
-                clientSecretSopsKey, scope); without one it falls back to
+                can be configured via `oauth` (clientId, scope) and
+                `sops.secrets.clientSecret`; without one it falls back to
                 interactive OAuth on first use (opencode performs the OAuth
                 flow client-side). Enabling
                 adds the `github` server (read-write); the read-only
@@ -214,17 +226,6 @@ in
                       fails against the hosted server).
                     '';
                   };
-                  clientSecretSopsKey = lib.mkOption {
-                    type = lib.types.nullOr lib.types.str;
-                    default = null;
-                    description = ''
-                      Name of the sops-nix secret holding the GitHub OAuth App client
-                      secret. Referenced via opencode's "{file:...}" substitution so the
-                      value never lands in the Nix store or this repo. The secret must be
-                      resolvable at every token refresh, so keep the sops file readable at
-                      runtime (same as other dotagents secrets).
-                    '';
-                  };
                   scope = lib.mkOption {
                     type = lib.types.nullOr lib.types.str;
                     default = null;
@@ -240,6 +241,17 @@ in
               default = { };
               description = "Pre-registered GitHub OAuth App config for the hosted remote MCP server.";
             };
+            sops = lib.mkOption {
+              type = sopsLib.mkType;
+              default = { };
+              description = ''
+                Sops-backed secrets for the github MCP OAuth app. Gate with
+                `dotagents.mcps.github.sops.enable`, then set
+                `secrets.clientSecret.key`. Referenced via opencode's
+                "{file:...}" substitution so the value never lands in the Nix
+                store.
+              '';
+            };
           };
           cloudflare = {
             enable = lib.mkOption {
@@ -251,8 +263,8 @@ in
                 https://mcp.cloudflare.com/mcp) gives full programmatic
                 control over the Cloudflare API through three tools: docs,
                 search and execute. Off by default since it needs a Cloudflare
-                account; set to true and provide `tokenSopsKey` (or rely on
-                interactive OAuth) to enable it.
+                account; set to true and provide `sops.secrets.token` (or rely
+                on interactive OAuth) to enable it.
               '';
             };
             bindings = {
@@ -265,7 +277,7 @@ in
                   config. Manages KV namespaces, Workers, R2 buckets, D1
                   databases and Hyperdrive configs through discrete per-resource
                   tools. Shares the Cloudflare API token configured via
-                  `dotagents.mcps.cloudflare.tokenSopsKey`.
+                  `dotagents.mcps.cloudflare.sops.secrets.token`.
                 '';
               };
             };
@@ -278,24 +290,20 @@ in
                   at https://observability.mcp.cloudflare.com/mcp) to the AI
                   tool's config. Answers worker logs, metrics and schema
                   questions; entirely read-only. Shares the Cloudflare API
-                  token configured via `dotagents.mcps.cloudflare.tokenSopsKey`.
+                  token configured via
+                  `dotagents.mcps.cloudflare.sops.secrets.token`.
                 '';
               };
             };
-            tokenSopsKey = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
+            sops = lib.mkOption {
+              type = sopsLib.mkType;
+              default = { };
               description = ''
-                Name of the sops-nix secret holding a Cloudflare API token.
-                The token is sent to the remote MCP server as an
-                Authorization: Bearer header, read from the sops-decrypted file
-                at runtime (the header references the file via opencode's
-                "{file:...}" substitution, so the token value never lands in the
-                Nix store or this repo). Leave as null to fall back to
-                interactive OAuth 2.1 instead. Token scope is set when the
-                token is created — a read-only token yields a read-only agent;
-                account-scoped tokens need the "Account Resources: Read"
-                permission so the server can auto-detect the account ID.
+                Sops-backed secrets for Cloudflare MCP servers. Gate with
+                `dotagents.mcps.cloudflare.sops.enable`, then set
+                `secrets.token.key`. Sent as Authorization: Bearer via
+                "{file:...}" substitution. Leave disabled to fall back to
+                interactive OAuth 2.1.
               '';
             };
           };
@@ -308,7 +316,7 @@ in
                 The server is the self-hosted remote Plane MCP endpoint
                 (https://mcp.plane.littlemonkey.co.nz). Off by default since
                 not every profile has a Plane instance; set to true and
-                provide `tokenSopsKey` to enable it.
+                provide `sops.secrets.token` to enable it.
               '';
             };
             workspaceSlug = lib.mkOption {
@@ -320,16 +328,15 @@ in
                 select the workspace. Defaults to "littlemonkey".
               '';
             };
-            tokenSopsKey = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
+            sops = lib.mkOption {
+              type = sopsLib.mkType;
+              default = { };
               description = ''
-                Name of the sops-nix secret holding the Plane API PAT. The
-                token is sent to the remote MCP server as an Authorization:
-                Bearer header, read from the sops-decrypted file at runtime
-                (the header references the file via opencode's "{file:...}"
-                substitution, so the token value never lands in the Nix store
-                or this repo). Leave as null to connect without a token.
+                Sops-backed secrets for the plane MCP server. Gate with
+                `dotagents.mcps.plane.sops.enable`, then set
+                `secrets.token.key`. Sent as Authorization: Bearer via
+                "{file:...}" substitution. Leave disabled to connect without
+                a token.
               '';
             };
           };
@@ -380,11 +387,7 @@ in
               # than the token value itself, so the token never lands in the
               # Nix store or this repo. Left empty when unset, e.g. for
               # anonymous access.
-              GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE =
-                if mcps.grafana.serviceAccountTokenSopsKey != null then
-                  config.sops.secrets.${mcps.grafana.serviceAccountTokenSopsKey}.path
-                else
-                  "";
+              GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE = if grafanaTokenPath != null then grafanaTokenPath else "";
             };
           };
         }
@@ -395,9 +398,9 @@ in
             # reads the sops-decrypted file into that env var at startup —
             # the token value itself never lands in the Nix store or this repo.
             command =
-              if mcps.argocd.tokenSopsKey != null then "${pkgs.bash}/bin/bash" else baseMcpServers.argocd.command;
+              if argocdTokenPath != null then "${pkgs.bash}/bin/bash" else baseMcpServers.argocd.command;
             args =
-              if mcps.argocd.tokenSopsKey != null then
+              if argocdTokenPath != null then
                 [
                   "-c"
                   ''
@@ -413,8 +416,8 @@ in
               // lib.optionalAttrs (mcps.argocd.url != null) {
                 ARGOCD_BASE_URL = mcps.argocd.url;
               }
-              // lib.optionalAttrs (mcps.argocd.tokenSopsKey != null) {
-                ARGOCD_API_TOKEN_FILE = config.sops.secrets.${mcps.argocd.tokenSopsKey}.path;
+              // lib.optionalAttrs (argocdTokenPath != null) {
+                ARGOCD_API_TOKEN_FILE = argocdTokenPath;
               };
           };
         }
@@ -438,8 +441,8 @@ in
               // lib.optionalAttrs (mcps.github.oauth.scope != null) {
                 scope = mcps.github.oauth.scope;
               }
-              // lib.optionalAttrs (mcps.github.oauth.clientSecretSopsKey != null) {
-                clientSecret = "{file:${config.sops.secrets.${mcps.github.oauth.clientSecretSopsKey}.path}}";
+              // lib.optionalAttrs (githubClientSecretPath != null) {
+                clientSecret = "{file:${githubClientSecretPath}}";
               };
             };
         }

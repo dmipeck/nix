@@ -1,4 +1,8 @@
-{ config, ... }@flakeArgs:
+{
+  config,
+  lib,
+  ...
+}@flakeArgs:
 let
   # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix); the
   # subagent definitions are auto-discovered from dotagents/agents/*/agent.md
@@ -12,6 +16,7 @@ let
   # Per-client default model + variation (config.dotagents.models); this
   # adapter reads the `claude` client.
   models = flakeArgs.config.dotagents.models;
+  sopsLib = import ../lib/_sops.nix { inherit lib; };
 in
 {
   flake.homeModules.claude =
@@ -26,6 +31,9 @@ in
       # Optional second Claude Code instance backed by the same dotagents-derived
       # content in its own config dir (options declared below).
       ds = config.dotagents.claudeDeepseek;
+      cloudflareTokenPath = sopsLib.pathOrNull config config.dotagents.mcps.cloudflare.sops "token";
+      planeTokenPath = sopsLib.pathOrNull config config.dotagents.mcps.plane.sops "token";
+      deepseekApiKeyPath = sopsLib.pathOrNull config ds.sops "apiKey";
 
       # Neutral MCP server configs + per-user instance options live in
       # homeModules/dotagents.nix; skill packages come from nix/dotagents/
@@ -128,16 +136,18 @@ in
       # below keeps disabled ones unevaluated, so no `.url` or secret is ever
       # forced for a surface that is off.
       cloudflareServer = config.dotagents.mcpServers.cloudflare;
-      cloudflareHeadersHelper = pkgs.writeShellScriptBin "cloudflare-mcp-headers" ''
-        printf '{"Authorization": "Bearer %s"}' "$(<${
-          config.sops.secrets.${config.dotagents.mcps.cloudflare.tokenSopsKey}.path
-        })"
-      '';
+      cloudflareHeadersHelper =
+        if cloudflareTokenPath != null then
+          pkgs.writeShellScriptBin "cloudflare-mcp-headers" ''
+            printf '{"Authorization": "Bearer %s"}' "$(<${cloudflareTokenPath})"
+          ''
+        else
+          null;
       mkCloudflareMcpBlock =
         name: url:
         let
           headersHelperLine = lib.optionalString (
-            config.dotagents.mcps.cloudflare.tokenSopsKey != null
+            cloudflareTokenPath != null
           ) "        headersHelper: ${cloudflareHeadersHelper}/bin/cloudflare-mcp-headers\n";
         in
         ''
@@ -166,8 +176,8 @@ in
       planeServer = config.dotagents.mcpServers.plane;
       planeHeadersHelper = pkgs.writeShellScriptBin "plane-mcp-headers" ''
         out='{"X-Workspace-slug": "${config.dotagents.mcps.plane.workspaceSlug}"'
-        ${lib.optionalString (config.dotagents.mcps.plane.tokenSopsKey != null) ''
-          token="$(<"${config.sops.secrets.${config.dotagents.mcps.plane.tokenSopsKey}.path}")"
+        ${lib.optionalString (planeTokenPath != null) ''
+          token="$(<"${planeTokenPath}")"
           out="$out, \"Authorization\": \"Bearer $token\""
         ''}
         out="$out}"
@@ -749,8 +759,8 @@ in
       deepseekLauncher = pkgs.writeShellScriptBin "claude-deepseek" ''
         export CLAUDE_CONFIG_DIR="${ds.configDir}"
         export ANTHROPIC_BASE_URL="${ds.baseUrl}"
-        ${lib.optionalString (ds.apiKeySopsKey != null) ''
-          export ANTHROPIC_AUTH_TOKEN="$(cat ${config.sops.secrets.${ds.apiKeySopsKey}.path})"
+        ${lib.optionalString (deepseekApiKeyPath != null) ''
+          export ANTHROPIC_AUTH_TOKEN="$(cat ${deepseekApiKeyPath})"
         ''}
         export ANTHROPIC_MODEL="${ds.model}"
         export ANTHROPIC_DEFAULT_MODEL="${ds.model}"
@@ -807,10 +817,15 @@ in
           default = "https://api.deepseek.com/anthropic";
           description = "Anthropic-compatible base URL exported by the claude-deepseek launcher.";
         };
-        apiKeySopsKey = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
-          default = null;
-          description = "Sops-nix secret name holding the DeepSeek API key; read into ANTHROPIC_AUTH_TOKEN by the launcher. Null omits the token.";
+        sops = lib.mkOption {
+          type = sopsLib.mkType;
+          default = { };
+          description = ''
+            Sops-backed secrets for claude-deepseek. Gate with
+            `dotagents.claudeDeepseek.sops.enable`, then set
+            `secrets.apiKey.key` (read into ANTHROPIC_AUTH_TOKEN by the
+            launcher). Leave disabled to omit the token.
+          '';
         };
         model = lib.mkOption {
           type = lib.types.str;
