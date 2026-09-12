@@ -119,9 +119,13 @@ harmless noise.
 
 ## Secrets
 
-- sops-nix convention everywhere: secrets are referenced by name
-  (`dotagents.mcps.*.tokenSopsKey`, `comin.accessTokenSopsKey`) and decrypted
-  at runtime; the value is only ever pointed to by file path
-  (`GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE`), never inlined. Never
-  inline tokens in module code; gitleaks enforces this.
+- Consistent per-module sops contract (`nix/lib/_sops.nix`):
+  `<module>.sops.enable` gates wiring; then
+  `<module>.sops.secrets.<program-key-name>.key = "<sops-key-name>"` and
+  optionally `.keyFile` for a path override. Examples:
+  `comin.sops.secrets.accessToken`,
+  `dotagents.mcps.grafana.sops.secrets.serviceAccountToken`,
+  `dotagents.mcps.*.sops.secrets.token`. Decrypted at runtime; the value is
+  only ever pointed to by file path (`GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE`),
+  never inlined. Never inline tokens in module code; gitleaks enforces this.
 - `.envrc` is `use flake` (direnv).
