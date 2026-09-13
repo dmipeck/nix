@@ -56,6 +56,13 @@ let
     # white
     color7 = "#e0def4";
     color15 = "#e0def4";
+
+    # GNOME/Mutter has no SSD — kitty must draw its own CSD to keep
+    # window buttons. Distinct surface color so the bar reads as chrome.
+    # (Titlebar height/padding is hardcoded in kitty's Wayland CSD — not
+    # configurable via kitty.conf.)
+    wayland_titlebar_color = "#26233a";
+    window_padding_width = "0 8";
   };
 in
 {
