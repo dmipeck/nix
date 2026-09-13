@@ -62,7 +62,6 @@ let
     # (Titlebar height/padding is hardcoded in kitty's Wayland CSD — not
     # configurable via kitty.conf.)
     wayland_titlebar_color = "#26233a";
-    window_padding_width = "0 8";
   };
 in
 {
