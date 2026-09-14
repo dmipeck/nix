@@ -140,9 +140,10 @@
         }
         {
           name = "cursor-emit-no-local-remote-type";
-          ok = !(builtins.any (s: s.type or null == "local" || s.type or null == "remote") (
-            builtins.attrValues cursorMcp.mcpServers
-          ));
+          ok =
+            !(builtins.any (s: s.type or null == "local" || s.type or null == "remote") (
+              builtins.attrValues cursorMcp.mcpServers
+            ));
         }
       ];
 
