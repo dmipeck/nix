@@ -10,10 +10,10 @@ let
   # overlay the per-user instance values.
   baseMcpServers = flakeArgs.config.dotagents.mcpServers;
 
-  # Global agent rules (nix/dotagents/rules.nix) are owned by dmipeck/agents
-  # (agents.md) and passed through here; the home-manager module uses them
-  # as the default for the shared `context` written to each AI tool's global
-  # rules file.
+  # Common Model rules (nix/dotagents/rules.nix): Cursor Authoring Format
+  # `.mdc` under dotagents/rules/, parsed by the Frontmatter Parser. Body
+  # defaults shared `context` for OpenCode/Claude; Cursor passthrough uses
+  # `rules.path`.
   rules = flakeArgs.config.dotagents.rules;
 in
 {
@@ -65,19 +65,16 @@ in
     in
     {
       options.dotagents = {
-        # Shared global context written to each AI tool's global rules file —
-        # ~/.config/opencode/AGENTS.md for opencode, ~/.claude/CLAUDE.md for
-        # Claude Code. Defaults to the dmipeck/agents `dotagents.rules` content
-        # (agents.md, instructing the agent to load the git-workflow and
-        # caveman skills), passed through via nix/dotagents/rules.nix; overridable
-        # per profile.
+        # Shared global context written to OpenCode/Claude global rules files —
+        # ~/.config/opencode/AGENTS.md / ~/.claude/CLAUDE.md. Defaults to the
+        # Common Model rules body (Adapter Emit body-only); Cursor uses the
+        # authored `.mdc` passthrough instead. Overridable per profile.
         context = lib.mkOption {
           type = lib.types.lines;
           description = ''
-            Global agent instructions, applied across every session of each AI
-            tool. Defaults to the dmipeck/agents global rules (loads the
-            git-workflow and caveman skills); override for per-profile
-            instructions.
+            Global agent instructions for OpenCode/Claude sessions. Defaults to
+            the Common Model rules body from `dotagents/rules/*.mdc`; override
+            for per-profile instructions.
           '';
         };
 
@@ -376,12 +373,9 @@ in
       };
 
       config.dotagents = {
-        # Global agent instructions, shared by both tools (written to
-        # ~/.config/opencode/AGENTS.md and ~/.claude/CLAUDE.md). The content is
-        # owned once by dmipeck/agents (agents.md) and passed through via
-        # `dotagents.rules` (nix/dotagents/rules.nix); declared as a default here so a
-        # profile can still override it with its own instructions.
-        context = lib.mkDefault rules;
+        # OpenCode/Claude Adapter Emit: body only from Common Model rules.
+        # Declared as a default so a profile can still override instructions.
+        context = lib.mkDefault rules.body;
 
         # Base server definitions (commands, args, tool lists) come from
         # nix/dotagents/ (mcps/*.nix); only the per-user instance values are
