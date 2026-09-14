@@ -60,10 +60,18 @@
       expectedOpenCodeRules = builtins.readFile (fixture + "/expected/opencode/AGENTS.md");
       expectedClaudeRules = builtins.readFile (fixture + "/expected/claude/CLAUDE.md");
 
+      # Cursor passthrough contract: only documented FM keys; metadata gone.
+      cursorFmHasMetadata = builtins.match ".*\nmetadata:.*" cursorAgent != null;
+      cursorFmHasOpencode = builtins.match ".*\nopencode:.*" cursorAgent != null;
+
       assertions = [
         {
           name = "cursor-agent";
           ok = cursorAgent == expectedCursorAgent;
+        }
+        {
+          name = "cursor-agent-no-metadata";
+          ok = !cursorFmHasMetadata && !cursorFmHasOpencode;
         }
         {
           name = "opencode-agent";
