@@ -1,19 +1,21 @@
 {
   config,
   sopsLib,
+  mcpLib,
   ...
 }@flakeArgs:
 let
-  # Shared MCP server configs (neutral model + concrete servers) live in
-  # nix/dotagents/ (option model in dotagents.nix, per-server configs in mcps/);
-  # captured here from flake-parts state so the home-manager module can
-  # overlay the per-user instance values.
-  baseMcpServers = flakeArgs.config.dotagents.mcpServers;
+  # Authored Server Definitions (Cursor wire shape) from Common Model.
+  authoredMcpServers = flakeArgs.config.dotagents.commonModel.mcpServers;
+  # Nix-side tool enums (allowlists); not part of Cursor mcp.json emit.
+  mcpToolEnums = flakeArgs.config.dotagents.mcpServers;
+  # Stdio package bindings keyed by mcp.json command names.
+  mcpPackages = flakeArgs.config.dotagents.mcpPackages;
 
-  # Global agent rules (nix/dotagents/rules.nix) are owned by dmipeck/agents
-  # (agents.md) and passed through here; the home-manager module uses them
-  # as the default for the shared `context` written to each AI tool's global
-  # rules file.
+  # Common Model rules (nix/dotagents/rules.nix): Cursor Authoring Format
+  # `.mdc` under dotagents/rules/, parsed by the Frontmatter Parser. Body
+  # defaults shared `context` for OpenCode/Claude; Cursor passthrough uses
+  # `rules.path`.
   rules = flakeArgs.config.dotagents.rules;
 in
 {
@@ -65,19 +67,16 @@ in
     in
     {
       options.dotagents = {
-        # Shared global context written to each AI tool's global rules file —
-        # ~/.config/opencode/AGENTS.md for opencode, ~/.claude/CLAUDE.md for
-        # Claude Code. Defaults to the dmipeck/agents `dotagents.rules` content
-        # (agents.md, instructing the agent to load the git-workflow and
-        # caveman skills), passed through via nix/dotagents/rules.nix; overridable
-        # per profile.
+        # Shared global context written to OpenCode/Claude global rules files —
+        # ~/.config/opencode/AGENTS.md / ~/.claude/CLAUDE.md. Defaults to the
+        # Common Model rules body (Adapter Emit body-only); Cursor uses the
+        # authored `.mdc` passthrough instead. Overridable per profile.
         context = lib.mkOption {
           type = lib.types.lines;
           description = ''
-            Global agent instructions, applied across every session of each AI
-            tool. Defaults to the dmipeck/agents global rules (loads the
-            git-workflow and caveman skills); override for per-profile
-            instructions.
+            Global agent instructions for OpenCode/Claude sessions. Defaults to
+            the Common Model rules body from `dotagents/rules/*.mdc`; override
+            for per-profile instructions.
           '';
         };
 
@@ -367,136 +366,160 @@ in
         };
 
         mcpServers = lib.mkOption {
-          # The neutral submodule type is defined once in nix/dotagents/dotagents.nix
-          # (`dotagents.mcpServers`); this option just passes the final merged
-          # attrs through to the adapters.
+          # Final Instance-overlaid Cursor-shaped catalog for adapters.
           type = lib.types.attrsOf lib.types.anything;
-          description = "Neutral MCP server configs (defined in nix/dotagents/).";
+          description = ''
+            MCP catalog after Common Model (mcp.json) + package resolve +
+            Instance overlay. Cursor wire shape (stdio / url / headers / auth /
+            env); tool enums merged from Nix when present.
+          '';
         };
       };
 
       config.dotagents = {
-        # Global agent instructions, shared by both tools (written to
-        # ~/.config/opencode/AGENTS.md and ~/.claude/CLAUDE.md). The content is
-        # owned once by dmipeck/agents (agents.md) and passed through via
-        # `dotagents.rules` (nix/dotagents/rules.nix); declared as a default here so a
-        # profile can still override it with its own instructions.
-        context = lib.mkDefault rules;
+        # OpenCode/Claude Adapter Emit: body only from Common Model rules.
+        # Declared as a default so a profile can still override instructions.
+        context = lib.mkDefault rules.body;
 
-        # Base server definitions (commands, args, tool lists) come from
-        # nix/dotagents/ (mcps/*.nix); only the per-user instance values are
-        # overlaid here.
-        mcpServers = {
-          nixos = baseMcpServers.nixos;
-          playwright = baseMcpServers.playwright;
-          kubernetes = baseMcpServers.kubernetes;
-          grafana = baseMcpServers.grafana // {
-            env = baseMcpServers.grafana.env // {
-              GRAFANA_URL = mcps.grafana.url;
-              # Points the server at the sops-decrypted secret *file* rather
-              # than the token value itself, so the token never lands in the
-              # Nix store or this repo. Left empty when unset, e.g. for
-              # anonymous access.
-              GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE = if grafanaTokenPath != null then grafanaTokenPath else "";
+        # mcp.json SoT → resolve packages → Instance overlay → Cursor shape.
+        # Always-on servers (nixos/playwright/kubernetes/grafana) keep enable
+        # implicit; gated servers drop out when Instance enable is false.
+        mcpServers =
+          let
+            resolved = mcpLib.resolveMcpPackages mcpPackages authoredMcpServers;
+
+            # GitHub image tag from authored args (docker run … IMAGE stdio …).
+            githubImage = lib.findFirst (lib.hasPrefix "ghcr.io/github/github-mcp-server:") null (
+              resolved.github.args or [ ]
+            );
+
+            githubPort = toString mcps.github.callbackPort;
+
+            instances = {
+              # Always present when in authored set.
+              grafana = {
+                enable = true;
+                env = {
+                  GRAFANA_URL = mcps.grafana.url;
+                  GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE = if grafanaTokenPath != null then grafanaTokenPath else "";
+                };
+              };
+              # Gated servers: enable=false drops them from the catalog.
+              argocd = {
+                enable = mcps.argocd.enable;
+              }
+              // lib.optionalAttrs mcps.argocd.enable (
+                let
+                  baseCmd = resolved.argocd.command;
+                  baseArgs = resolved.argocd.args or [ ];
+                in
+                {
+                  # argocd-mcp reads ARGOCD_API_TOKEN (no token-file env), so
+                  # wrap with bash that reads the sops file at startup.
+                  command = if argocdTokenPath != null then "${pkgs.bash}/bin/bash" else baseCmd;
+                  args =
+                    if argocdTokenPath != null then
+                      [
+                        "-c"
+                        ''
+                          set -e
+                          ARGOCD_API_TOKEN="$(<"$ARGOCD_API_TOKEN_FILE")" \
+                            exec ${baseCmd} ${lib.concatStringsSep " " (map lib.escapeShellArg baseArgs)}
+                        ''
+                      ]
+                    else
+                      baseArgs;
+                  env =
+                    (resolved.argocd.env or { })
+                    // lib.optionalAttrs (mcps.argocd.url != null) {
+                      ARGOCD_BASE_URL = mcps.argocd.url;
+                    }
+                    // lib.optionalAttrs (argocdTokenPath != null) {
+                      ARGOCD_API_TOKEN_FILE = argocdTokenPath;
+                    };
+                }
+              );
+              gitlab = {
+                enable = mcps.gitlab.enable;
+              }
+              // lib.optionalAttrs mcps.gitlab.enable {
+                url = "${mcps.gitlab.url}/api/v4/mcp";
+              };
+              github = {
+                enable = mcps.github.enable;
+              }
+              // lib.optionalAttrs mcps.github.enable (
+                assert githubImage != null;
+                {
+                  args = [
+                    "run"
+                    "-i"
+                    "--rm"
+                    "-p"
+                    "127.0.0.1:${githubPort}:${githubPort}"
+                    "-e"
+                    "GITHUB_OAUTH_CALLBACK_PORT"
+                    githubImage
+                    "stdio"
+                    "--toolsets"
+                    "all"
+                  ];
+                  env = {
+                    GITHUB_OAUTH_CALLBACK_PORT = githubPort;
+                  };
+                }
+                // lib.optionalAttrs (mcps.github.oauth.clientId != null) {
+                  auth = {
+                    CLIENT_ID = mcps.github.oauth.clientId;
+                  }
+                  // lib.optionalAttrs (githubClientSecretPath != null) {
+                    CLIENT_SECRET = "{file:${githubClientSecretPath}}";
+                  }
+                  // lib.optionalAttrs (mcps.github.oauth.scope != null) {
+                    scopes = lib.splitString " " mcps.github.oauth.scope;
+                  };
+                }
+              );
+              cloudflare = {
+                enable = mcps.cloudflare.enable;
+              }
+              // lib.optionalAttrs (mcps.cloudflare.enable && cloudflareHeaders != { }) {
+                headers = cloudflareHeaders;
+              };
+              "cloudflare-bindings" = {
+                enable = mcps.cloudflare.bindings.enable;
+              }
+              // lib.optionalAttrs (mcps.cloudflare.bindings.enable && cloudflareHeaders != { }) {
+                headers = cloudflareHeaders;
+              };
+              "cloudflare-observability" = {
+                enable = mcps.cloudflare.observability.enable;
+              }
+              // lib.optionalAttrs (mcps.cloudflare.observability.enable && cloudflareHeaders != { }) {
+                headers = cloudflareHeaders;
+              };
+              plane = {
+                enable = mcps.plane.enable;
+              }
+              // lib.optionalAttrs mcps.plane.enable { headers = planeHeaders; };
+              firebase = {
+                enable = mcps.firebase.enable;
+              };
             };
-          };
-        }
-        // lib.optionalAttrs mcps.argocd.enable {
-          argocd = baseMcpServers.argocd // {
-            # argocd-mcp reads the API token from ARGOCD_API_TOKEN (no
-            # token-file env exists), so wrap the binary in a bash shim that
-            # reads the sops-decrypted file into that env var at startup —
-            # the token value itself never lands in the Nix store or this repo.
-            command =
-              if argocdTokenPath != null then "${pkgs.bash}/bin/bash" else baseMcpServers.argocd.command;
-            args =
-              if argocdTokenPath != null then
-                [
-                  "-c"
-                  ''
-                    set -e
-                    ARGOCD_API_TOKEN="$(<"$ARGOCD_API_TOKEN_FILE")" \
-                      exec ${baseMcpServers.argocd.command} ${lib.concatStringsSep " " (map lib.escapeShellArg baseMcpServers.argocd.args)}
-                  ''
-                ]
-              else
-                baseMcpServers.argocd.args;
-            env =
-              baseMcpServers.argocd.env
-              // lib.optionalAttrs (mcps.argocd.url != null) {
-                ARGOCD_BASE_URL = mcps.argocd.url;
+
+            overlaid = mcpLib.applyInstanceOverlay instances resolved;
+
+            # Merge Nix tool enums onto Cursor-shaped definitions (adapters
+            # that still read tools.*; Cursor emit strips non-wire keys).
+            withTools = lib.mapAttrs (
+              name: srv:
+              srv
+              // lib.optionalAttrs (mcpToolEnums ? ${name}) {
+                tools = mcpToolEnums.${name}.tools;
               }
-              // lib.optionalAttrs (argocdTokenPath != null) {
-                ARGOCD_API_TOKEN_FILE = argocdTokenPath;
-              };
-          };
-        }
-        // lib.optionalAttrs mcps.gitlab.enable {
-          gitlab = baseMcpServers.gitlab // {
-            url = "${mcps.gitlab.url}/api/v4/mcp";
-          };
-        }
-        // lib.optionalAttrs mcps.github.enable {
-          # Local GitHub MCP: Instance callbackPort overlays the Docker publish
-          # mapping and GITHUB_OAUTH_CALLBACK_PORT. Remote OAuth credentials
-          # (clientId/secret) can still ride on as an `oauth` block until that
-          # Instance wiring is stripped; the client secret uses opencode's
-          # "{file:...}" substitution so only the path lands in the store.
-          github =
-            let
-              port = toString mcps.github.callbackPort;
-              base = baseMcpServers.github;
-              image = lib.findFirst (lib.hasPrefix "ghcr.io/github/github-mcp-server:") null base.args;
-            in
-            assert image != null;
-            base
-            // {
-              args = [
-                "run"
-                "-i"
-                "--rm"
-                "-p"
-                "127.0.0.1:${port}:${port}"
-                "-e"
-                "GITHUB_OAUTH_CALLBACK_PORT"
-                image
-                "stdio"
-                "--toolsets"
-                "all"
-              ];
-              env = {
-                GITHUB_OAUTH_CALLBACK_PORT = port;
-              };
-            }
-            // lib.optionalAttrs (mcps.github.oauth.clientId != null) {
-              oauth = {
-                clientId = mcps.github.oauth.clientId;
-              }
-              // lib.optionalAttrs (mcps.github.oauth.scope != null) {
-                scope = mcps.github.oauth.scope;
-              }
-              // lib.optionalAttrs (githubClientSecretPath != null) {
-                clientSecret = "{file:${githubClientSecretPath}}";
-              };
-            };
-        }
-        // lib.optionalAttrs mcps.cloudflare.enable {
-          cloudflare = baseMcpServers.cloudflare // cloudflareHeaders;
-        }
-        // lib.optionalAttrs mcps.cloudflare.bindings.enable {
-          "cloudflare-bindings" = baseMcpServers."cloudflare-bindings" // cloudflareHeaders;
-        }
-        // lib.optionalAttrs mcps.cloudflare.observability.enable {
-          "cloudflare-observability" = baseMcpServers."cloudflare-observability" // cloudflareHeaders;
-        }
-        // lib.optionalAttrs mcps.plane.enable {
-          plane = baseMcpServers.plane // {
-            headers = planeHeaders;
-          };
-        }
-        // lib.optionalAttrs mcps.firebase.enable {
-          firebase = baseMcpServers.firebase;
-        };
+            ) overlaid;
+          in
+          withTools;
       };
     };
 }

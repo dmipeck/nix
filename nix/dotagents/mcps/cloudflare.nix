@@ -40,44 +40,20 @@ let
   ];
 in
 {
-  # Cloudflare's managed MCP servers (stateless streamable HTTP at /mcp,
-  # documented at developers.cloudflare.com/agents/model-context-protocol/
-  # cloudflare/servers-for-cloudflare/). All three authenticate the same way:
-  # interactive OAuth 2.1, or an API token sent as an Authorization: Bearer
-  # header (wired per-user via the home-manager overlay, see
-  # nix/homeModules/dotagents.nix — this file never sees the token). What an
-  # API token may do is fixed at token creation: a read-only token yields a
-  # read-only agent. Account-scoped tokens need the "Account Resources: Read"
-  # permission so the server can auto-detect the account ID; tokens with
-  # Client IP Address Filtering are not supported.
+  # Tool enums only — Server Definitions (urls) live in authored mcp.json.
+  # Instance overlays wire Authorization headers via sops in homeModules.
   config.dotagents.mcpServers = {
-    # Code Mode server — full programmatic control over the whole Cloudflare
-    # API (~2,500 endpoints) through three tools: docs (search developer
-    # docs), search (query the OpenAPI spec) and execute (run JavaScript
-    # against cloudflare.request()).
     cloudflare = {
-      type = "remote";
-      url = "https://mcp.cloudflare.com/mcp";
       _module.args.mcpToolEnum = lib.types.enum (cloudflareReadTools ++ cloudflareWriteTools);
       tools.read = cloudflareReadTools;
       tools.write = cloudflareWriteTools;
     };
-    # Workers Bindings server — discrete per-resource tools over KV
-    # namespaces, Workers, R2 buckets, D1 databases and Hyperdrive configs.
-    # Read tools (list/get) are allow-listed; create/delete/update/query are
-    # explicit ask/prompt candidates.
     "cloudflare-bindings" = {
-      type = "remote";
-      url = "https://bindings.mcp.cloudflare.com/mcp";
       _module.args.mcpToolEnum = lib.types.enum (bindingsReadTools ++ bindingsWriteTools);
       tools.read = bindingsReadTools;
       tools.write = bindingsWriteTools;
     };
-    # Observability server — worker logs, metrics and schema discovery
-    # queries. Entirely read-only.
     "cloudflare-observability" = {
-      type = "remote";
-      url = "https://observability.mcp.cloudflare.com/mcp";
       _module.args.mcpToolEnum = lib.types.enum observabilityReadTools;
       tools.read = observabilityReadTools;
     };

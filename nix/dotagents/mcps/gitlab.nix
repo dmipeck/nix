@@ -35,14 +35,8 @@ let
   ];
 in
 {
+  # Tool enum only — url comes from Instance overlay on authored mcp.json.
   config.dotagents.mcpServers.gitlab = {
-    type = "remote";
-    # url is a per-user placeholder; filled in by the consumer's home-manager
-    # config (see dmipeck/nix homeModules/dotagents.nix).
-    url = null;
-    # gitlab exposes both read and write tools with no read-only flag of
-    # its own, so only the individually-verified read-only tools are
-    # allow-listed; the write tools are explicit `ask`/prompt candidates.
     _module.args.mcpToolEnum = lib.types.enum (readTools ++ writeTools);
     tools.read = readTools;
     tools.write = writeTools;

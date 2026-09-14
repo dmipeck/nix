@@ -2,6 +2,7 @@
   config,
   lib,
   withSystem,
+  frontmatterLib,
   ...
 }:
 let
@@ -12,14 +13,21 @@ let
   agentsDir = ../../dotagents/agents;
   dotagentsDir = ../../dotagents;
 
+  commonModelLib = import ./_common-model.nix {
+    inherit lib frontmatterLib;
+  };
+
   # Discover content by directory presence. Public name = directory name.
   # No index files.
   skillNames = builtins.attrNames (
     lib.filterAttrs (_: v: v == "directory") (builtins.readDir skillsDir)
   );
+  # Legacy dual-path remnant: agents/<name>/agent.md directories (empty after #60).
   agentNames = builtins.attrNames (
     lib.filterAttrs (_: v: v == "directory") (builtins.readDir agentsDir)
   );
+  # Authoring Format: flat agents/<name>.md → Common Model
+  commonModelAgents = commonModelLib.discoverAgents agentsDir;
 
   # Standardized skill package layout: $out/skills/<name>/SKILL.md
   skillPkg =
@@ -33,7 +41,8 @@ let
   # historically the golang/postgres skills and the commit/test subagents were
   # sliced out of it by the adapters via $out/skills/<name> /
   # $out/agents/<name>/agent.md. Kept for downstream consumers that want the
-  # whole tree in a single store path.
+  # whole tree in a single store path. Flat Authoring Format tracers
+  # (agents/<id>.md) are copied alongside legacy agent directories.
   wholeTree = pkgs.runCommand "dotagents" { } ''
     mkdir -p $out
     cp -r ${dotagentsDir}/skills $out/skills
@@ -67,7 +76,12 @@ in
   };
   options.dotagents.agents = lib.mkOption {
     type = discovered lib.types.path;
-    description = "AI agent definitions (agent.md files), discovered automatically from dotagents/agents/.";
+    description = "Legacy AI agent definitions (agents/<name>/agent.md), discovered automatically. Empty once all agents are Authoring Format; Common Model agents live under dotagents.commonModel.agents.";
+  };
+  options.dotagents.commonModel.agents = lib.mkOption {
+    type = lib.types.attrs;
+    default = { };
+    description = "Common Model agents discovered from flat Authoring Format agents/<id>.md via the Frontmatter Parser. Each value is { frontmatter, body, path }.";
   };
   options.dotagents.cheapSubagents = lib.mkOption {
     type = lib.types.listOf lib.types.str;
@@ -192,6 +206,7 @@ in
   config.dotagents.agents = lib.genAttrs agentNames (
     name: lib.mkOptionDefault (agentsDir + "/${name}/agent.md")
   );
+  config.dotagents.commonModel.agents = lib.mkOptionDefault commonModelAgents;
 
   config.dotagents.localPackages = {
     whole-tree = wholeTree;

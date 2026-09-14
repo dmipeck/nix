@@ -1,11 +1,12 @@
-{ config, ... }@flakeArgs:
+{ config, adapterEmit, ... }@flakeArgs:
 let
   # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix). `config`
   # here is flake-parts state (auto-imported under nix/); captured once so the
   # home-manager module below can reference the packages.
   agentSkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
-  agents = flakeArgs.config.dotagents.agents;
+  # Common Model agents (flat Authoring Format); OpenCode Adapter Emit converts.
+  commonAgents = flakeArgs.config.dotagents.commonModel.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Per-client default model + variation (dotagents/models), driven by the
   # config.dotagents.models option; this adapter reads the `opencode` client.
@@ -27,35 +28,37 @@ in
       # permission rules from the shared per-server tool lists.
       mcpServers = config.dotagents.mcpServers;
 
-      # All agent definitions (dotagents/agents/<name>/agent.md), registered
+      # All agents: Common Model → Adapter Emit convert (hoist metadata.opencode,
+      # inject model/variant from Nix when the file omits them). Registered
       # conditionally: the github pair, argocd and the gitlab pair need their
-      # per-user MCP server present, everything
-      # else is registered unconditionally (see the `agents` config below).
-      # The shared agent.md files are model-neutral; the cheap worker subagents
-      # (config.dotagents.cheapSubagents) and the default primary agent
-      # (orchestrate) are rendered into store files whose frontmatter carries
-      # the client's model + variation from config.dotagents.models.opencode
-      # (`model:`/`variant:` inserted as the first lines after the opening
-      # `---`; the variation line is omitted when null), every other agent
-      # keeps its plain pass-through path.
-      opencodeAgent =
-        model: variation: name: src:
-        pkgs.runCommand "dotagents-${name}-agent-opencode" { } ''
-          mkdir -p "$(dirname "$out")"
-          awk 'NR==1{print; print "model: ${model}"; ${
-            lib.optionalString (variation != null) "print \"variant: ${variation}\";"
-          } next} {print}' ${src} > "$out"
-        '';
+      # per-user MCP server present; everything else is unconditional (see
+      # `opencodeAgents` below). Authored metadata.opencode.model / .variant win.
+      renderCommonAgent =
+        name: agent:
+        let
+          cheap = lib.elem name cheapSubagents;
+          model =
+            if cheap then
+              models.subagent.model
+            else if name == "orchestrate" then
+              models.primary.model
+            else
+              null;
+          variation =
+            if cheap then
+              models.subagent.variation
+            else if name == "orchestrate" then
+              models.primary.variation
+            else
+              null;
+          text = adapterEmit.emitOpenCodeAgent agent {
+            inherit model;
+            variant = variation;
+          };
+        in
+        pkgs.writeText "dotagents-${name}-agent-opencode" text;
 
-      allAgents = lib.mapAttrs (
-        name: src:
-        if lib.elem name cheapSubagents then
-          opencodeAgent models.subagent.model models.subagent.variation name src
-        else if name == "orchestrate" then
-          opencodeAgent models.primary.model models.primary.variation name src
-        else
-          src
-      ) agents;
+      allAgents = lib.mapAttrs renderCommonAgent commonAgents;
 
       # Registered agent set: the same conditional composition as before (github
       # pair / argocd / gitlab gating), over `allAgents`. plane is a write-only
@@ -98,17 +101,13 @@ in
           lib.genAttrs firebaseAgentNames (n: allAgents.${n})
         );
 
-      # opencode's home-manager module writes an agent value to
-      # opencode/agents/<name>.md as `source` only when it `lib.isPath`; a
-      # derivation (the rendered cheap-subagent store file) lands in `text` and
-      # fails the string type check. Path-valued agents keep the normal
-      # programs.opencode.agents route; derivation-valued ones are written via
-      # xdg.configFile directly (its `source` accepts derivations).
-      pathAgents = lib.filterAttrs (_: a: !lib.isDerivation a) opencodeAgents;
-      derivedAgents = lib.filterAttrs (_: a: lib.isDerivation a) opencodeAgents;
-      derivedAgentFiles = lib.mapAttrs' (
+      # Adapter Emit produces writeText derivations. opencode's home-manager
+      # module only accepts path-valued agents as `source`; derivations fail
+      # the string type check on `text`. Write every agent via xdg.configFile
+      # (its `source` accepts derivations).
+      agentFiles = lib.mapAttrs' (
         name: drv: lib.nameValuePair "opencode/agents/${name}.md" { source = drv; }
-      ) derivedAgents;
+      ) opencodeAgents;
       githubAgentNames = [
         "explore-github"
         "github"
@@ -147,32 +146,32 @@ in
       # documented "enable per agent, disable globally" MCP pattern.
       deniedMcpTools = lib.genAttrs (map (name: "${name}_*") (lib.attrNames mcpServers)) (_: false);
 
-      # A local stdio server (command array + optional env) or a remote HTTP
-      # server, matching the v1 `mcp` shape opencode's home-manager module and
-      # settings.mcp expect.
+      # Cursor-shaped Common Model → OpenCode v1 mcp dialect (local/remote).
+      # Secrets keep "{file:...}" substitution; Cursor rewrite is Cursor-only.
       toMcp =
-        name: srv:
-        if srv.type == "remote" then
+        _name: srv:
+        if (srv.type or null) == "stdio" || (srv ? command) then
+          {
+            type = "local";
+            command = [ srv.command ] ++ (srv.args or [ ]);
+          }
+          // lib.optionalAttrs ((srv.env or { }) != { }) { environment = srv.env; }
+        else
           {
             type = "remote";
             url = srv.url;
           }
-          // lib.optionalAttrs (srv.headers != { }) { inherit (srv) headers; }
-          // lib.optionalAttrs (srv.oauth != null) {
-            # Pre-registered OAuth client (server does not support dynamic client
-            # registration). Emit only the fields that are actually set so a null
-            # clientSecret/scope never reaches the generated config.
+          // lib.optionalAttrs ((srv.headers or { }) != { }) { inherit (srv) headers; }
+          // lib.optionalAttrs (srv ? auth && srv.auth != { }) {
             oauth =
-              lib.optionalAttrs (srv.oauth.clientId != null) { clientId = srv.oauth.clientId; }
-              // lib.optionalAttrs (srv.oauth.clientSecret != null) { clientSecret = srv.oauth.clientSecret; }
-              // lib.optionalAttrs (srv.oauth.scope != null) { scope = srv.oauth.scope; };
-          }
-        else
-          {
-            type = "local";
-            command = [ srv.command ] ++ srv.args;
-          }
-          // lib.optionalAttrs (srv.env != { }) { environment = srv.env; };
+              lib.optionalAttrs (srv.auth ? CLIENT_ID) { clientId = srv.auth.CLIENT_ID; }
+              // lib.optionalAttrs (srv.auth ? CLIENT_SECRET) {
+                clientSecret = srv.auth.CLIENT_SECRET;
+              }
+              // lib.optionalAttrs (srv.auth ? scopes) {
+                scope = lib.concatStringsSep " " srv.auth.scopes;
+              };
+          };
 
       mcp = lib.mapAttrs toMcp mcpServers;
 
@@ -282,8 +281,8 @@ in
         programs.opencode.skills = skills;
 
         # Delegate-to-subagent skills (commit, test, nix) reference their
-        # subagent by name; the definitions come from dotagents/agents/<name>/agent.md
-        # via config.dotagents.agents (auto-discovered in nix/dotagents/auto.nix).
+        # subagent by name; definitions come from Common Model agents via
+        # Adapter Emit (flat Authoring Format under dotagents/agents/<id>.md).
         # explore-nix re-enables the nixos MCP tools via `tools` in its agent
         # definition; nix is the write/apply agent, scoped to state-changing
         # command families via its bash permission map.
@@ -306,15 +305,11 @@ in
         # first (permission.task on orchestrate).
         # explore-git and git talk to the local repo through bash `git`
         # commands, so they're always registered.
-        programs.opencode.agents = pathAgents;
-
-        # The rendered cheap-subagent store files (model-pinned agent.md copies)
-        # are written into the opencode config dir via xdg.configFile directly
-        # (its `source` accepts derivations), alongside the plain pass-through
-        # content that keeps the normal programs.opencode.agents route.
+        # Agents are writeText derivations → xdg.configFile (not
+        # programs.opencode.agents, which only accepts paths).
         # User-invoked workflows live as skills with
         # `disable-model-invocation: true` — no separate commands layer.
-        xdg.configFile = lib.mkIf (derivedAgentFiles != { }) derivedAgentFiles;
+        xdg.configFile = lib.mkIf (agentFiles != { }) agentFiles;
 
         programs.opencode.themes = {
           vitesse-dark = {

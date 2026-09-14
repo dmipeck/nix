@@ -1,18 +1,21 @@
-{ config, ... }@flakeArgs:
+{ config, adapterEmit, ... }@flakeArgs:
 let
-  # Skill/plugin packages and agent definitions are owned by nix/dotagents/;
+  # Skill/plugin packages and Common Model agents are owned by nix/dotagents/;
   # captured once so the home-manager module below can reference them.
   agentSkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
-  agents = flakeArgs.config.dotagents.agents;
+  # Authoring Format agents → Common Model (Cursor Adapter Emit passthrough).
+  commonAgents = flakeArgs.config.dotagents.commonModel.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
+  # Common Model rules — Cursor Adapter Emit passthrough of authored `.mdc`.
+  rules = flakeArgs.config.dotagents.rules;
   # Per-client default model + variation; this adapter reads the `cursor` client.
   models = flakeArgs.config.dotagents.models.cursor;
 in
 {
-  # Thin adapter: maps neutral dotagents skills / agents / MCP / context onto
-  # Cursor's config dialect under ~/.cursor/. User-invoked skills carry
-  # `disable-model-invocation: true` in SKILL.md (slash-only; no commands dir).
+  # Thin adapter: maps Common Model skills / agents / MCP / rules onto Cursor
+  # under ~/.cursor/. Agents: documented FM fields only (`metadata` stripped).
+  # Skills copy/symlink as authored (`disable-model-invocation: true` = slash-only).
   flake.homeModules.cursor =
     {
       lib,
@@ -26,109 +29,15 @@ in
 
       # -----------------------------------------------------------------
       # MCP → ~/.cursor/mcp.json
-      # Cursor dialect: stdio uses command/args/env; remote uses url/headers
-      # and optional auth { CLIENT_ID, CLIENT_SECRET, scopes }. Secrets that
-      # arrive as opencode's "{file:/path}" are rewritten to "${env:VAR}" and
-      # the matching env var is exported from the sops-decrypted file at
-      # session start (Cursor has no {file:} substitution).
+      # Common Model + Instance is already Cursor wire shape. Adapter Emit
+      # rewrites "{file:...}" → "${env:VAR}" and we export matching session
+      # env vars from the sops-decrypted files.
       # -----------------------------------------------------------------
-      # POSIX ERE (builtins.match): literal braces via character classes — "\{"
-      # is invalid and throws at eval time.
-      fileRefMatch = builtins.match ".*[{]file:([^}]+)[}].*";
+      # Strip Nix-only tool enums before Cursor emit.
+      wireMcpServers = lib.mapAttrs (_: srv: builtins.removeAttrs srv [ "tools" ]) mcpServers;
 
-      # Stable env var name for a "{file:...}" value keyed by server + field.
-      fileEnvName =
-        server: field:
-        "DOTAGENTS_CURSOR_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] server)}_${lib.toUpper field}";
-
-      collectFileRefs =
-        server: srv:
-        let
-          fromHeaders = lib.mapAttrsToList (
-            hname: hval:
-            let
-              m = fileRefMatch hval;
-            in
-            if m == null then
-              null
-            else
-              {
-                name = fileEnvName server (lib.replaceStrings [ "-" ] [ "_" ] hname);
-                path = builtins.head m;
-              }
-          ) srv.headers;
-          fromOauth =
-            if srv.oauth != null && srv.oauth.clientSecret != null then
-              let
-                m = fileRefMatch srv.oauth.clientSecret;
-              in
-              if m == null then
-                [ ]
-              else
-                [
-                  {
-                    name = fileEnvName server "CLIENT_SECRET";
-                    path = builtins.head m;
-                  }
-                ]
-            else
-              [ ];
-        in
-        lib.filter (x: x != null) fromHeaders ++ fromOauth;
-
-      allFileRefs = lib.concatLists (lib.mapAttrsToList collectFileRefs mcpServers);
-
-      # Rewrite a single header value; derive the env name from the header key.
-      rewriteHeader =
-        server: hname: hval:
-        let
-          m = fileRefMatch hval;
-        in
-        if m == null then
-          hval
-        else
-          lib.replaceStrings
-            [ "{file:${builtins.head m}}" ]
-            [
-              "\${env:${fileEnvName server (lib.replaceStrings [ "-" ] [ "_" ] hname)}}"
-            ]
-            hval;
-
-      toCursorMcp =
-        name: srv:
-        if srv.type == "remote" then
-          {
-            url = srv.url;
-          }
-          // lib.optionalAttrs (srv.headers != { }) {
-            headers = lib.mapAttrs (rewriteHeader name) srv.headers;
-          }
-          // lib.optionalAttrs (srv.oauth != null && srv.oauth.clientId != null) {
-            auth = {
-              CLIENT_ID = srv.oauth.clientId;
-            }
-            // lib.optionalAttrs (srv.oauth.clientSecret != null) {
-              CLIENT_SECRET =
-                let
-                  m = fileRefMatch srv.oauth.clientSecret;
-                in
-                if m == null then srv.oauth.clientSecret else "\${env:${fileEnvName name "CLIENT_SECRET"}}";
-            }
-            // lib.optionalAttrs (srv.oauth.scope != null) {
-              scopes = lib.splitString " " srv.oauth.scope;
-            };
-          }
-        else
-          {
-            type = "stdio";
-            command = srv.command;
-            args = srv.args;
-          }
-          // lib.optionalAttrs (srv.env != { }) { env = srv.env; };
-
-      cursorMcp = {
-        mcpServers = lib.mapAttrs toCursorMcp mcpServers;
-      };
+      cursorMcp = adapterEmit.emitCursorMcp { mcpServers = wireMcpServers; };
+      allFileRefs = adapterEmit.collectCursorMcpFileRefs { mcpServers = wireMcpServers; };
 
       # -----------------------------------------------------------------
       # Skills → ~/.cursor/skills/<name>/
@@ -146,96 +55,10 @@ in
 
       # -----------------------------------------------------------------
       # Agents → ~/.cursor/agents/<name>.md
-      # Cursor frontmatter: name, description, model, optional readonly.
-      # Opencode mode/permission/tools blocks are stripped; body kept.
+      # Common Model → Adapter Emit passthrough: documented Cursor FM fields
+      # only (name, description, model, readonly, is_background). Metadata
+      # stripped. Model defaults from dotagents.models.cursor when unset.
       # -----------------------------------------------------------------
-      readonlyAgents = [
-        "explore-nix"
-        "explore-git"
-        "explore-github"
-        "explore-gitlab"
-        "explore-argocd"
-        "explore-cloudflare"
-        "explore-cloudflare-bindings"
-        "explore-cloudflare-observability"
-        "explore-firebase"
-        "export-kubernetes"
-      ];
-
-      # Hand-tuned descriptions (opencode frontmatter uses folded `>-` scalars
-      # that are awkward to extract in Nix). Keep in sync with claude.nix.
-      agentDescriptions = {
-        nix = "Applies and verifies nix configuration changes on this machine — nixos-rebuild, home-manager, nix build/flake/profile/store, and nix-collect-garbage. Read-only exploration belongs to explore-nix.";
-        "explore-nix" =
-          "Explores nix and nixos configurations — this repo's flake and modules, nixpkgs/home-manager options, package versions. Read-only.";
-        github = "Full GitHub development assistant — repos, PRs, issues, Actions. Write-capable.";
-        "explore-github" =
-          "Answers questions about git repositories via the github MCP read tools. Read-only.";
-        gitlab = "Write-capable GitLab assistant — projects, issues, MRs, pipelines via the gitlab MCP server.";
-        "explore-gitlab" = "Answers questions about GitLab via the gitlab MCP read tools. Read-only.";
-        cloudflare = "Write-capable Cloudflare assistant via the cloudflare MCP server (docs, search, execute).";
-        "explore-cloudflare" =
-          "Answers Cloudflare API/feature questions via the cloudflare MCP read tools. Read-only.";
-        "cloudflare-bindings" =
-          "Manages Cloudflare Workers bindings (KV, Workers, R2, D1, Hyperdrive). Write-capable.";
-        "explore-cloudflare-bindings" =
-          "Answers questions about Cloudflare Workers bindings state. Read-only.";
-        "explore-cloudflare-observability" =
-          "Queries worker logs, metrics and schema via cloudflare-observability. Read-only.";
-        "export-kubernetes" =
-          "Answers questions about a Kubernetes cluster via the kubernetes MCP server. Read-only.";
-        "explore-argocd" = "Answers questions about ArgoCD via the argocd MCP server. Read-only.";
-        firebase = "Write-capable Firebase assistant via the firebase MCP server (Auth, Firestore, Functions, Crashlytics, Remote Config, …).";
-        "explore-firebase" =
-          "Answers questions about Firebase projects and data via the firebase MCP read tools. Read-only.";
-        orchestrate = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles results. Default primary agent.";
-        test = "Runs the test suite for one testing ecosystem and reports pass/fail. Never takes corrective action.";
-        commit = "Reviews pending changes, decides commit boundaries, and writes conventional + caveman-compressed commit messages.";
-        format = "Runs repository formatters and fixes formatting issues across ecosystems. Write-capable.";
-        lint = "Runs repository linters and fixes lint issues across ecosystems. Write-capable.";
-        "explore-git" =
-          "Answers questions about the current git repository using local git commands. Read-only.";
-        git = "Full git assistant — read repo state and perform git operations. Write-capable.";
-      };
-
-      agentDescription =
-        name:
-        agentDescriptions.${name} or (
-          let
-            m = builtins.match ".*description:[ \t]*([^\n]*)[\n\r].*" (builtins.readFile agents.${name});
-          in
-          if m == null then name else builtins.head m
-        );
-
-      cursorAgent =
-        name: description: model: readonly:
-        let
-          frontmatter = lib.concatStringsSep "\n" (
-            [
-              "---"
-              "name: ${name}"
-              # Quote descriptions — several contain `: ` which plain YAML
-              # scalars would misparse as a mapping separator.
-              "description: ${builtins.toJSON description}"
-            ]
-            ++ lib.optional (model != "" && model != "inherit") "model: ${model}"
-            ++ lib.optional (model == "inherit") "model: inherit"
-            ++ lib.optional readonly "readonly: true"
-            ++ [ "---" ]
-          );
-        in
-        pkgs.runCommand "dotagents-${name}-agent-cursor" { } ''
-          mkdir -p "$(dirname "$out")"
-          {
-            cat <<'EOF'
-          ${frontmatter}
-
-          EOF
-            # Drop the shared file's opencode frontmatter block, keep the body.
-            awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.${name}}
-          } > "$out"
-        '';
-
       # Bake a variation into Cursor's bracket syntax when both are set
       # (e.g. composer-2.5[effort=high]); "inherit" and null variation stay
       # as the bare model id.
@@ -243,21 +66,30 @@ in
         model: variation:
         if model == "inherit" || variation == null then model else "${model}[effort=${variation}]";
 
-      renderAgent =
+      cursorModelFor =
         name:
         let
           cheap = lib.elem name cheapSubagents;
-          # Cheap workers pin the subagent model; orchestrate uses the primary
-          # model; every other agent inherits the session model.
-          model =
-            if cheap then
-              withVariation models.subagent.model models.subagent.variation
-            else if name == "orchestrate" then
-              withVariation models.primary.model models.primary.variation
-            else
-              "inherit";
         in
-        cursorAgent name (agentDescription name) model (lib.elem name readonlyAgents);
+        # Cheap workers pin the subagent model; orchestrate uses the primary
+        # model; every other agent inherits the session model.
+        if cheap then
+          withVariation models.subagent.model models.subagent.variation
+        else if name == "orchestrate" then
+          withVariation models.primary.model models.primary.variation
+        else
+          "inherit";
+
+      renderAgent =
+        name: agent:
+        let
+          model = cursorModelFor name;
+          # Prefer authored top-level model; else inject adapter default.
+          frontmatter =
+            agent.frontmatter // lib.optionalAttrs (!(agent.frontmatter ? model)) { inherit model; };
+          text = adapterEmit.emitCursorAgent (agent // { inherit frontmatter; });
+        in
+        pkgs.writeText "dotagents-${name}-agent-cursor" text;
 
       githubAgentNames = [
         "explore-github"
@@ -282,7 +114,7 @@ in
         "firebase"
       ];
 
-      allCursorAgents = lib.mapAttrs (name: _: renderAgent name) agents;
+      allCursorAgents = lib.mapAttrs renderAgent commonAgents;
 
       cursorAgents =
         (lib.removeAttrs allCursorAgents (
@@ -321,19 +153,12 @@ in
       ) cursorAgents;
 
       # -----------------------------------------------------------------
-      # Global context → ~/.cursor/rules/dotagents.mdc (alwaysApply).
-      # Cursor has no global AGENTS.md; user/project rules cover this.
+      # Global rules → ~/.cursor/rules/dotagents.mdc (Authoring Format SoT).
+      # Cursor Adapter Emit: passthrough of the authored Common Model path.
       # -----------------------------------------------------------------
       rulesFile = {
         ".cursor/rules/dotagents.mdc" = {
-          text = ''
-            ---
-            alwaysApply: true
-            description: Shared dotagents global agent instructions
-            ---
-
-            ${config.dotagents.context}
-          '';
+          source = rules.path;
         };
       };
 

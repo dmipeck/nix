@@ -1,11 +1,5 @@
-{ lib, withSystem, ... }:
+{ lib, ... }:
 let
-  # flake-parts flake modules get no `pkgs` argument (only perSystem does), so
-  # reach into the x86_64-linux system's pkgs via withSystem, mirroring the
-  # skills modules. The package is a nixpkgs derivation; evaluation stays lazy
-  # until a consumer forces it.
-  pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
-
   readTools = [
     "alerting_manage_routing"
     "alerting_manage_rules"
@@ -62,24 +56,8 @@ let
   ];
 in
 {
+  # Tool enum only — command/args/env from mcp.json + Instance overlay.
   config.dotagents.mcpServers.grafana = {
-    type = "local";
-    command = "${pkgs.mcp-grafana}/bin/mcp-grafana";
-    args = [
-      "-t"
-      "stdio"
-      # Block dashboard/alerting/etc create-update tools, leaving only
-      # inspection.
-      "-disable-write"
-    ];
-    # Per-user secrets are placeholders here; filled in by the consumer's
-    # home-manager config (see dmipeck/nix homeModules/dotagents.nix).
-    env = {
-      GRAFANA_URL = "";
-      GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE = "";
-    };
-    # mcp-grafana is started with -disable-write, so every tool it exposes
-    # is read-only (readOnlyHint: true); the full set is allow-listed.
     _module.args.mcpToolEnum = lib.types.enum readTools;
     tools.read = readTools;
   };
