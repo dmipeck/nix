@@ -21,6 +21,21 @@
         model = "opencode-go/minimax-m3";
         variant = "none";
       };
+      # Authored metadata.opencode.model / .variant must win over Nix inject.
+      agentWithAuthoredModel = agent // {
+        frontmatter = agent.frontmatter // {
+          metadata = agent.frontmatter.metadata // {
+            opencode = agent.frontmatter.metadata.opencode // {
+              model = "authored/model";
+              variant = "authored-variant";
+            };
+          };
+        };
+      };
+      opencodeAgentAuthoredWins = adapterEmit.emitOpenCodeAgent agentWithAuthoredModel {
+        model = "opencode-go/minimax-m3";
+        variant = "none";
+      };
       claudeAgent = adapterEmit.emitClaudeAgent agent {
         model = "haiku";
         effort = "low";
@@ -53,6 +68,14 @@
         {
           name = "opencode-agent";
           ok = opencodeAgent == expectedOpenCodeAgent;
+        }
+        {
+          name = "opencode-authored-model-wins";
+          ok =
+            lib.hasInfix "model: authored/model" opencodeAgentAuthoredWins
+            && lib.hasInfix "variant: authored-variant" opencodeAgentAuthoredWins
+            && !(lib.hasInfix "opencode-go/minimax-m3" opencodeAgentAuthoredWins)
+            && !(lib.hasInfix "variant: none" opencodeAgentAuthoredWins);
         }
         {
           name = "claude-agent";
