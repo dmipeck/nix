@@ -64,6 +64,10 @@
         mcpServers = sampleMcp;
       };
 
+      cursorNoMetadata =
+        text:
+        (builtins.match ".*\nmetadata:.*" text == null) && (builtins.match ".*\nopencode:.*" text == null);
+
       assertions = [
         {
           name = "common-model-has-tracers";
@@ -90,6 +94,10 @@
         {
           name = "cursor-explore-github";
           ok = cursorExplore == builtins.readFile (expectedDir + "/cursor/agents/explore-github.md");
+        }
+        {
+          name = "cursor-passthrough-strips-metadata";
+          ok = cursorNoMetadata cursorGithub && cursorNoMetadata cursorExplore;
         }
         {
           name = "opencode-github";
