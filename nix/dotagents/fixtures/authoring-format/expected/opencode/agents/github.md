@@ -11,6 +11,10 @@ tools:
   "github_*": true
 model: opencode-go/minimax-m3
 variant: none
+folded: join spaces
+literal: |
+  keep
+  newlines
 ---
 
 You are the github subagent. Do GitHub development work end to end.

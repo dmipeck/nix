@@ -15,6 +15,12 @@ metadata:
         "gh *": allow
     tools:
       "github_*": true
+    literal: |
+      keep
+      newlines
+    folded: >
+      join
+      spaces
   claude:
     tools: []
 ---
