@@ -24,14 +24,32 @@ recipes and glossary below.
 
 ## Glossary
 
-| Term | Meaning |
-|---|---|
-| **Authoring Format** | On-disk Cursor dialect SoT: `agents/<id>.md`, `skills/<id>/SKILL.md`, `rules/*.mdc`, Cursor-shaped `mcp.json`. |
-| **Metadata** | Agent frontmatter field `metadata` holding nested `opencode` / `claude` portability knobs. Not a separate `meta` key. Skills stay Cursor-pure (no portability nests). |
-| **Common Model** | Structured Nix attrs from parsing Authoring Format (agents, skills, MCP, rules) before Adapter Emit. |
-| **Adapter Emit** | Per-consumer render: Cursor = passthrough (agents: documented fields only, strip `metadata`); OpenCode/Claude = convert from Common Model + `metadata.*`. |
-| **MCP Server Definition** | Cursor-shaped entry in authored `mcp.json` (`stdio` / `url` / `headers` / `auth` / `env`). |
-| **MCP Instance** | Per-user Nix overlays under `dotagents.mcps.<name>` (enable, secrets, URL/OAuth). Tool allowlists stay Nix-side, not non-Cursor keys in `mcp.json`. |
+**Authoring Format**:
+On-disk Cursor dialect SoT: `agents/<id>.md`,
+`skills/<id>/SKILL.md`, `rules/*.mdc`, Cursor-shaped `mcp.json`.
+
+**Metadata**:
+Agent frontmatter field `metadata` holding nested `opencode` /
+`claude` portability knobs. Not a separate `meta` key. Skills stay
+Cursor-pure (no portability nests).
+
+**Common Model**:
+Structured Nix attrs from parsing Authoring Format (agents, skills,
+MCP, rules) before Adapter Emit.
+
+**Adapter Emit**:
+Per-consumer render: Cursor = passthrough (agents: documented fields
+only, strip `metadata`); OpenCode/Claude = convert from Common Model +
+`metadata.*`.
+
+**MCP Server Definition**:
+Cursor-shaped entry in authored `mcp.json` (`stdio` / `url` /
+`headers` / `auth` / `env`).
+
+**MCP Instance**:
+Per-user Nix overlays under `dotagents.mcps.<name>` (enable, secrets,
+URL/OAuth). Tool allowlists stay Nix-side, not non-Cursor keys in
+`mcp.json`.
 
 ## Where files live
 
