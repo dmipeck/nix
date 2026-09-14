@@ -66,9 +66,11 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `config.dotagents.localPackages.whole-tree` is the whole content tree in one
   store path.
 - `nix/dotagents/` is the flakeModule machinery for the AI-agent stack: the
-  neutral `dotagents.mcpServers` option model (`nix/dotagents/dotagents.nix`),
-  per-server configs (`nix/dotagents/mcps/*.nix`), the local content
-  auto-discovery (`nix/dotagents/auto.nix`), upstream skill collections
+  tool-enum + package option model (`nix/dotagents/dotagents.nix`),
+  per-server tool enums / package bindings (`nix/dotagents/mcps/*.nix`),
+  authored Cursor-shaped Server Definitions in `dotagents/mcp.json` (Common
+  Model via `common-model.nix`), the local content auto-discovery
+  (`nix/dotagents/auto.nix`), upstream skill collections
   (`nix/dotagents/skills/*.nix` — caveman, claude-plugins-official,
   grafana-skills, mattpocock-skills, skill-optimizer, stop-slop), and the
   global agent rules (`nix/dotagents/rules.nix`, Common Model from
@@ -85,12 +87,11 @@ flakes. `CLAUDE.md` is a symlink to this file.
   constituent skills, not a `$out/skills/<name>/SKILL.md` entry.
 - `nix/homeModules/dotagents.nix` is the home-manager config layer: per-user
   `dotagents.mcps` options, the shared global context (defaulting to the
-  Common Model `dotagents.rules` body), and the overlay of instance values
-  (grafana URL/token file, gitlab URL) onto the shared MCP server
-  definitions. It reads `config.dotagents.mcpServers` and
-  `config.dotagents.rules` from the auto-imported `nix/dotagents/` modules.
+  Common Model `dotagents.rules` body), and MCP Instance overlay (enable,
+  URL, sops, package resolve) onto authored `mcp.json` Server Definitions.
   Add an instance option → edit `nix/homeModules/dotagents.nix`; add a
-  server → edit `nix/dotagents/mcps/`.
+  Server Definition → edit `dotagents/mcp.json`; add tool enums → edit
+  `nix/dotagents/mcps/`.
 - `nix/homeModules/opencode.nix`, `claude.nix` and `cursor.nix` are thin
   adapters over the Common Model (`dotagents.commonModel.agents` from flat
   Authoring Format `agents/<id>.md`, plus skills/MCP/rules). Every skill

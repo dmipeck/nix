@@ -34,35 +34,27 @@ in
       planeTokenPath = sopsLib.pathOrNull config config.dotagents.mcps.plane.sops "token";
       deepseekApiKeyPath = sopsLib.pathOrNull config ds.sops "apiKey";
 
-      # Neutral MCP server configs + per-user instance options live in
-      # homeModules/dotagents.nix; skill packages come from nix/dotagents/
-      # (`skills`, captured above). This module is a thin adapter that maps
-      # them onto Claude Code's config dialect. No MCP servers are registered
-      # for the main session (see `mcpServers = {}` below), so their tool
-      # descriptions never consume main-context; a subagent opts a server back
-      # in via Adapter Emit–derived inline `mcpServers` (Common Model +
-      # Instance overlays), which connect only while that subagent runs.
+      # Common Model + Instance is Cursor-shaped (stdio / url). Claude Adapter
+      # Emit converts to Claude wire (stdio / http) with headersHelper for
+      # sops-backed tokens (Claude has no {file:} / ${env:} in MCP headers).
       mcpServers = config.dotagents.mcpServers;
 
-      # Claude-wire MCP Instance overlays (attrs form for Adapter Emit).
-      # Stdio servers mirror Cursor/Common Model shape; HTTP servers add
-      # Claude-only oauth / headersHelper until #66 flips MCP emit fully.
-      githubServer = mcpServers.github;
-      githubMcpServers = {
+      githubServer = mcpServers.github or null;
+      githubMcpServers = lib.optionalAttrs (githubServer != null) {
         github = {
           type = "stdio";
           command = githubServer.command;
-          args = githubServer.args;
-          env = githubServer.env;
-        };
+          args = githubServer.args or [ ];
+        }
+        // lib.optionalAttrs ((githubServer.env or { }) != { }) { env = githubServer.env; };
       };
 
-      gitlabServer = mcpServers.gitlab;
+      gitlabServer = mcpServers.gitlab or null;
       gitlabMcpServers =
         let
           oauth = config.dotagents.mcps.gitlab.oauth;
         in
-        {
+        lib.optionalAttrs (gitlabServer != null) {
           gitlab = {
             type = "http";
             url = gitlabServer.url;
@@ -76,7 +68,7 @@ in
           };
         };
 
-      cloudflareServer = mcpServers.cloudflare;
+      cloudflareServer = mcpServers.cloudflare or null;
       cloudflareHeadersHelper =
         if cloudflareTokenPath != null then
           pkgs.writeShellScriptBin "cloudflare-mcp-headers" ''
@@ -93,15 +85,17 @@ in
           headersHelper = "${cloudflareHeadersHelper}/bin/cloudflare-mcp-headers";
         };
       };
-      cloudflareMcpServers = mkCloudflareMcpServers "cloudflare" cloudflareServer.url;
-      cloudflareBindingsMcpServers =
-        mkCloudflareMcpServers "cloudflare-bindings"
-          mcpServers."cloudflare-bindings".url;
-      cloudflareObservabilityMcpServers =
-        mkCloudflareMcpServers "cloudflare-observability"
-          mcpServers."cloudflare-observability".url;
+      cloudflareMcpServers = lib.optionalAttrs (cloudflareServer != null) (
+        mkCloudflareMcpServers "cloudflare" cloudflareServer.url
+      );
+      cloudflareBindingsMcpServers = lib.optionalAttrs (mcpServers ? "cloudflare-bindings") (
+        mkCloudflareMcpServers "cloudflare-bindings" mcpServers."cloudflare-bindings".url
+      );
+      cloudflareObservabilityMcpServers = lib.optionalAttrs (mcpServers ? "cloudflare-observability") (
+        mkCloudflareMcpServers "cloudflare-observability" mcpServers."cloudflare-observability".url
+      );
 
-      planeServer = mcpServers.plane;
+      planeServer = mcpServers.plane or null;
       planeHeadersHelper = pkgs.writeShellScriptBin "plane-mcp-headers" ''
         out='{"X-Workspace-slug": "${config.dotagents.mcps.plane.workspaceSlug}"'
         ${lib.optionalString (planeTokenPath != null) ''
@@ -111,7 +105,7 @@ in
         out="$out}"
         printf '%s' "$out"
       '';
-      planeMcpServers = {
+      planeMcpServers = lib.optionalAttrs (planeServer != null) {
         plane = {
           type = "http";
           url = planeServer.url;
@@ -119,54 +113,56 @@ in
         };
       };
 
-      firebaseServer = mcpServers.firebase;
-      firebaseMcpServers = {
+      firebaseServer = mcpServers.firebase or null;
+      firebaseMcpServers = lib.optionalAttrs (firebaseServer != null) {
         firebase = {
           type = "stdio";
           command = firebaseServer.command;
-          args = firebaseServer.args;
+          args = firebaseServer.args or [ ];
         };
       };
 
-      argocdServer = mcpServers.argocd;
-      argocdMcpServers = {
+      argocdServer = mcpServers.argocd or null;
+      argocdMcpServers = lib.optionalAttrs (argocdServer != null) {
         argocd = {
           type = "stdio";
           command = argocdServer.command;
-          args = argocdServer.args;
-          env = argocdServer.env;
-        };
+          args = argocdServer.args or [ ];
+        }
+        // lib.optionalAttrs ((argocdServer.env or { }) != { }) { env = argocdServer.env; };
       };
 
-      kubernetesServer = mcpServers.kubernetes;
-      kubernetesMcpServers = {
+      kubernetesServer = mcpServers.kubernetes or null;
+      kubernetesMcpServers = lib.optionalAttrs (kubernetesServer != null) {
         kubernetes = {
           type = "stdio";
           command = kubernetesServer.command;
-          args = kubernetesServer.args;
+          args = kubernetesServer.args or [ ];
         };
       };
 
-      nixosMcpServers = {
+      nixosServer = mcpServers.nixos or null;
+      nixosMcpServers = lib.optionalAttrs (nixosServer != null) {
         nixos = {
           type = "stdio";
-          command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+          command = nixosServer.command;
+          args = nixosServer.args or [ ];
         };
       };
 
       # Catalog for Adapter Emit selection (gated servers only when Instance
-      # enable is on, so disabled URLs/secrets stay unevaluated).
+      # enable left them in config.dotagents.mcpServers).
       claudeMcpCatalog =
         nixosMcpServers
         // kubernetesMcpServers
-        // lib.optionalAttrs config.dotagents.mcps.github.enable githubMcpServers
-        // lib.optionalAttrs config.dotagents.mcps.gitlab.enable gitlabMcpServers
-        // lib.optionalAttrs config.dotagents.mcps.argocd.enable argocdMcpServers
-        // lib.optionalAttrs config.dotagents.mcps.cloudflare.enable cloudflareMcpServers
-        // lib.optionalAttrs config.dotagents.mcps.cloudflare.bindings.enable cloudflareBindingsMcpServers
-        // lib.optionalAttrs config.dotagents.mcps.cloudflare.observability.enable cloudflareObservabilityMcpServers
-        // lib.optionalAttrs config.dotagents.mcps.plane.enable planeMcpServers
-        // lib.optionalAttrs config.dotagents.mcps.firebase.enable firebaseMcpServers;
+        // githubMcpServers
+        // gitlabMcpServers
+        // argocdMcpServers
+        // cloudflareMcpServers
+        // cloudflareBindingsMcpServers
+        // cloudflareObservabilityMcpServers
+        // planeMcpServers
+        // firebaseMcpServers;
 
       # Common Model agents → Adapter Emit (shared fields + metadata.claude +
       # derived mcpServers/tools). No hand-tuned agentSpecs maps.

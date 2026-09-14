@@ -146,32 +146,32 @@ in
       # documented "enable per agent, disable globally" MCP pattern.
       deniedMcpTools = lib.genAttrs (map (name: "${name}_*") (lib.attrNames mcpServers)) (_: false);
 
-      # A local stdio server (command array + optional env) or a remote HTTP
-      # server, matching the v1 `mcp` shape opencode's home-manager module and
-      # settings.mcp expect.
+      # Cursor-shaped Common Model → OpenCode v1 mcp dialect (local/remote).
+      # Secrets keep "{file:...}" substitution; Cursor rewrite is Cursor-only.
       toMcp =
-        name: srv:
-        if srv.type == "remote" then
+        _name: srv:
+        if (srv.type or null) == "stdio" || (srv ? command) then
+          {
+            type = "local";
+            command = [ srv.command ] ++ (srv.args or [ ]);
+          }
+          // lib.optionalAttrs ((srv.env or { }) != { }) { environment = srv.env; }
+        else
           {
             type = "remote";
             url = srv.url;
           }
-          // lib.optionalAttrs (srv.headers != { }) { inherit (srv) headers; }
-          // lib.optionalAttrs (srv.oauth != null) {
-            # Pre-registered OAuth client (server does not support dynamic client
-            # registration). Emit only the fields that are actually set so a null
-            # clientSecret/scope never reaches the generated config.
+          // lib.optionalAttrs ((srv.headers or { }) != { }) { inherit (srv) headers; }
+          // lib.optionalAttrs (srv ? auth && srv.auth != { }) {
             oauth =
-              lib.optionalAttrs (srv.oauth.clientId != null) { clientId = srv.oauth.clientId; }
-              // lib.optionalAttrs (srv.oauth.clientSecret != null) { clientSecret = srv.oauth.clientSecret; }
-              // lib.optionalAttrs (srv.oauth.scope != null) { scope = srv.oauth.scope; };
-          }
-        else
-          {
-            type = "local";
-            command = [ srv.command ] ++ srv.args;
-          }
-          // lib.optionalAttrs (srv.env != { }) { environment = srv.env; };
+              lib.optionalAttrs (srv.auth ? CLIENT_ID) { clientId = srv.auth.CLIENT_ID; }
+              // lib.optionalAttrs (srv.auth ? CLIENT_SECRET) {
+                clientSecret = srv.auth.CLIENT_SECRET;
+              }
+              // lib.optionalAttrs (srv.auth ? scopes) {
+                scope = lib.concatStringsSep " " srv.auth.scopes;
+              };
+          };
 
       mcp = lib.mapAttrs toMcp mcpServers;
 

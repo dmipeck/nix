@@ -29,109 +29,15 @@ in
 
       # -----------------------------------------------------------------
       # MCP → ~/.cursor/mcp.json
-      # Cursor dialect: stdio uses command/args/env; remote uses url/headers
-      # and optional auth { CLIENT_ID, CLIENT_SECRET, scopes }. Secrets that
-      # arrive as opencode's "{file:/path}" are rewritten to "${env:VAR}" and
-      # the matching env var is exported from the sops-decrypted file at
-      # session start (Cursor has no {file:} substitution).
+      # Common Model + Instance is already Cursor wire shape. Adapter Emit
+      # rewrites "{file:...}" → "${env:VAR}" and we export matching session
+      # env vars from the sops-decrypted files.
       # -----------------------------------------------------------------
-      # POSIX ERE (builtins.match): literal braces via character classes — "\{"
-      # is invalid and throws at eval time.
-      fileRefMatch = builtins.match ".*[{]file:([^}]+)[}].*";
+      # Strip Nix-only tool enums before Cursor emit.
+      wireMcpServers = lib.mapAttrs (_: srv: builtins.removeAttrs srv [ "tools" ]) mcpServers;
 
-      # Stable env var name for a "{file:...}" value keyed by server + field.
-      fileEnvName =
-        server: field:
-        "DOTAGENTS_CURSOR_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] server)}_${lib.toUpper field}";
-
-      collectFileRefs =
-        server: srv:
-        let
-          fromHeaders = lib.mapAttrsToList (
-            hname: hval:
-            let
-              m = fileRefMatch hval;
-            in
-            if m == null then
-              null
-            else
-              {
-                name = fileEnvName server (lib.replaceStrings [ "-" ] [ "_" ] hname);
-                path = builtins.head m;
-              }
-          ) srv.headers;
-          fromOauth =
-            if srv.oauth != null && srv.oauth.clientSecret != null then
-              let
-                m = fileRefMatch srv.oauth.clientSecret;
-              in
-              if m == null then
-                [ ]
-              else
-                [
-                  {
-                    name = fileEnvName server "CLIENT_SECRET";
-                    path = builtins.head m;
-                  }
-                ]
-            else
-              [ ];
-        in
-        lib.filter (x: x != null) fromHeaders ++ fromOauth;
-
-      allFileRefs = lib.concatLists (lib.mapAttrsToList collectFileRefs mcpServers);
-
-      # Rewrite a single header value; derive the env name from the header key.
-      rewriteHeader =
-        server: hname: hval:
-        let
-          m = fileRefMatch hval;
-        in
-        if m == null then
-          hval
-        else
-          lib.replaceStrings
-            [ "{file:${builtins.head m}}" ]
-            [
-              "\${env:${fileEnvName server (lib.replaceStrings [ "-" ] [ "_" ] hname)}}"
-            ]
-            hval;
-
-      toCursorMcp =
-        name: srv:
-        if srv.type == "remote" then
-          {
-            url = srv.url;
-          }
-          // lib.optionalAttrs (srv.headers != { }) {
-            headers = lib.mapAttrs (rewriteHeader name) srv.headers;
-          }
-          // lib.optionalAttrs (srv.oauth != null && srv.oauth.clientId != null) {
-            auth = {
-              CLIENT_ID = srv.oauth.clientId;
-            }
-            // lib.optionalAttrs (srv.oauth.clientSecret != null) {
-              CLIENT_SECRET =
-                let
-                  m = fileRefMatch srv.oauth.clientSecret;
-                in
-                if m == null then srv.oauth.clientSecret else "\${env:${fileEnvName name "CLIENT_SECRET"}}";
-            }
-            // lib.optionalAttrs (srv.oauth.scope != null) {
-              scopes = lib.splitString " " srv.oauth.scope;
-            };
-          }
-        else
-          {
-            type = "stdio";
-            command = srv.command;
-            args = srv.args;
-          }
-          // lib.optionalAttrs (srv.env != { }) { env = srv.env; };
-
-      cursorMcp = {
-        mcpServers = lib.mapAttrs toCursorMcp mcpServers;
-      };
+      cursorMcp = adapterEmit.emitCursorMcp { mcpServers = wireMcpServers; };
+      allFileRefs = adapterEmit.collectCursorMcpFileRefs { mcpServers = wireMcpServers; };
 
       # -----------------------------------------------------------------
       # Skills → ~/.cursor/skills/<name>/

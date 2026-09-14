@@ -1,16 +1,5 @@
-{ lib, withSystem, ... }:
+{ lib, ... }:
 let
-  # flake-parts flake modules get no `pkgs` argument (only perSystem does), so
-  # reach into the x86_64-linux system's pkgs via withSystem, mirroring the
-  # skills modules. The package is a nixpkgs derivation; evaluation stays lazy
-  # until a consumer forces it.
-  pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
-
-  # Tool names from firebase-tools' MCP server
-  # (https://github.com/firebase/firebase-tools/blob/master/src/mcp/README.md).
-  # The server auto-discovers feature groups from firebase.json / enabled APIs;
-  # the enum here is the full published set so allowlists stay valid regardless
-  # of which features a given project activates.
   readTools = [
     "apphosting_fetch_logs"
     "apphosting_list_backends"
@@ -60,15 +49,9 @@ let
   ];
 in
 {
-  # Official Firebase MCP server shipped inside firebase-tools
-  # (`firebase mcp`). Local stdio transport; authenticates with the same
-  # Firebase CLI credentials as `firebase login` in the environment where
-  # the server runs — no sops token. Feature discovery is automatic unless
-  # the consumer passes --only / --dir via args overrides.
+  # Tool enum only — Server Definition (firebase mcp stdio) is in mcp.json;
+  # package binding is mcpPackages.firebase.
   config.dotagents.mcpServers.firebase = {
-    type = "local";
-    command = "${pkgs.firebase-tools}/bin/firebase";
-    args = [ "mcp" ];
     _module.args.mcpToolEnum = lib.types.enum (readTools ++ writeTools);
     tools.read = readTools;
     tools.write = writeTools;

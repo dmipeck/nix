@@ -1,14 +1,8 @@
 { lib, ... }:
 let
-  # Local GitHub MCP (ghcr.io/github/github-mcp-server) — Docker stdio with
-  # OAuth via the baked-in GitHub app and a fixed loopback callback port.
-  # `--toolsets all` matches the former remote `/x/all` surface for local
-  # toolsets; host-side allowlists below still scope explore-github (read)
-  # vs github (read+write). Remote-only toolsets (copilot_spaces,
-  # github_support_docs_search) are omitted so the enum stays coherent with
-  # what the local full toolset actually registers.
-  image = "ghcr.io/github/github-mcp-server:v1.12.1";
-
+  # Local GitHub MCP toolsets — enum stays Nix-side; Server Definition
+  # (Docker stdio + OAuth callback) is authored in mcp.json. Instance
+  # overlays callbackPort before emit.
   readTools = [
     "actions_get"
     "actions_list"
@@ -68,9 +62,6 @@ let
     "search_users"
   ];
 
-  # The write tools the server registers: PRs, issues, discussions, Actions
-  # triggers, branches and pushes. None of them are in the explore-github
-  # subagent's `tools` allowlist, so it stays read-only.
   writeTools = [
     "actions_run_trigger"
     "assign_copilot_to_issue"
@@ -110,34 +101,9 @@ let
   ];
 in
 {
-  config.dotagents.mcpServers = {
-    # Local Docker stdio GitHub MCP. OAuth uses the image's baked-in app and
-    # GITHUB_OAUTH_CALLBACK_PORT on loopback (default 8085 here; Instance
-    # `dotagents.mcps.github.callbackPort` overlays the publish mapping + env).
-    # No host-side clientId / clientSecret on the Server Definition.
-    # Per-profile enable: `dotagents.mcps.github.enable`.
-    github = {
-      type = "local";
-      command = "docker";
-      args = [
-        "run"
-        "-i"
-        "--rm"
-        "-p"
-        "127.0.0.1:8085:8085"
-        "-e"
-        "GITHUB_OAUTH_CALLBACK_PORT"
-        image
-        "stdio"
-        "--toolsets"
-        "all"
-      ];
-      env = {
-        GITHUB_OAUTH_CALLBACK_PORT = "8085";
-      };
-      _module.args.mcpToolEnum = lib.types.enum (readTools ++ writeTools);
-      tools.read = readTools;
-      tools.write = writeTools;
-    };
+  config.dotagents.mcpServers.github = {
+    _module.args.mcpToolEnum = lib.types.enum (readTools ++ writeTools);
+    tools.read = readTools;
+    tools.write = writeTools;
   };
 }

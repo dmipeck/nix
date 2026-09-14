@@ -1,11 +1,5 @@
-{ lib, withSystem, ... }:
+{ lib, ... }:
 let
-  # flake-parts flake modules get no `pkgs` argument (only perSystem does), so
-  # reach into the x86_64-linux system's pkgs via withSystem, mirroring the
-  # skills modules. The package is a nixpkgs derivation; evaluation stays lazy
-  # until a consumer forces it.
-  pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
-
   readTools = [
     "get-k8s-pod-logs"
     "get-k8s-resource"
@@ -17,10 +11,8 @@ let
   ];
 in
 {
+  # Tool enum only — Server Definition in mcp.json; package via mcpPackages.
   config.dotagents.mcpServers.kubernetes = {
-    type = "local";
-    command = "${pkgs.mcp-k8s-go}/bin/mcp-k8s-go";
-    args = [ "--readonly" ];
     _module.args.mcpToolEnum = lib.types.enum readTools;
     tools.read = readTools;
   };

@@ -4,7 +4,7 @@
 { lib, frontmatterLib }:
 let
   inherit (frontmatterLib) toYAMLOrdered;
-  inherit (lib) optionalAttrs filterAttrs;
+  inherit (lib) optionalAttrs filterAttrs mapAttrs;
 
   # Cursor-documented agent frontmatter fields (ADR-0001).
   cursorAgentKeys = [
@@ -256,9 +256,28 @@ let
     renderMarkdown claudeAgentKeys base agent.body;
 
   # Cursor mcp.json wire shape: Common Model mcpServers already Cursor-shaped.
-  emitCursorMcp = mcp: {
-    mcpServers = mcp.mcpServers or mcp;
-  };
+  # Rewrites "{file:...}" → "${env:…}" before emit (Cursor has no {file:} sub).
+  # Drops Nix-only tool enums from the emitted document.
+  emitCursorMcp =
+    mcp:
+    let
+      mcpLib = import ./_mcp.nix { inherit lib; };
+      servers = lib.mapAttrs (_: srv: builtins.removeAttrs srv [ "tools" ]) (mcp.mcpServers or mcp);
+      rewritten = mcpLib.rewriteFileRefsForCursor servers;
+    in
+    {
+      mcpServers = rewritten.mcpServers;
+    };
+
+  # Session env refs collected during the same {file:} → ${env:…} rewrite.
+  # Adapters export these; they are not part of the mcp.json document.
+  collectCursorMcpFileRefs =
+    mcp:
+    let
+      mcpLib = import ./_mcp.nix { inherit lib; };
+      servers = mcp.mcpServers or mcp;
+    in
+    (mcpLib.rewriteFileRefsForCursor servers).fileRefs;
 
   emitCursorMcpJson = mcp: builtins.toJSON (emitCursorMcp mcp);
 
@@ -302,6 +321,7 @@ in
     emitClaudeAgent
     emitCursorMcp
     emitCursorMcpJson
+    collectCursorMcpFileRefs
     emitCursorRules
     emitOpenCodeRules
     emitClaudeRules
