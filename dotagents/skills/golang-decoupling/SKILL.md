@@ -22,8 +22,8 @@ or JSON payload.
     from spec in `internal/oas/`, thin adapter in `internal/api/` (see
     `golang-api`); never sqlc rows or domain entities in a response.
     Config — native-typed structs in `internal/config/` (`time.Duration`,
-    `url.URL`, `uuid.UUID`, bools), parsed in `cmd/`, never raw strings
-    or viper types.
+    `url.URL`, `uuid.UUID`, bools), parsed in `cmd/<name>/`, never raw
+    strings or viper types.
 3. **Mappers live next to target model.** Adapter owns
     `fromDomain`/`toDomain`; domain never imports adapter.
 4. **Business rules in domain package, not handlers.** Logic shared by
@@ -35,11 +35,12 @@ or JSON payload.
     never get `json:"..."` tags. Handler pipeline: parse request → DTO →
     domain package → service → DTO → response.
 
-Layout: `internal/todo/`, `internal/users/` (model + service),
-`internal/config/` (native types parsed in `cmd/`), `internal/database/`
-(sqlc generated, maps DB rows to domain packages), `internal/oas/`
-(ogen from spec), `internal/api/` (thin adapter, `oas.Handler` → domain
-packages). Names are examples, not fixed.
+Layout: `cmd/<name>/` (`package main`, thin CLI — `golang-cli`),
+`internal/todo/`, `internal/users/` (model + service),
+`internal/config/` (native types parsed in `cmd/<name>/`),
+`internal/database/` (sqlc generated, maps DB rows to domain packages),
+`internal/oas/` (ogen from spec), `internal/api/` (thin adapter,
+`oas.Handler` → domain packages). Names are examples, not fixed.
 
 ## Checklist
 
@@ -47,4 +48,4 @@ packages). Names are examples, not fixed.
 - [ ] Domain packages import nothing external.
 - [ ] DB rows, DTOs, and config each have their own struct.
 - [ ] Mappers co-located with the adapter that owns the target model.
-- [ ] No sqlc/pgx types in handlers, no viper types outside `cmd/`.
+- [ ] No sqlc/pgx types in handlers, no viper types outside `cmd/<name>/`.

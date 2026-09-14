@@ -37,14 +37,16 @@ never re-parse token. Long-lived machine clients: OAuth2 client-credentials.
 ## Install + config
 
 ogen pinned in `go.mod` (`tool` directive), run `go tool ogen`. Never
-host/devShell install. Wired through root `generate.go`:
+host/devShell install. Wired through `internal/tools/generate.go`
+(`golang-layout`):
 `//go:generate go tool ogen --target internal/oas --clean api/openapi.yml`.
 `.ogen.yml` at root auto-discovered; enable `paths/server`, `paths/client`,
 `ogen/otel`, `disable_all: true`, `ignore_not_implemented: ["all"]`.
 
 ## Wire + tests
 
-`oas.NewServer(handler, opts...)` returns `http.Handler`; `cmd/serve.go` thin
-wrapper (`golang-cli`). Middleware (otel, logging) as `http.Handler` wrappers.
-Generated client `oas.NewClient(url)` drives same spec; use in
-`internal/api/test/` integration tests — `golang-testing`.
+`oas.NewServer(handler, opts...)` returns `http.Handler`;
+`cmd/<name>/serve.go` thin wrapper (`golang-cli`). Middleware (otel,
+logging) as `http.Handler` wrappers. Generated client `oas.NewClient(url)`
+drives same spec; use in `internal/api/test/` integration tests —
+`golang-testing`.

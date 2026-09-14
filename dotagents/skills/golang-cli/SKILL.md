@@ -10,18 +10,20 @@ config to native values and call a domain function — a thin wrapper.
 
 ## Rules
 
-1. cobra/viper only under `./cmd/`. Native values (`time.Duration`, `url.URL`,
-    `uuid.UUID`, `config.Config`) cross the boundary; viper/cobra types never
-    leave `./cmd/`.
-2. Env vars are the source of truth. No secrets, URLs, or ports in config files
-    checked into git.
+1. cobra/viper only under `cmd/<name>/` as **`package main`** (same
+   package as `main.go`). Native values (`time.Duration`, `url.URL`,
+   `uuid.UUID`, `config.Config`) cross the boundary; viper/cobra types
+   never leave `cmd/<name>/`. See `golang-layout`.
+2. Env vars are the source of truth. No secrets, URLs, or ports in config
+   files checked into git.
 3. `SetEnvPrefix` + `BindEnv` per key, never `AutomaticEnv`.
-    `AutomaticEnv` reads any env var implicitly and unpredictably.
-4. Config keys are constants. One const per key in `cmd/`, never literals.
+   `AutomaticEnv` reads any env var implicitly and unpredictably.
+4. Config keys are constants. One const per key in `cmd/<name>/`, never
+   literals.
 5. Load config in `RunE`, per command. No `PersistentPreRunE`.
-    Each command reads only what it needs when it runs.
-6. Commands are thin wrappers. `RunE` parses config, calls a domain function.
-    No business logic in `cmd/`.
+   Each command reads only what it needs when it runs.
+6. Commands are thin wrappers. `RunE` parses config, calls a domain
+   function. No business logic in `cmd/<name>/`.
 
 ## Constants + EnvPrefix
 
@@ -38,9 +40,10 @@ in `RunE` and passes native values down.
 
 The command calls a function that owns the wiring. Native types in,
 composition, return. No cobra/viper, no business rules. The domain function
-(`runServe` in `cmd/`, or `app.RunX`) composes; behavior lives in domain
-packages (see `golang-decoupling`).
+(`runServe` in `cmd/<name>/`, or `app.RunX`) composes; behavior lives in
+domain packages (see `golang-decoupling`).
 
 ## main.go
 
-Root `main.go` is a thin wrapper over `cmd.Execute()` — see `golang-layout`.
+`cmd/<name>/main.go` is a thin wrapper over `Execute()` in the same
+`package main` — see `golang-layout`.
