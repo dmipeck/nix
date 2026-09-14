@@ -1,4 +1,5 @@
 ---
+name: explore-github
 description: >-
   Answers questions about git repositories — commits, branches, tags, trees,
   file contents, and code search — using the github MCP server's read-only
@@ -7,83 +8,91 @@ description: >-
   mutates. Use when you need git history, diffs, refs, or to search a repo's
   code — even when the user says "show me the commits", "what changed in",
   "list the branches", or "find where this is defined".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-    "gh *": allow
-tools:
-  "github_actions_get": true
-  "github_actions_list": true
-  "github_get_job_logs": true
-  "github_get_code_quality_finding": true
-  "github_get_code_scanning_alert": true
-  "github_list_code_scanning_alerts": true
-  "github_get_me": true
-  "github_get_team_members": true
-  "github_get_teams": true
-  "github_get_dependabot_alert": true
-  "github_list_dependabot_alerts": true
-  "github_get_discussion": true
-  "github_get_discussion_comments": true
-  "github_list_discussion_categories": true
-  "github_list_discussions": true
-  "github_get_gist": true
-  "github_list_gists": true
-  "github_get_repository_tree": true
-  "github_custom_properties_read": true
-  "github_repository_ruleset_read": true
-  "github_get_label": true
-  "github_issue_read": true
-  "github_list_issue_fields": true
-  "github_list_issue_types": true
-  "github_list_issues": true
-  "github_search_issues": true
-  "github_list_label": true
-  "github_get_notification_details": true
-  "github_list_notifications": true
-  "github_search_orgs": true
-  "github_projects_get": true
-  "github_projects_list": true
-  "github_list_pull_requests": true
-  "github_pull_request_read": true
-  "github_search_pull_requests": true
-  "github_get_commit": true
-  "github_get_file_contents": true
-  "github_get_latest_release": true
-  "github_get_release_by_tag": true
-  "github_get_tag": true
-  "github_list_branches": true
-  "github_list_commits": true
-  "github_list_releases": true
-  "github_list_repository_collaborators": true
-  "github_list_tags": true
-  "github_search_code": true
-  "github_search_commits": true
-  "github_search_repositories": true
-  "github_get_secret_scanning_alert": true
-  "github_list_secret_scanning_alerts": true
-  "github_get_global_security_advisory": true
-  "github_list_global_security_advisories": true
-  "github_list_org_repository_security_advisories": true
-  "github_list_repository_security_advisories": true
-  "github_list_starred_repositories": true
-  "github_search_users": true
-  "github_get_copilot_space": true
-  "github_list_copilot_spaces": true
-  "github_github_support_docs_search": true
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+        "gh *": allow
+    tools:
+      "github_actions_get": true
+      "github_actions_list": true
+      "github_get_job_logs": true
+      "github_get_code_quality_finding": true
+      "github_get_code_scanning_alert": true
+      "github_list_code_scanning_alerts": true
+      "github_get_me": true
+      "github_get_team_members": true
+      "github_get_teams": true
+      "github_get_dependabot_alert": true
+      "github_list_dependabot_alerts": true
+      "github_get_discussion": true
+      "github_get_discussion_comments": true
+      "github_list_discussion_categories": true
+      "github_list_discussions": true
+      "github_get_gist": true
+      "github_list_gists": true
+      "github_get_repository_tree": true
+      "github_custom_properties_read": true
+      "github_repository_ruleset_read": true
+      "github_get_label": true
+      "github_issue_read": true
+      "github_list_issue_fields": true
+      "github_list_issue_types": true
+      "github_list_issues": true
+      "github_search_issues": true
+      "github_list_label": true
+      "github_get_notification_details": true
+      "github_list_notifications": true
+      "github_search_orgs": true
+      "github_projects_get": true
+      "github_projects_list": true
+      "github_list_pull_requests": true
+      "github_pull_request_read": true
+      "github_search_pull_requests": true
+      "github_get_commit": true
+      "github_get_file_contents": true
+      "github_get_latest_release": true
+      "github_get_release_by_tag": true
+      "github_get_tag": true
+      "github_list_branches": true
+      "github_list_commits": true
+      "github_list_releases": true
+      "github_list_repository_collaborators": true
+      "github_list_tags": true
+      "github_search_code": true
+      "github_search_commits": true
+      "github_search_repositories": true
+      "github_get_secret_scanning_alert": true
+      "github_list_secret_scanning_alerts": true
+      "github_get_global_security_advisory": true
+      "github_list_global_security_advisories": true
+      "github_list_org_repository_security_advisories": true
+      "github_list_repository_security_advisories": true
+      "github_list_starred_repositories": true
+      "github_search_users": true
+      "github_get_copilot_space": true
+      "github_list_copilot_spaces": true
+      "github_github_support_docs_search": true
+  claude:
+    tools: []
+    permission:
+      allow:
+        - "Bash(gh:*)"
 ---
 
 You are the explore-github subagent. Answer questions about git repositories

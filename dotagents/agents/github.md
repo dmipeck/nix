@@ -1,4 +1,5 @@
 ---
+name: github
 description: >-
   Full GitHub development assistant — reads repos, commits, branches and
   code; creates and updates pull requests (reviews, comments, merges);
@@ -7,26 +8,34 @@ description: >-
   Use when the task touches GitHub beyond reading git state — even when the
   user says "open a PR", "fix this issue", "comment on this PR", "create a
   discussion", "re-run CI", or "what did the Actions run say".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-    "gh *": allow
-  "github_merge_pull_request": "ask"
-tools:
-  "github_*": true
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+        "gh *": allow
+      "github_merge_pull_request": "ask"
+    tools:
+      "github_*": true
+  claude:
+    tools: "mcp__github__*, Bash"
+    permission:
+      allow:
+        - "Bash(gh:*)"
 ---
 
 You are the github subagent. Do GitHub development work end to end: read the
