@@ -2,6 +2,7 @@
   lib,
   withSystem,
   inputs,
+  skillPackLib,
   ...
 }:
 let
@@ -15,19 +16,10 @@ let
   # instead of hard-coded. Upstream layout: skills/<category>/<name>/SKILL.md.
   mattpocockSkillsSrc = inputs.mattpocock-skills;
 
-  # Directories under `root` that contain a SKILL.md regular file.
-  skillDirs =
-    root:
-    builtins.attrNames (
-      lib.filterAttrs (
-        name: type: type == "directory" && builtins.pathExists (root + "/" + name + "/SKILL.md")
-      ) (builtins.readDir root)
-    );
+  inherit (skillPackLib) listDirs skillDirs;
 
   # Discover every skill under every category directory.
-  categories = builtins.attrNames (
-    lib.filterAttrs (_: type: type == "directory") (builtins.readDir (mattpocockSkillsSrc + "/skills"))
-  );
+  categories = listDirs (mattpocockSkillsSrc + "/skills");
   discovered = builtins.concatMap (
     category:
     map (name: { inherit category name; }) (skillDirs (mattpocockSkillsSrc + "/skills/" + category))
