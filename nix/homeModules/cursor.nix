@@ -1,11 +1,10 @@
 { config, adapterEmit, ... }@flakeArgs:
 let
-  # Skill/plugin packages and agent definitions are owned by nix/dotagents/;
+  # Skill/plugin packages and Common Model agents are owned by nix/dotagents/;
   # captured once so the home-manager module below can reference them.
   agentSkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
-  agents = flakeArgs.config.dotagents.agents;
-  # Authoring Format tracers (Common Model); legacy agents stay in `agents`.
+  # Authoring Format agents → Common Model (Cursor Adapter Emit passthrough).
   commonAgents = flakeArgs.config.dotagents.commonModel.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Common Model rules — Cursor Adapter Emit passthrough of authored `.mdc`.
@@ -14,9 +13,9 @@ let
   models = flakeArgs.config.dotagents.models.cursor;
 in
 {
-  # Thin adapter: maps neutral dotagents skills / agents / MCP / context onto
-  # Cursor's config dialect under ~/.cursor/. User-invoked skills carry
-  # `disable-model-invocation: true` in SKILL.md (slash-only; no commands dir).
+  # Thin adapter: maps Common Model skills / agents / MCP / rules onto Cursor
+  # under ~/.cursor/. Agents: documented FM fields only (`metadata` stripped).
+  # Skills copy/symlink as authored (`disable-model-invocation: true` = slash-only).
   flake.homeModules.cursor =
     {
       lib,
@@ -150,96 +149,10 @@ in
 
       # -----------------------------------------------------------------
       # Agents → ~/.cursor/agents/<name>.md
-      # Cursor frontmatter: name, description, model, optional readonly.
-      # Opencode mode/permission/tools blocks are stripped; body kept.
+      # Common Model → Adapter Emit passthrough: documented Cursor FM fields
+      # only (name, description, model, readonly, is_background). Metadata
+      # stripped. Model defaults from dotagents.models.cursor when unset.
       # -----------------------------------------------------------------
-      readonlyAgents = [
-        "explore-nix"
-        "explore-git"
-        "explore-github"
-        "explore-gitlab"
-        "explore-argocd"
-        "explore-cloudflare"
-        "explore-cloudflare-bindings"
-        "explore-cloudflare-observability"
-        "explore-firebase"
-        "export-kubernetes"
-      ];
-
-      # Hand-tuned descriptions (opencode frontmatter uses folded `>-` scalars
-      # that are awkward to extract in Nix). Keep in sync with claude.nix.
-      agentDescriptions = {
-        nix = "Applies and verifies nix configuration changes on this machine — nixos-rebuild, home-manager, nix build/flake/profile/store, and nix-collect-garbage. Read-only exploration belongs to explore-nix.";
-        "explore-nix" =
-          "Explores nix and nixos configurations — this repo's flake and modules, nixpkgs/home-manager options, package versions. Read-only.";
-        github = "Full GitHub development assistant — repos, PRs, issues, Actions. Write-capable.";
-        "explore-github" =
-          "Answers questions about git repositories via the github MCP read tools. Read-only.";
-        gitlab = "Write-capable GitLab assistant — projects, issues, MRs, pipelines via the gitlab MCP server.";
-        "explore-gitlab" = "Answers questions about GitLab via the gitlab MCP read tools. Read-only.";
-        cloudflare = "Write-capable Cloudflare assistant via the cloudflare MCP server (docs, search, execute).";
-        "explore-cloudflare" =
-          "Answers Cloudflare API/feature questions via the cloudflare MCP read tools. Read-only.";
-        "cloudflare-bindings" =
-          "Manages Cloudflare Workers bindings (KV, Workers, R2, D1, Hyperdrive). Write-capable.";
-        "explore-cloudflare-bindings" =
-          "Answers questions about Cloudflare Workers bindings state. Read-only.";
-        "explore-cloudflare-observability" =
-          "Queries worker logs, metrics and schema via cloudflare-observability. Read-only.";
-        "export-kubernetes" =
-          "Answers questions about a Kubernetes cluster via the kubernetes MCP server. Read-only.";
-        "explore-argocd" = "Answers questions about ArgoCD via the argocd MCP server. Read-only.";
-        firebase = "Write-capable Firebase assistant via the firebase MCP server (Auth, Firestore, Functions, Crashlytics, Remote Config, …).";
-        "explore-firebase" =
-          "Answers questions about Firebase projects and data via the firebase MCP read tools. Read-only.";
-        orchestrate = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles results. Default primary agent.";
-        test = "Runs the test suite for one testing ecosystem and reports pass/fail. Never takes corrective action.";
-        commit = "Reviews pending changes, decides commit boundaries, and writes conventional + caveman-compressed commit messages.";
-        format = "Runs repository formatters and fixes formatting issues across ecosystems. Write-capable.";
-        lint = "Runs repository linters and fixes lint issues across ecosystems. Write-capable.";
-        "explore-git" =
-          "Answers questions about the current git repository using local git commands. Read-only.";
-        git = "Full git assistant — read repo state and perform git operations. Write-capable.";
-      };
-
-      agentDescription =
-        name:
-        agentDescriptions.${name} or (
-          let
-            m = builtins.match ".*description:[ \t]*([^\n]*)[\n\r].*" (builtins.readFile agents.${name});
-          in
-          if m == null then name else builtins.head m
-        );
-
-      cursorAgent =
-        name: description: model: readonly:
-        let
-          frontmatter = lib.concatStringsSep "\n" (
-            [
-              "---"
-              "name: ${name}"
-              # Quote descriptions — several contain `: ` which plain YAML
-              # scalars would misparse as a mapping separator.
-              "description: ${builtins.toJSON description}"
-            ]
-            ++ lib.optional (model != "" && model != "inherit") "model: ${model}"
-            ++ lib.optional (model == "inherit") "model: inherit"
-            ++ lib.optional readonly "readonly: true"
-            ++ [ "---" ]
-          );
-        in
-        pkgs.runCommand "dotagents-${name}-agent-cursor" { } ''
-          mkdir -p "$(dirname "$out")"
-          {
-            cat <<'EOF'
-          ${frontmatter}
-
-          EOF
-            # Drop the shared file's opencode frontmatter block, keep the body.
-            awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.${name}}
-          } > "$out"
-        '';
-
       # Bake a variation into Cursor's bracket syntax when both are set
       # (e.g. composer-2.5[effort=high]); "inherit" and null variation stay
       # as the bare model id.
@@ -262,21 +175,13 @@ in
           "inherit";
 
       renderAgent =
-        name: cursorAgent name (agentDescription name) (cursorModelFor name) (lib.elem name readonlyAgents);
-
-      # Common Model tracers → Adapter Emit (Cursor passthrough + injected model).
-      renderCommonAgent =
         name: agent:
         let
           model = cursorModelFor name;
-          text = adapterEmit.emitCursorAgent (
-            agent
-            // {
-              frontmatter = agent.frontmatter // {
-                inherit model;
-              };
-            }
-          );
+          # Prefer authored top-level model; else inject adapter default.
+          frontmatter =
+            agent.frontmatter // lib.optionalAttrs (!(agent.frontmatter ? model)) { inherit model; };
+          text = adapterEmit.emitCursorAgent (agent // { inherit frontmatter; });
         in
         pkgs.writeText "dotagents-${name}-agent-cursor" text;
 
@@ -303,8 +208,7 @@ in
         "firebase"
       ];
 
-      allCursorAgents =
-        (lib.mapAttrs (name: _: renderAgent name) agents) // (lib.mapAttrs renderCommonAgent commonAgents);
+      allCursorAgents = lib.mapAttrs renderAgent commonAgents;
 
       cursorAgents =
         (lib.removeAttrs allCursorAgents (
