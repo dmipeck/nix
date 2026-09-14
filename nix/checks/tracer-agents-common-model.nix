@@ -1,7 +1,7 @@
-# Tracer agents Common Model seam — real Authoring Format tracers
-# (github + explore-github) discovered via Frontmatter Parser, then Adapter
-# Emit for Cursor / OpenCode / Claude. Asserts external FM + bodies only.
-# Dual path: a legacy directory agent (commit) must still resolve as a path.
+# Tracer agents Common Model seam — github + explore-github discovered via
+# Frontmatter Parser, then Adapter Emit for Cursor / OpenCode / Claude.
+# Asserts external FM + bodies only. Full local agent set coverage lives in
+# agents-authoring-format.nix (nix-private#60).
 { lib, ... }:
 {
   perSystem =
@@ -64,23 +64,16 @@
         mcpServers = sampleMcp;
       };
 
-      # Legacy dual-path: directory agent still present as agent.md
-      legacyCommit = agentsDir + "/commit/agent.md";
-
       assertions = [
         {
           name = "common-model-has-tracers";
           ok = (commonAgents ? github) && (commonAgents ? explore-github);
         }
         {
-          name = "tracers-not-legacy-dirs";
+          name = "tracers-flat-files";
           ok =
-            !(builtins.pathExists (agentsDir + "/github/agent.md"))
-            && !(builtins.pathExists (agentsDir + "/explore-github/agent.md"));
-        }
-        {
-          name = "legacy-commit-path";
-          ok = builtins.pathExists legacyCommit;
+            builtins.pathExists (agentsDir + "/github.md")
+            && builtins.pathExists (agentsDir + "/explore-github.md");
         }
         {
           name = "name-equals-stem-github";

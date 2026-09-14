@@ -22,11 +22,11 @@ let
   skillNames = builtins.attrNames (
     lib.filterAttrs (_: v: v == "directory") (builtins.readDir skillsDir)
   );
-  # Legacy OpenCode-dialect agents: agents/<name>/agent.md
+  # Legacy dual-path remnant: agents/<name>/agent.md directories (empty after #60).
   agentNames = builtins.attrNames (
     lib.filterAttrs (_: v: v == "directory") (builtins.readDir agentsDir)
   );
-  # Authoring Format tracers: flat agents/<name>.md → Common Model
+  # Authoring Format: flat agents/<name>.md → Common Model
   commonModelAgents = commonModelLib.discoverAgents agentsDir;
 
   # Standardized skill package layout: $out/skills/<name>/SKILL.md
@@ -76,7 +76,7 @@ in
   };
   options.dotagents.agents = lib.mkOption {
     type = discovered lib.types.path;
-    description = "Legacy AI agent definitions (agents/<name>/agent.md), discovered automatically. Authoring Format tracers live under dotagents.commonModel.agents instead.";
+    description = "Legacy AI agent definitions (agents/<name>/agent.md), discovered automatically. Empty once all agents are Authoring Format; Common Model agents live under dotagents.commonModel.agents.";
   };
   options.dotagents.commonModel.agents = lib.mkOption {
     type = lib.types.attrs;

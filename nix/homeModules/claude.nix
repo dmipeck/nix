@@ -91,8 +91,8 @@ in
       # (config.dotagents.mcpServers.github) is Docker stdio with loopback
       # OAuth on 8085 — same shape as firebase/argocd/kubernetes blocks.
       githubServer = config.dotagents.mcpServers.github;
-      # Attrs form for Adapter Emit (Common Model tracers); list YAML block
-      # below remains for legacy directory agents.
+      # Attrs form for Adapter Emit (Common Model); list YAML blocks below
+      # remain for any lingering legacy directory agents.
       githubMcpServers = {
         github = {
           type = "stdio";
@@ -111,6 +111,23 @@ in
       '';
 
       gitlabServer = config.dotagents.mcpServers.gitlab;
+      gitlabMcpServers =
+        let
+          oauth = config.dotagents.mcps.gitlab.oauth;
+        in
+        {
+          gitlab = {
+            type = "http";
+            url = gitlabServer.url;
+          }
+          // lib.optionalAttrs (oauth.clientId != null) {
+            oauth = {
+              clientId = oauth.clientId;
+              callbackPort = oauth.callbackPort;
+            }
+            // lib.optionalAttrs (oauth.scopes != null) { scopes = oauth.scopes; };
+          };
+        };
       gitlabMcpBlock =
         let
           oauth = config.dotagents.mcps.gitlab.oauth;
@@ -156,6 +173,15 @@ in
           ''
         else
           null;
+      mkCloudflareMcpServers = name: url: {
+        ${name} = {
+          type = "http";
+          inherit url;
+        }
+        // lib.optionalAttrs (cloudflareTokenPath != null) {
+          headersHelper = "${cloudflareHeadersHelper}/bin/cloudflare-mcp-headers";
+        };
+      };
       mkCloudflareMcpBlock =
         name: url:
         let
@@ -170,6 +196,13 @@ in
                 url: ${url}
           ${headersHelperLine}
         '';
+      cloudflareMcpServers = mkCloudflareMcpServers "cloudflare" cloudflareServer.url;
+      cloudflareBindingsMcpServers =
+        mkCloudflareMcpServers "cloudflare-bindings"
+          config.dotagents.mcpServers."cloudflare-bindings".url;
+      cloudflareObservabilityMcpServers =
+        mkCloudflareMcpServers "cloudflare-observability"
+          config.dotagents.mcpServers."cloudflare-observability".url;
       cloudflareMcpBlock = mkCloudflareMcpBlock "cloudflare" cloudflareServer.url;
       cloudflareBindingsMcpBlock =
         mkCloudflareMcpBlock "cloudflare-bindings"
@@ -196,6 +229,13 @@ in
         out="$out}"
         printf '%s' "$out"
       '';
+      planeMcpServers = {
+        plane = {
+          type = "http";
+          url = planeServer.url;
+          headersHelper = "${planeHeadersHelper}/bin/plane-mcp-headers";
+        };
+      };
       planeMcpBlock = ''
         mcpServers:
           - plane:
@@ -208,6 +248,13 @@ in
       # no headersHelper. The firebase / explore-firebase pair registers only
       # when `dotagents.mcps.firebase.enable` is set (gating below).
       firebaseServer = config.dotagents.mcpServers.firebase;
+      firebaseMcpServers = {
+        firebase = {
+          type = "stdio";
+          command = firebaseServer.command;
+          args = firebaseServer.args;
+        };
+      };
       firebaseMcpBlock = ''
         mcpServers:
           - firebase:
@@ -216,6 +263,14 @@ in
               args: ${builtins.toJSON firebaseServer.args}
       '';
       argocdServer = config.dotagents.mcpServers.argocd;
+      argocdMcpServers = {
+        argocd = {
+          type = "stdio";
+          command = argocdServer.command;
+          args = argocdServer.args;
+          env = argocdServer.env;
+        };
+      };
       argocdMcpBlock = ''
         mcpServers:
           - argocd:
@@ -231,6 +286,13 @@ in
       # apply-k8s-resource and k8s-pod-exec write tools, so the agent can only
       # inspect the cluster. The block is hand-built YAML like githubMcpBlock.
       kubernetesServer = config.dotagents.mcpServers.kubernetes;
+      kubernetesMcpServers = {
+        kubernetes = {
+          type = "stdio";
+          command = kubernetesServer.command;
+          args = kubernetesServer.args;
+        };
+      };
       kubernetesMcpBlock = ''
         mcpServers:
           - kubernetes:
@@ -238,6 +300,13 @@ in
               command: ${kubernetesServer.command}
               args: ${builtins.toJSON kubernetesServer.args}
       '';
+
+      nixosMcpServers = {
+        nixos = {
+          type = "stdio";
+          command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+        };
+      };
 
       # Hand-tuned description/tools for the agents whose opencode frontmatter
       # does not carry a Claude Code-compatible spec (mode/permission maps,
@@ -443,7 +512,27 @@ in
           (lib.optionalString (extra != "") (lib.trim extra))
           (lib.optionalString (permission != "") (lib.trim permission));
 
-      # Common Model tracers → Adapter Emit (shared fields + metadata.claude).
+      # Common Model agents → Adapter Emit (shared fields + metadata.claude).
+      # MCP Instance overlays stay adapter-side (attrs form for emit); gated
+      # agents still skip eval when their instance is disabled.
+      commonAgentMcpServers = {
+        github = githubMcpServers;
+        explore-github = githubMcpServers;
+        gitlab = gitlabMcpServers;
+        explore-gitlab = gitlabMcpServers;
+        cloudflare = cloudflareMcpServers;
+        explore-cloudflare = cloudflareMcpServers;
+        cloudflare-bindings = cloudflareBindingsMcpServers;
+        explore-cloudflare-bindings = cloudflareBindingsMcpServers;
+        explore-cloudflare-observability = cloudflareObservabilityMcpServers;
+        export-kubernetes = kubernetesMcpServers;
+        explore-argocd = argocdMcpServers;
+        plane = planeMcpServers;
+        firebase = firebaseMcpServers;
+        explore-firebase = firebaseMcpServers;
+        explore-nix = nixosMcpServers;
+      };
+
       renderCommonAgent =
         name: agent:
         let
@@ -454,16 +543,7 @@ in
           # Prefer adapter-derived tools (e.g. explore-github read allowlist)
           # when present; else metadata.claude.tools from the Authoring Format.
           tools = if spec ? tools then spec.tools else null;
-          mcpServers =
-            if
-              builtins.elem name [
-                "github"
-                "explore-github"
-              ]
-            then
-              githubMcpServers
-            else
-              null;
+          mcpServers = commonAgentMcpServers.${name} or null;
           text = adapterEmit.emitClaudeAgent agent {
             inherit
               model
