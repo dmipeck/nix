@@ -1,7 +1,7 @@
 ---
 name: github
 description: "Full GitHub development assistant — repos, PRs, issues, Actions. Write-capable."
-tools: []
+tools: "Bash, mcp__github__*"
 model: haiku
 effort: low
 mcpServers:

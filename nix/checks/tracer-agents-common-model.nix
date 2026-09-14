@@ -55,13 +55,14 @@
       claudeGithub = adapterEmit.emitClaudeAgent github {
         model = "haiku";
         effort = "low";
-        mcpServers = sampleMcp;
+        mcpCatalog = sampleMcp;
       };
       claudeExplore = adapterEmit.emitClaudeAgent exploreGithub {
         model = "haiku";
         effort = "low";
+        # Explicit tools override (Nix read allowlist sample); mcpServers derived.
         tools = "Bash, mcp__github__get_commit";
-        mcpServers = sampleMcp;
+        mcpCatalog = sampleMcp;
       };
 
       cursorNoMetadata =
