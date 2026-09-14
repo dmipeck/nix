@@ -45,9 +45,10 @@ flakes. `CLAUDE.md` is a symlink to this file.
 ## AI-tools layering
 
 - Local AI content — skills, agent (subagent) definitions and global rules —
-  lives in the repo root `dotagents/` dir (`.agents` protocol layout:
+  lives in the repo root `dotagents/` dir (Cursor Authoring Format layout:
   `dotagents/skills/<name>/SKILL.md`, `dotagents/agents/<name>/agent.md`,
-  `dotagents/agents.md` global rules). There is no `commands/` layer: user-
+  `dotagents/rules/*.mdc` global rules with `alwaysApply`). There is no
+  `commands/` layer: user-
   invoked (slash-only) workflows are skills with
   `disable-model-invocation: true` in SKILL.md frontmatter.
   `nix/dotagents/auto.nix` auto-discovers it with `builtins.readDir` — the
@@ -67,8 +68,8 @@ flakes. `CLAUDE.md` is a symlink to this file.
   auto-discovery (`nix/dotagents/auto.nix`), upstream skill collections
   (`nix/dotagents/skills/*.nix` — caveman, claude-plugins-official,
   grafana-skills, mattpocock-skills, skill-optimizer, stop-slop), and the
-  global agent rules (`nix/dotagents/rules.nix`, read from
-  `dotagents/agents.md`).
+  global agent rules (`nix/dotagents/rules.nix`, Common Model from
+  `dotagents/rules/*.mdc` via Frontmatter Parser).
   Auto-imported as flake-parts modules like everything else under `nix/`.
   The upstream skill modules emit `config.dotagents.skills` via `lib.genAttrs`
   over their exposed skill names; agent definitions are the auto-discovered
@@ -81,9 +82,9 @@ flakes. `CLAUDE.md` is a symlink to this file.
   holds many constituent skills, not a `$out/skills/<name>/SKILL.md` entry.
 - `nix/homeModules/dotagents.nix` is the home-manager config layer: per-user
   `dotagents.mcps` options, the shared global context (defaulting to the
-  `dotagents.rules` content from `dotagents/agents.md`), and the overlay of
-  instance values (grafana URL/token file, gitlab URL) onto the shared MCP
-  server definitions. It reads `config.dotagents.mcpServers` and
+  Common Model `dotagents.rules` body), and the overlay of instance values
+  (grafana URL/token file, gitlab URL) onto the shared MCP server
+  definitions. It reads `config.dotagents.mcpServers` and
   `config.dotagents.rules` from the auto-imported `nix/dotagents/` modules.
   Add an instance option → edit `nix/homeModules/dotagents.nix`; add a
   server → edit `nix/dotagents/mcps/`.
@@ -102,11 +103,11 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `~/.cursor/agents/`). Skills with `disable-model-invocation: true` are
   slash-only (user-invoked); adapters pass that frontmatter through as-is.
   The github pair (`explore-github`, `github`) is registered only when
-  `config.dotagents.mcps.github.enable` is set. Cursor also writes shared
-  context to `~/.cursor/rules/dotagents.mdc` and MCP servers to
-  `~/.cursor/mcp.json`. Claude still ships the external `set-budget` slash
-  command from the statusline package; that is not part of the local
-  `dotagents/` tree.
+  `config.dotagents.mcps.github.enable` is set. Cursor
+  passthrough-copies authored `dotagents/rules/*.mdc` to
+  `~/.cursor/rules/` and writes MCP servers to `~/.cursor/mcp.json`.
+  Claude still ships the external `set-budget` slash command from the
+  statusline package; that is not part of the local `dotagents/` tree.
 - Auto-pickup: to add a skill or agent, just drop the content into
   `dotagents/skills/<name>/SKILL.md` or `dotagents/agents/<name>/agent.md` —
   every adapter picks it up on the next `home-manager switch`, with no nix

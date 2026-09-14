@@ -6,6 +6,8 @@ let
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
+  # Common Model rules — Cursor Adapter Emit passthrough of authored `.mdc`.
+  rules = flakeArgs.config.dotagents.rules;
   # Per-client default model + variation; this adapter reads the `cursor` client.
   models = flakeArgs.config.dotagents.models.cursor;
 in
@@ -321,19 +323,12 @@ in
       ) cursorAgents;
 
       # -----------------------------------------------------------------
-      # Global context → ~/.cursor/rules/dotagents.mdc (alwaysApply).
-      # Cursor has no global AGENTS.md; user/project rules cover this.
+      # Global rules → ~/.cursor/rules/dotagents.mdc (Authoring Format SoT).
+      # Cursor Adapter Emit: passthrough of the authored Common Model path.
       # -----------------------------------------------------------------
       rulesFile = {
         ".cursor/rules/dotagents.mdc" = {
-          text = ''
-            ---
-            alwaysApply: true
-            description: Shared dotagents global agent instructions
-            ---
-
-            ${config.dotagents.context}
-          '';
+          source = rules.path;
         };
       };
 
