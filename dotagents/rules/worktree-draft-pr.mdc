@@ -1,0 +1,37 @@
+---
+description: Fresh default-branch pull, worktree, draft PR before edits
+alwaysApply: true
+---
+
+# Start work in a worktree + draft PR
+
+Unless the user says otherwise, **before any code changes**:
+
+1. Fast-forward pull the repo's default branch (`main` / `master`).
+2. Create a new branch and worktree under `.agent/worktrees/<change-name>`
+   (`git worktree add .agent/worktrees/<change-name> -b <branch>`).
+   Ensure `.agent/worktrees/` is in `.git/info/exclude`. Do not edit on
+   the default-branch checkout.
+3. Open a **draft** PR/MR as soon as the first commit is pushable.
+4. Work only inside that worktree; commit and push discrete changes.
+
+## Definition of done
+
+Not done until **all** of:
+
+1. Worktree clean — no unstaged, staged, or untracked files that belong
+   to the change (`git status` empty aside from ignored paths).
+2. Every commit for the change is on the remote (`git push`; branch not
+   ahead of its upstream).
+3. CI is green on the PR/MR.
+4. PR/MR marked ready for review (undraft).
+
+Do not merge unless asked. Never leave final edits only local.
+
+## Skip (no restart)
+
+- User explicitly said to work in-place / skip branching.
+- Already inside the worktree + branch + draft PR for **this** task —
+  continue; do not recreate.
+- Read-only questions, or edits the user scoped to an existing PR/branch.
+- Subagents: inherit the parent's worktree; do not open a new one.
