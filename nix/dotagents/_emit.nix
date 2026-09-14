@@ -96,9 +96,7 @@ let
       fromMcpToken =
         tok:
         # Prefer longest available server prefix inside mcp__…__…
-        lib.findFirst (
-          s: lib.hasPrefix "mcp__${s}__" tok || tok == "mcp__${s}__*"
-        ) null servers;
+        lib.findFirst (s: lib.hasPrefix "mcp__${s}__" tok || tok == "mcp__${s}__*") null servers;
 
       fromClaudeTools =
         tools:
@@ -122,8 +120,7 @@ let
 
       # Empty claude.tools list means "derive" — still consult opencode tools.
       clTools = cl.tools or null;
-      fromCl =
-        if clTools == null || clTools == [ ] then [ ] else fromClaudeTools clTools;
+      fromCl = if clTools == null || clTools == [ ] then [ ] else fromClaudeTools clTools;
     in
     lib.unique (fromCl ++ fromOc);
 
@@ -222,11 +219,7 @@ let
       fm = agent.frontmatter;
       cl = fm.metadata.claude or { };
       catalog = if mcpCatalog != null then mcpCatalog else { };
-      servers =
-        if availableServers != null then
-          availableServers
-        else
-          builtins.attrNames catalog;
+      servers = if availableServers != null then availableServers else builtins.attrNames catalog;
       derivedTools = deriveClaudeTools agent servers;
       derivedMcp =
         if mcpServers != null then
@@ -237,7 +230,13 @@ let
           null;
       clTools = cl.tools or null;
       clToolsAuthored = if clTools == null || clTools == [ ] then null else clTools;
-      effectiveTools = if tools != null then tools else if derivedTools != null then derivedTools else clToolsAuthored;
+      effectiveTools =
+        if tools != null then
+          tools
+        else if derivedTools != null then
+          derivedTools
+        else
+          clToolsAuthored;
       base = {
         name = fm.name;
         description = fm.description;
