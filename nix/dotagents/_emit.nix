@@ -115,6 +115,38 @@ let
 
   emitCursorMcpJson = mcp: builtins.toJSON (emitCursorMcp mcp);
 
+  # Cursor .mdc rule fields (Authoring Format SoT). alwaysApply is required for
+  # global rules; description is optional but authored for clarity.
+  cursorRulesKeys = [
+    "description"
+    "globs"
+    "alwaysApply"
+  ];
+
+  # rules :: { frontmatter, body }
+  emitCursorRules =
+    rules:
+    let
+      fm = pick cursorRulesKeys rules.frontmatter;
+    in
+    renderMarkdown cursorRulesKeys fm rules.body;
+
+  # OpenCode / Claude: body only (AGENTS.md / CLAUDE.md), no .mdc wrap.
+  emitRulesBody =
+    rules:
+    let
+      body = rules.body;
+    in
+    if body == "" then
+      ""
+    else if lib.hasSuffix "\n" body then
+      body
+    else
+      body + "\n";
+
+  emitOpenCodeRules = emitRulesBody;
+  emitClaudeRules = emitRulesBody;
+
 in
 {
   inherit
@@ -123,6 +155,11 @@ in
     emitClaudeAgent
     emitCursorMcp
     emitCursorMcpJson
+    emitCursorRules
+    emitOpenCodeRules
+    emitClaudeRules
+    emitRulesBody
     cursorAgentKeys
+    cursorRulesKeys
     ;
 }

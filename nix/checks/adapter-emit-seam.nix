@@ -1,6 +1,6 @@
 # Adapter Emit golden seam — fixture Authoring Format tree → Cursor / OpenCode /
-# Claude agent emit + Cursor mcp.json. Asserts external behavior only (no parser
-# AST / helper-name checks). Frontmatter Parser is covered transitively.
+# Claude agent + rules emit + Cursor mcp.json. Asserts external behavior only
+# (no parser AST / helper-name checks). Frontmatter Parser is covered transitively.
 { lib, ... }:
 {
   perSystem =
@@ -13,6 +13,7 @@
 
       fixture = ../dotagents/fixtures/authoring-format;
       agent = frontmatterLib.importMarkdown (fixture + "/agents/github.md");
+      rules = frontmatterLib.importMarkdown (fixture + "/rules/dotagents.mdc");
       mcp = builtins.fromJSON (builtins.readFile (fixture + "/mcp.json"));
 
       cursorAgent = adapterEmit.emitCursorAgent agent;
@@ -32,11 +33,17 @@
         };
       };
       cursorMcp = adapterEmit.emitCursorMcp mcp;
+      cursorRules = adapterEmit.emitCursorRules rules;
+      opencodeRules = adapterEmit.emitOpenCodeRules rules;
+      claudeRules = adapterEmit.emitClaudeRules rules;
 
       expectedCursorAgent = builtins.readFile (fixture + "/expected/cursor/agents/github.md");
       expectedOpenCodeAgent = builtins.readFile (fixture + "/expected/opencode/agents/github.md");
       expectedClaudeAgent = builtins.readFile (fixture + "/expected/claude/agents/github.md");
       expectedCursorMcp = builtins.fromJSON (builtins.readFile (fixture + "/expected/cursor/mcp.json"));
+      expectedCursorRules = builtins.readFile (fixture + "/expected/cursor/rules/dotagents.mdc");
+      expectedOpenCodeRules = builtins.readFile (fixture + "/expected/opencode/AGENTS.md");
+      expectedClaudeRules = builtins.readFile (fixture + "/expected/claude/CLAUDE.md");
 
       assertions = [
         {
@@ -55,6 +62,22 @@
           name = "cursor-mcp";
           ok = cursorMcp == expectedCursorMcp;
         }
+        {
+          name = "cursor-rules";
+          ok = cursorRules == expectedCursorRules;
+        }
+        {
+          name = "cursor-rules-always-apply";
+          ok = (rules.frontmatter.alwaysApply or false) == true;
+        }
+        {
+          name = "opencode-rules";
+          ok = opencodeRules == expectedOpenCodeRules;
+        }
+        {
+          name = "claude-rules";
+          ok = claudeRules == expectedClaudeRules;
+        }
       ];
 
       failures = builtins.filter (a: !a.ok) assertions;
@@ -65,7 +88,7 @@
           throw ("adapter-emit-seam mismatches: " + lib.concatMapStringsSep ", " (a: a.name) failures)
         else
           pkgs.runCommand "adapter-emit-seam" { } ''
-            echo "adapter-emit-seam: cursor/opencode/claude agents + cursor mcp.json OK"
+            echo "adapter-emit-seam: agents + rules + cursor mcp.json OK"
             touch "$out"
           '';
     };
