@@ -13,9 +13,9 @@ let
   mcpPackages = flakeArgs.config.dotagents.mcpPackages;
 
   # Common Model rules (nix/dotagents/rules.nix): Cursor Authoring Format
-  # `.mdc` under dotagents/rules/, parsed by the Frontmatter Parser. Body
-  # defaults shared `context` for OpenCode/Claude; Cursor passthrough uses
-  # `rules.path`.
+  # `.mdc` under dotagents/rules/, parsed by the Frontmatter Parser. Bodies
+  # concatenate into shared `context` for OpenCode/Claude; Cursor
+  # passthrough uses each `rules.<stem>.path`.
   rules = flakeArgs.config.dotagents.rules;
 in
 {
@@ -377,9 +377,14 @@ in
       };
 
       config.dotagents = {
-        # OpenCode/Claude Adapter Emit: body only from Common Model rules.
+        # OpenCode/Claude Adapter Emit: bodies only from Common Model rules.
         # Declared as a default so a profile can still override instructions.
-        context = lib.mkDefault rules.body;
+        context = lib.mkDefault (
+          lib.concatMapStringsSep "\n\n" (name: lib.removeSuffix "\n" rules.${name}.body) (
+            lib.sort (a: b: a < b) (builtins.attrNames rules)
+          )
+          + "\n"
+        );
 
         # mcp.json SoT → resolve packages → Instance overlay → Cursor shape.
         # Always-on servers (nixos/playwright/kubernetes/grafana) keep enable

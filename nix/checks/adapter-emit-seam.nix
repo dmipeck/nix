@@ -13,7 +13,7 @@
 
       fixture = ../dotagents/fixtures/authoring-format;
       agent = frontmatterLib.importMarkdown (fixture + "/agents/github.md");
-      rules = frontmatterLib.importMarkdown (fixture + "/rules/dotagents.mdc");
+      rules = frontmatterLib.importMarkdown (fixture + "/rules/be-concise.mdc");
       mcp = builtins.fromJSON (builtins.readFile (fixture + "/mcp.json"));
 
       cursorAgent = adapterEmit.emitCursorAgent agent;
@@ -58,7 +58,7 @@
       expectedOpenCodeAgent = builtins.readFile (fixture + "/expected/opencode/agents/github.md");
       expectedClaudeAgent = builtins.readFile (fixture + "/expected/claude/agents/github.md");
       expectedCursorMcp = builtins.fromJSON (builtins.readFile (fixture + "/expected/cursor/mcp.json"));
-      expectedCursorRules = builtins.readFile (fixture + "/expected/cursor/rules/dotagents.mdc");
+      expectedCursorRules = builtins.readFile (fixture + "/expected/cursor/rules/be-concise.mdc");
       expectedOpenCodeRules = builtins.readFile (fixture + "/expected/opencode/AGENTS.md");
       expectedClaudeRules = builtins.readFile (fixture + "/expected/claude/CLAUDE.md");
 

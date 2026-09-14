@@ -67,7 +67,8 @@ dotagents/
 │   └── code-review/
 │       └── SKILL.md        # Cursor-pure skill
 ├── rules/
-│   └── dotagents.mdc       # Cursor rules
+│   ├── be-concise.mdc      # Cursor rules
+│   └── …                   # more alwaysApply .mdc rules
 └── mcp.json                # MCP Server Definitions
 ```
 
@@ -149,7 +150,7 @@ native wrap from the Common Model.
 
 ```markdown
 ---
-description: Shared dotagents global agent instructions
+description: Be extremely concise in agent responses
 alwaysApply: true
 ---
 

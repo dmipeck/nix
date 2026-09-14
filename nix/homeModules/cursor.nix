@@ -153,14 +153,12 @@ in
       ) cursorAgents;
 
       # -----------------------------------------------------------------
-      # Global rules → ~/.cursor/rules/dotagents.mdc (Authoring Format SoT).
-      # Cursor Adapter Emit: passthrough of the authored Common Model path.
+      # Global rules → ~/.cursor/rules/<stem>.mdc (Authoring Format SoT).
+      # Cursor Adapter Emit: passthrough of each authored Common Model path.
       # -----------------------------------------------------------------
-      rulesFile = {
-        ".cursor/rules/dotagents.mdc" = {
-          source = rules.path;
-        };
-      };
+      rulesFile = lib.mapAttrs' (
+        name: rule: lib.nameValuePair ".cursor/rules/${name}.mdc" { source = rule.path; }
+      ) rules;
 
       # Session env exports for "{file:...}" → "${env:VAR}" rewrites.
       fileRefExports = lib.concatMapStrings (ref: ''
