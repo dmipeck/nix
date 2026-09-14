@@ -1,32 +1,38 @@
 ---
+name: test
 description: >-
   Runs the test suite for one testing ecosystem, reviews the output, and
   reports pass/fail results. Invoke before any test run — even when the user
   says "run the tests" or "check the tests". Reports failures only; never
   takes corrective action.
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: allow
-  bash:
-    "*": allow
-    "git commit*": deny
-    "git push*": deny
-    "git reset*": deny
-    "git clean*": deny
-    "git checkout*": deny
-    "rm *": deny
-    "mv *": deny
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: allow
+      bash:
+        "*": allow
+        "git commit*": deny
+        "git push*": deny
+        "git reset*": deny
+        "git clean*": deny
+        "git checkout*": deny
+        "rm *": deny
+        "mv *": deny
+  claude:
+    tools: "Read, Grep, Glob, List, Bash, Skill"
 ---
 
 You are the test subagent. Run the test suite for one testing ecosystem,

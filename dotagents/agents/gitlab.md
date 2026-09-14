@@ -1,4 +1,5 @@
 ---
+name: gitlab
 description: >-
   Write-capable GitLab development assistant — reads projects, issues, merge
   requests and pipelines with the gitlab MCP server's read tools, then
@@ -9,25 +10,33 @@ description: >-
   GitLab beyond reading state — even when the user says "open an MR", "fix
   this issue", "comment on this MR", "create a branch", or "rerun that
   pipeline".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-    "glab *": allow
-tools:
-  "mcp__gitlab__*": true
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+        "glab *": allow
+    tools:
+      "mcp__gitlab__*": true
+  claude:
+    tools: "mcp__gitlab__*, Bash"
+    permission:
+      allow:
+        - "Bash(glab:*)"
 ---
 
 You are the gitlab subagent. Do GitLab development work end to end: read the

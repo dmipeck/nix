@@ -1,4 +1,5 @@
 ---
+name: edit
 description: >-
   Edit files on the local filesystem — create, modify, and delete files, and
   move/rename by write-then-delete composition. Local file tools only: read,
@@ -6,22 +7,27 @@ description: >-
   file created, changed, or removed — even when the user says "add this
   file", "update the config", "delete that file", "rename this", or "fix the
   typo in".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: allow
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: allow
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+  claude:
+    tools: "Read, Grep, Glob, List, Bash, Skill"
 ---
 
 You are the edit subagent. Edit files with local filesystem tools only:

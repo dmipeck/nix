@@ -1,4 +1,5 @@
 ---
+name: plane
 description: >-
   Full Plane project management assistant — reads and writes Plane
   workspaces, projects, cycles, modules, work items, comments, labels,
@@ -10,24 +11,29 @@ description: >-
   as write. Use when the task touches Plane beyond reading state — even when
   the user says "create a work item", "update this issue", "log work", "start
   the cycle", or "what is in this module".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "plane_*": true
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "plane_*": true
+  claude:
+    tools: "mcp__plane__*"
 ---
 
 You are the plane subagent. Do Plane project management work end to end:

@@ -1,4 +1,5 @@
 ---
+name: orchestrate
 description: >-
   Plans multi-step work, delegates every unit to the right subagent, tracks
   progress, and assembles the results into one final report. Has no tools of
@@ -7,28 +8,37 @@ description: >-
   primary agent: invoked for every session — even when the user just says
   "figure this out", "get this done", or starts opencode without naming an
   agent.
-mode: primary
-temperature: 0.1
-permission:
-  task:
-    "*": allow
-    general: ask
-    github: ask
-    gitlab: ask
-  todowrite: allow
-  skill: allow
-  question: allow
-  read: deny
-  glob: deny
-  grep: deny
-  list: deny
-  edit: deny
-  webfetch: deny
-  websearch: deny
-  lsp: deny
-  external_directory: deny
-  bash:
-    "*": deny
+readonly: false
+metadata:
+  opencode:
+    mode: primary
+    temperature: 0.1
+    permission:
+      task:
+        "*": allow
+        general: ask
+        github: ask
+        gitlab: ask
+      todowrite: allow
+      skill: allow
+      question: allow
+      read: deny
+      glob: deny
+      grep: deny
+      list: deny
+      edit: deny
+      webfetch: deny
+      websearch: deny
+      lsp: deny
+      external_directory: deny
+      bash:
+        "*": deny
+  claude:
+    tools: "Agent, AskUserQuestion, TodoWrite, Skill"
+    permission:
+      deny:
+        - "Bash(gh:*)"
+        - "Bash(glab:*)"
 ---
 
 You are orchestrate, the default primary agent. You have no hands: no

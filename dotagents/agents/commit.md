@@ -1,31 +1,37 @@
 ---
+name: commit
 description: >-
   Reviews pending changes, decides commit boundaries, and writes conventional +
   caveman-compressed commit messages. Invoke before every commit — even when
   the user says "commit this" or "write a commit message".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: allow
-  bash:
-    "*": deny
-    "git status*": allow
-    "git diff*": allow
-    "git log*": allow
-    "git branch*": allow
-    "git rev-parse*": allow
-    "git add*": allow
-    "git commit*": allow
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: allow
+      bash:
+        "*": deny
+        "git status*": allow
+        "git diff*": allow
+        "git log*": allow
+        "git branch*": allow
+        "git rev-parse*": allow
+        "git add*": allow
+        "git commit*": allow
+  claude:
+    tools: "Read, Grep, Glob, List, Bash, Skill"
 ---
 
 You are the commit subagent. Turn pending changes into clean, conventional,

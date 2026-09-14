@@ -1,4 +1,5 @@
 ---
+name: cloudflare-bindings
 description: >-
   Write-capable Cloudflare Workers Bindings assistant — manages KV
   namespaces, Workers, R2 buckets, D1 databases and Hyperdrive configs
@@ -8,24 +9,29 @@ description: >-
   task creates or changes bindings state — even when the user says "create a
   KV namespace", "delete that worker", "make an R2 bucket", "add a D1
   database", or "point Hyperdrive at that database".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "cloudflare-bindings_*": true
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "cloudflare-bindings_*": true
+  claude:
+    tools: "mcp__cloudflare-bindings__*"
 ---
 
 You are the cloudflare-bindings subagent. Manage Cloudflare Workers bindings

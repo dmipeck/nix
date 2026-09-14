@@ -1,4 +1,5 @@
 ---
+name: firebase
 description: >-
   Full Firebase development assistant — reads and writes Firebase projects
   through the firebase MCP server (Auth, Firestore, Realtime Database, Cloud
@@ -7,24 +8,29 @@ description: >-
   it. Use when the task touches Firebase beyond reading state — even when the
   user says "create a project", "update this Auth user", "delete a Firestore
   document", "send an FCM message", or "init Firebase".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "firebase_*": true
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "firebase_*": true
+  claude:
+    tools: "mcp__firebase__*"
 ---
 
 You are the firebase subagent. Do Firebase work end to end: read the project

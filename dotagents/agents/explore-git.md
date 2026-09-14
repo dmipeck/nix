@@ -1,4 +1,5 @@
 ---
+name: explore-git
 description: >-
   Answers questions about the current git repository — commits, branches,
   tags, diffs, logs, and working-tree state — using local `git`
@@ -6,23 +7,28 @@ description: >-
   need git history, refs, diffs, blame, or repo state — even when the user
   says "show me the commits", "what changed in", "list the branches", "who
   last touched", or "where is this tag".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-    "git *": allow
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+        "git *": allow
+  claude:
+    tools: "Read, Grep, Glob, List, Bash"
 ---
 
 You are the explore-git subagent. Answer questions about the current git

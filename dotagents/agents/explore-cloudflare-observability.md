@@ -1,4 +1,5 @@
 ---
+name: explore-cloudflare-observability
 description: >-
   Queries worker logs, metrics and schema discovery through the
   cloudflare-observability MCP server; entirely read-only. The observability
@@ -7,26 +8,31 @@ description: >-
   fields and values available to query — even when the user says "show me the
   logs for", "what metrics can I query for", or "which values does that field
   take".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "cloudflare-observability_query_worker_observability": true
-  "cloudflare-observability_observability_keys": true
-  "cloudflare-observability_observability_values": true
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "cloudflare-observability_query_worker_observability": true
+      "cloudflare-observability_observability_keys": true
+      "cloudflare-observability_observability_values": true
+  claude:
+    tools: []
 ---
 
 You are the explore-cloudflare-observability subagent. Answer Cloudflare

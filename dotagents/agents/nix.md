@@ -1,4 +1,5 @@
 ---
+name: nix
 description: >-
   Applies and verifies nix configuration changes on this machine — the
   state-changing nix operations: building and rebuilding systems and home
@@ -9,27 +10,32 @@ description: >-
   flake update, nix profile install/remove/upgrade, nix store /
   nix-collect-garbage. Read-only exploration, questions, and option lookups
   belong to the explore-nix subagent.
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-    "nix *": allow
-    "nixos-rebuild *": allow
-    "sudo nixos-rebuild *": allow
-    "home-manager *": allow
-    "nix-collect-garbage *": allow
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+        "nix *": allow
+        "nixos-rebuild *": allow
+        "sudo nixos-rebuild *": allow
+        "home-manager *": allow
+        "nix-collect-garbage *": allow
+  claude:
+    tools: "Read, Grep, Glob, Bash"
 ---
 
 You are the nix subagent. You execute state-changing nix operations on this

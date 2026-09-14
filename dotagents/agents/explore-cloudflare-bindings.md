@@ -1,4 +1,5 @@
 ---
+name: explore-cloudflare-bindings
 description: >-
   Answers questions about Cloudflare Workers bindings state — KV namespaces,
   Workers, R2 buckets, D1 databases and Hyperdrive configs — using the
@@ -8,34 +9,39 @@ description: >-
   mutates. Use when you need current bindings state — even when the user says
   "list my KV namespaces", "show that worker", "what R2 buckets exist", or
   "what D1 databases are configured".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "cloudflare-bindings_kv_namespaces_list": true
-  "cloudflare-bindings_kv_namespace_get": true
-  "cloudflare-bindings_workers_list": true
-  "cloudflare-bindings_workers_get_worker": true
-  "cloudflare-bindings_workers_get_worker_code": true
-  "cloudflare-bindings_r2_buckets_list": true
-  "cloudflare-bindings_r2_bucket_get": true
-  "cloudflare-bindings_d1_databases_list": true
-  "cloudflare-bindings_d1_database_get": true
-  "cloudflare-bindings_hyperdrive_configs_list": true
-  "cloudflare-bindings_hyperdrive_configs_get": true
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "cloudflare-bindings_kv_namespaces_list": true
+      "cloudflare-bindings_kv_namespace_get": true
+      "cloudflare-bindings_workers_list": true
+      "cloudflare-bindings_workers_get_worker": true
+      "cloudflare-bindings_workers_get_worker_code": true
+      "cloudflare-bindings_r2_buckets_list": true
+      "cloudflare-bindings_r2_bucket_get": true
+      "cloudflare-bindings_d1_databases_list": true
+      "cloudflare-bindings_d1_database_get": true
+      "cloudflare-bindings_hyperdrive_configs_list": true
+      "cloudflare-bindings_hyperdrive_configs_get": true
+  claude:
+    tools: []
 ---
 
 You are the explore-cloudflare-bindings subagent. Answer questions about

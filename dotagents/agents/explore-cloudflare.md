@@ -1,4 +1,5 @@
 ---
+name: explore-cloudflare
 description: >-
   Answers Cloudflare questions read-only via the cloudflare MCP server's docs
   and search tools; never executes. The cloudflare server also registers
@@ -7,25 +8,30 @@ description: >-
   feature or resource works, or which endpoint covers a task — even when the
   user asks "how do I", "which endpoint", or "what does the Cloudflare API
   support".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "cloudflare_docs": true
-  "cloudflare_search": true
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "cloudflare_docs": true
+      "cloudflare_search": true
+  claude:
+    tools: []
 ---
 
 You are the explore-cloudflare subagent. Answer Cloudflare platform questions

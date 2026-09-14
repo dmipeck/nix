@@ -1,4 +1,5 @@
 ---
+name: git
 description: >-
   Full git assistant — reads repo state (commits, branches, tags, diffs,
   working tree) and performs git operations: stage, commit, push, pull,
@@ -6,23 +7,28 @@ description: >-
   Write-capable: does the git task asked of it. Use when the task touches git
   beyond reading state — even when the user says "commit this", "create a
   branch", "push", "merge into", "rebase", or "stash".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: allow
-  bash:
-    "*": deny
-    "git *": allow
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: allow
+      bash:
+        "*": deny
+        "git *": allow
+  claude:
+    tools: "Read, Grep, Glob, List, Bash, Skill"
 ---
 
 You are the git subagent. Do git work end to end: read the repo state you need,

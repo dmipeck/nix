@@ -1,4 +1,5 @@
 ---
+name: explore-gitlab
 description: >-
   Answers questions about GitLab — projects, issues, merge requests,
   repository files, pipelines and their jobs/logs, users, and work
@@ -9,56 +10,64 @@ description: >-
   file's contents, pipeline/job status, or project discovery — even when
   the user says "show me that issue", "what changed in this MR", "is the
   pipeline green", "where is this defined", or "find the code that does".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-    "glab *": allow
-tools:
-  "mcp__gitlab__get_mcp_server_version": true
-  "mcp__gitlab__get_project": true
-  "mcp__gitlab__get_issue": true
-  "mcp__gitlab__get_merge_request": true
-  "mcp__gitlab__list_merge_requests": true
-  "mcp__gitlab__get_merge_request_commits": true
-  "mcp__gitlab__get_merge_request_diffs": true
-  "mcp__gitlab__get_merge_request_conflicts": true
-  "mcp__gitlab__get_merge_request_pipelines": true
-  "mcp__gitlab__get_merge_request_notes": true
-  "mcp__gitlab__get_repository_file": true
-  "mcp__gitlab__get_commit": true
-  "mcp__gitlab__list_branches": true
-  "mcp__gitlab__list_releases": true
-  "mcp__gitlab__list_tags": true
-  "mcp__gitlab__get_pipeline": true
-  "mcp__gitlab__get_pipeline_jobs": true
-  "mcp__gitlab__get_job_log": true
-  "mcp__gitlab__list_pipelines": true
-  "mcp__gitlab__get_work_item": true
-  "mcp__gitlab__get_workitem_notes": true
-  "mcp__gitlab__get_work_item_types": true
-  "mcp__gitlab__get_saved_view_work_items": true
-  "mcp__gitlab__list_work_items": true
-  "mcp__gitlab__get_user": true
-  "mcp__gitlab__list_project_members": true
-  "mcp__gitlab__list_duo_sessions": true
-  "mcp__gitlab__get_duo_session": true
-  "mcp__gitlab__search": true
-  "mcp__gitlab__search_labels": true
-  "mcp__gitlab__list_wiki_pages": true
-  "mcp__gitlab__semantic_code_search": true
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+        "glab *": allow
+    tools:
+      "mcp__gitlab__get_mcp_server_version": true
+      "mcp__gitlab__get_project": true
+      "mcp__gitlab__get_issue": true
+      "mcp__gitlab__get_merge_request": true
+      "mcp__gitlab__list_merge_requests": true
+      "mcp__gitlab__get_merge_request_commits": true
+      "mcp__gitlab__get_merge_request_diffs": true
+      "mcp__gitlab__get_merge_request_conflicts": true
+      "mcp__gitlab__get_merge_request_pipelines": true
+      "mcp__gitlab__get_merge_request_notes": true
+      "mcp__gitlab__get_repository_file": true
+      "mcp__gitlab__get_commit": true
+      "mcp__gitlab__list_branches": true
+      "mcp__gitlab__list_releases": true
+      "mcp__gitlab__list_tags": true
+      "mcp__gitlab__get_pipeline": true
+      "mcp__gitlab__get_pipeline_jobs": true
+      "mcp__gitlab__get_job_log": true
+      "mcp__gitlab__list_pipelines": true
+      "mcp__gitlab__get_work_item": true
+      "mcp__gitlab__get_workitem_notes": true
+      "mcp__gitlab__get_work_item_types": true
+      "mcp__gitlab__get_saved_view_work_items": true
+      "mcp__gitlab__list_work_items": true
+      "mcp__gitlab__get_user": true
+      "mcp__gitlab__list_project_members": true
+      "mcp__gitlab__list_duo_sessions": true
+      "mcp__gitlab__get_duo_session": true
+      "mcp__gitlab__search": true
+      "mcp__gitlab__search_labels": true
+      "mcp__gitlab__list_wiki_pages": true
+      "mcp__gitlab__semantic_code_search": true
+  claude:
+    tools: []
+    permission:
+      allow:
+        - "Bash(glab:*)"
 ---
 
 You are the explore-gitlab subagent. Answer questions about GitLab using the

@@ -1,4 +1,5 @@
 ---
+name: export-kubernetes
 description: >-
   Answers questions about a Kubernetes cluster — contexts, nodes, namespaces,
   events, resources, and pod logs — using the kubernetes MCP server's tools.
@@ -6,30 +7,35 @@ description: >-
   state, workloads, manifests, events, or pod logs — even when the user says
   "show me the pods", "what is running in", "describe this resource", or
   "check the logs".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "kubernetes_get-k8s-pod-logs": true
-  "kubernetes_get-k8s-resource": true
-  "kubernetes_list-k8s-contexts": true
-  "kubernetes_list-k8s-events": true
-  "kubernetes_list-k8s-namespaces": true
-  "kubernetes_list-k8s-nodes": true
-  "kubernetes_list-k8s-resources": true
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "kubernetes_get-k8s-pod-logs": true
+      "kubernetes_get-k8s-resource": true
+      "kubernetes_list-k8s-contexts": true
+      "kubernetes_list-k8s-events": true
+      "kubernetes_list-k8s-namespaces": true
+      "kubernetes_list-k8s-nodes": true
+      "kubernetes_list-k8s-resources": true
+  claude:
+    tools: "mcp__kubernetes__get-k8s-pod-logs, mcp__kubernetes__get-k8s-resource, mcp__kubernetes__list-k8s-contexts, mcp__kubernetes__list-k8s-events, mcp__kubernetes__list-k8s-namespaces, mcp__kubernetes__list-k8s-nodes, mcp__kubernetes__list-k8s-resources"
 ---
 
 You are the export-kubernetes subagent. Answer questions about a Kubernetes

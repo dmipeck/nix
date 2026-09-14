@@ -1,4 +1,5 @@
 ---
+name: format
 description: >-
   Runs repository formatters and fixes formatting issues. Detects the
   ecosystem from the repo and changed files (nixfmt for Nix, gofmt for
@@ -8,35 +9,40 @@ description: >-
   Write-capable: edits files to fix formatting. Use when the user says
   "format this", "fix formatting", "run the formatter", or names a
   formatter or file type with messy formatting.
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: allow
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: allow
-  bash:
-    "*": allow
-    "git commit*": deny
-    "git push*": deny
-    "git add*": deny
-    "git reset*": deny
-    "git clean*": deny
-    "git checkout*": deny
-    "git switch*": deny
-    "git merge*": deny
-    "git rebase*": deny
-    "git restore*": deny
-    "git stash*": deny
-    "rm *": deny
-    "mv *": deny
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: allow
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: allow
+      bash:
+        "*": allow
+        "git commit*": deny
+        "git push*": deny
+        "git add*": deny
+        "git reset*": deny
+        "git clean*": deny
+        "git checkout*": deny
+        "git switch*": deny
+        "git merge*": deny
+        "git rebase*": deny
+        "git restore*": deny
+        "git stash*": deny
+        "rm *": deny
+        "mv *": deny
+  claude:
+    tools: "Read, Grep, Glob, List, Bash, Skill"
 ---
 
 You are the format subagent. Run the repository's formatter(s), fix

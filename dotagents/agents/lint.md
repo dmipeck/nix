@@ -1,4 +1,5 @@
 ---
+name: lint
 description: >-
   Runs repository linters and fixes lint issues. Detects the ecosystem
   from the repo and changed files (gitleaks/editorconfig-checker for
@@ -8,35 +9,40 @@ description: >-
   remains. Write-capable: edits files to fix lint findings. Use when
   the user says "lint this", "fix the linter", "why is the linter
   failing", or names a linter with failing output.
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: allow
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: allow
-  bash:
-    "*": allow
-    "git commit*": deny
-    "git push*": deny
-    "git add*": deny
-    "git reset*": deny
-    "git clean*": deny
-    "git checkout*": deny
-    "git switch*": deny
-    "git merge*": deny
-    "git rebase*": deny
-    "git restore*": deny
-    "git stash*": deny
-    "rm *": deny
-    "mv *": deny
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: allow
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: allow
+      bash:
+        "*": allow
+        "git commit*": deny
+        "git push*": deny
+        "git add*": deny
+        "git reset*": deny
+        "git clean*": deny
+        "git checkout*": deny
+        "git switch*": deny
+        "git merge*": deny
+        "git rebase*": deny
+        "git restore*": deny
+        "git stash*": deny
+        "rm *": deny
+        "mv *": deny
+  claude:
+    tools: "Read, Grep, Glob, List, Bash, Skill"
 ---
 
 You are the lint subagent. Run the repository's linter(s), fix findings

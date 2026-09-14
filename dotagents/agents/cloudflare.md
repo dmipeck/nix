@@ -1,4 +1,5 @@
 ---
+name: cloudflare
 description: >-
   Full Cloudflare development assistant — does full Cloudflare work through
   the cloudflare MCP server's three tools: docs (search the developer docs),
@@ -7,24 +8,29 @@ description: >-
   cloudflare.request() and does whatever the token permits. Use when the task
   touches Cloudflare beyond reading state — even when the user says "deploy a
   worker", "check my zones", "run a D1 query", or "cloudflare API".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "cloudflare_*": true
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "cloudflare_*": true
+  claude:
+    tools: "mcp__cloudflare__*"
 ---
 
 You are the cloudflare subagent. Do Cloudflare work end to end: research what

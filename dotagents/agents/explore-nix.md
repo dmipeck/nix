@@ -1,4 +1,5 @@
 ---
+name: explore-nix
 description: >-
   Explores and answers questions about nix and nixos configurations — flake
   and module code, nixpkgs/home-manager options, and package versions —
@@ -8,40 +9,45 @@ description: >-
   defaults to, or to run a read-only nix query — even when the user says
   "how is X configured", "which option sets Y", "what version of Z", or
   "show me the flake outputs" without naming nix.
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-    "nix *": allow
-    "nixos-option *": allow
-    "nix build*": deny
-    "nix develop*": deny
-    "nix shell*": deny
-    "nix run*": deny
-    "nix profile*": deny
-    "nix copy*": deny
-    "nix sign*": deny
-    "nix store delete*": deny
-    "nix store gc*": deny
-    "nix store optimise*": deny
-    "nix flake lock*": deny
-    "nix flake update*": deny
-    "nix edit*": deny
-    "nix repl*": deny
-tools:
-  "nixos_*": true
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+        "nix *": allow
+        "nixos-option *": allow
+        "nix build*": deny
+        "nix develop*": deny
+        "nix shell*": deny
+        "nix run*": deny
+        "nix profile*": deny
+        "nix copy*": deny
+        "nix sign*": deny
+        "nix store delete*": deny
+        "nix store gc*": deny
+        "nix store optimise*": deny
+        "nix flake lock*": deny
+        "nix flake update*": deny
+        "nix edit*": deny
+        "nix repl*": deny
+    tools:
+      "nixos_*": true
+  claude:
+    tools: "Read, Grep, Glob, List, Bash"
 ---
 
 You are the explore-nix subagent. Answer questions about nix and nixos

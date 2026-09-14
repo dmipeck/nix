@@ -1,4 +1,5 @@
 ---
+name: explore-argocd
 description: >-
   Answers questions about ArgoCD — applications, appprojects, clusters,
   resource trees, managed resources, and resource events — using the
@@ -7,32 +8,37 @@ description: >-
   Use when you need ArgoCD state, app sync status, resource health, or rollout
   events — even when the user says "what's deployed in argocd", "check the
   appproject", or "list the applications".
-mode: subagent
-temperature: 0.1
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  todowrite: deny
-  question: deny
-  webfetch: deny
-  websearch: deny
-  task: deny
-  skill: deny
-  bash:
-    "*": deny
-tools:
-  "argocd_list_clusters": true
-  "argocd_get_appproject": true
-  "argocd_list_applications": true
-  "argocd_get_application": true
-  "argocd_get_application_resource_tree": true
-  "argocd_get_application_managed_resources": true
-  "argocd_get_application_workload_logs": true
-  "argocd_get_resource_events": true
-  "argocd_get_resource_actions": true
+readonly: true
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      glob: allow
+      grep: allow
+      list: allow
+      edit: deny
+      todowrite: deny
+      question: deny
+      webfetch: deny
+      websearch: deny
+      task: deny
+      skill: deny
+      bash:
+        "*": deny
+    tools:
+      "argocd_list_clusters": true
+      "argocd_get_appproject": true
+      "argocd_list_applications": true
+      "argocd_get_application": true
+      "argocd_get_application_resource_tree": true
+      "argocd_get_application_managed_resources": true
+      "argocd_get_application_workload_logs": true
+      "argocd_get_resource_events": true
+      "argocd_get_resource_actions": true
+  claude:
+    tools: "mcp__argocd__list_clusters, mcp__argocd__get_appproject, mcp__argocd__list_applications, mcp__argocd__get_application, mcp__argocd__get_application_resource_tree, mcp__argocd__get_application_managed_resources, mcp__argocd__get_application_workload_logs, mcp__argocd__get_resource_events, mcp__argocd__get_resource_actions"
 ---
 
 You are the explore-argocd subagent. Answer questions about ArgoCD using the
