@@ -1,0 +1,9 @@
+---
+description: Never create or accept merge commits — FF or rebase only
+alwaysApply: true
+---
+
+Never create a merge commit while working with git. Never allow a merge
+commit via MR/PR merge (no merge queues that produce merge commits). Always
+fast-forward or rebase. If a merge commit appears by accident, rebase to
+remove it from history.
