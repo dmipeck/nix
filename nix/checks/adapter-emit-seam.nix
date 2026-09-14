@@ -39,7 +39,9 @@
       claudeAgent = adapterEmit.emitClaudeAgent agent {
         model = "haiku";
         effort = "low";
-        mcpServers = {
+        # Derive inline mcpServers + tools from catalog / opencode Metadata
+        # (fixture claude.tools is [] → derive).
+        mcpCatalog = {
           github = {
             type = "stdio";
             command = "github-mcp";

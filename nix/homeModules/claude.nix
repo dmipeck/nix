@@ -5,15 +5,12 @@
   ...
 }@flakeArgs:
 let
-  # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix); the
-  # subagent definitions are auto-discovered from dotagents/agents/*/agent.md
-  # (nix/dotagents/auto.nix). `config` here is flake-parts state
-  # (auto-imported under nix/); captured once so the home-manager module below
-  # can reference the packages.
+  # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix); agents
+  # come from the Common Model (flat Authoring Format via auto.nix). `config`
+  # here is flake-parts state (auto-imported under nix/); captured once so the
+  # home-manager module below can reference the packages.
   skills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
-  agents = flakeArgs.config.dotagents.agents;
-  # Authoring Format tracers (Common Model); legacy agents stay in `agents`.
   commonAgents = flakeArgs.config.dotagents.commonModel.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Per-client default model + variation (config.dotagents.models); this
@@ -43,56 +40,14 @@ in
       # them onto Claude Code's config dialect. No MCP servers are registered
       # for the main session (see `mcpServers = {}` below), so their tool
       # descriptions never consume main-context; a subagent opts a server back
-      # in with `mcpServers:` inline definitions in its agent file, which
-      # connect only while that subagent runs.
+      # in via Adapter Emit–derived inline `mcpServers` (Common Model +
+      # Instance overlays), which connect only while that subagent runs.
       mcpServers = config.dotagents.mcpServers;
 
-      # Render an opencode agent (dotagents/agents/<name>/agent.md) into Claude
-      # Code's dialect: a `name`/`description`/`tools` allowlist frontmatter
-      # over the shared system-prompt body (the opencode
-      # `mode`/`permission`/`tools` block is dropped), plus optional `model` and
-      # `effort` lines (cheap worker subagents run on Claude's cheap model at
-      # low reasoning effort), optional extra frontmatter lines (e.g. an inline
-      # `mcpServers:` block for agents that connect a server only while they
-      # run) and an optional `permission:` block lifting a top-level deny for
-      # that one agent (the github/gitlab subagents allow their gh/glab CLI as
-      # an MCP fallback this way).
-      claudeAgent =
-        name: description: tools: model: effort: extra: permission:
-        let
-          frontmatter = lib.concatStringsSep "\n" (
-            [
-              "---"
-              "name: ${name}"
-              "description: ${description}"
-              "tools: ${tools}"
-            ]
-            ++ lib.optional (model != "") "model: ${model}"
-            ++ lib.optional (effort != "") "effort: ${effort}"
-            ++ lib.optional (extra != "") extra
-            ++ lib.optional (permission != "") permission
-            ++ [ "---" ]
-          );
-        in
-        pkgs.runCommand "dotagents-${name}-agent-claude" { } ''
-              mkdir -p "$(dirname "$out")"
-              {
-                cat <<'EOF'
-          ${frontmatter}
-
-          EOF
-                # Drop the shared file's opencode frontmatter block, keep the body.
-                awk 'NR==1 && /^---$/{front=1; next} front && /^---$/{front=0; next} !front' ${agents.${name}}
-              } > "$out"
-        '';
-
-      # The explore-github and github subagents, rendered for Claude Code's
-      # dialect with the github MCP server scoped inline. Local GitHub MCP
-      # (config.dotagents.mcpServers.github) is Docker stdio with loopback
-      # OAuth on 8085 — same shape as firebase/argocd/kubernetes blocks.
-      githubServer = config.dotagents.mcpServers.github;
-      # Attrs form for Adapter Emit (Common Model); list YAML blocks below
-      # remain for any lingering legacy directory agents.
+      # Claude-wire MCP Instance overlays (attrs form for Adapter Emit).
+      # Stdio servers mirror Cursor/Common Model shape; HTTP servers add
+      # Claude-only oauth / headersHelper until #66 flips MCP emit fully.
+      githubServer = mcpServers.github;
       githubMcpServers = {
         github = {
           type = "stdio";
@@ -101,16 +56,8 @@ in
           env = githubServer.env;
         };
       };
-      githubMcpBlock = ''
-        mcpServers:
-          - github:
-              type: stdio
-              command: ${githubServer.command}
-              args: ${builtins.toJSON githubServer.args}
-              env: ${builtins.toJSON githubServer.env}
-      '';
 
-      gitlabServer = config.dotagents.mcpServers.gitlab;
+      gitlabServer = mcpServers.gitlab;
       gitlabMcpServers =
         let
           oauth = config.dotagents.mcps.gitlab.oauth;
@@ -128,44 +75,8 @@ in
             // lib.optionalAttrs (oauth.scopes != null) { scopes = oauth.scopes; };
           };
         };
-      gitlabMcpBlock =
-        let
-          oauth = config.dotagents.mcps.gitlab.oauth;
-          # For Claude Code only. When a pre-registered (non-confidential)
-          # GitLab OAuth app is configured (oauth.clientId set), emit the
-          # nested `oauth` block; otherwise emit nothing and Claude Code
-          # falls back to interactive OAuth on first use.
-          authBlock =
-            if oauth.clientId != null then
-              "      oauth:\n"
-              + "        clientId: ${oauth.clientId}\n"
-              + "        callbackPort: ${toString oauth.callbackPort}"
-              + lib.optionalString (oauth.scopes != null) "\n        scopes: ${oauth.scopes}"
-            else
-              "";
-        in
-        ''
-          mcpServers:
-            - gitlab:
-                type: http
-                url: ${gitlabServer.url}
-          ${authBlock}
-        '';
 
-      # The three Cloudflare remote MCP servers, scoped inline for the
-      # cloudflare / cloudflare-bindings and explore-cloudflare* agents. Like
-      # gitlab they are Cloudflare-managed remote HTTP servers (<server>/mcp),
-      # not local binaries, and all three authenticate the same way with one
-      # shared API token, so a single headersHelper script reads the
-      # sops-decrypted token file at connection time and prints the
-      # Authorization header — only the secret file path ever lands in the
-      # store / config. The blocks are hand-built YAML through a small builder
-      # (the servers share the helper and differ only by name+url). Like the
-      # gitlab pair they are registered only when the per-user cloudflare
-      # instance (dotagents.nix) is enabled; the removeAttrs/genAttrs gating
-      # below keeps disabled ones unevaluated, so no `.url` or secret is ever
-      # forced for a surface that is off.
-      cloudflareServer = config.dotagents.mcpServers.cloudflare;
+      cloudflareServer = mcpServers.cloudflare;
       cloudflareHeadersHelper =
         if cloudflareTokenPath != null then
           pkgs.writeShellScriptBin "cloudflare-mcp-headers" ''
@@ -182,44 +93,15 @@ in
           headersHelper = "${cloudflareHeadersHelper}/bin/cloudflare-mcp-headers";
         };
       };
-      mkCloudflareMcpBlock =
-        name: url:
-        let
-          headersHelperLine = lib.optionalString (
-            cloudflareTokenPath != null
-          ) "        headersHelper: ${cloudflareHeadersHelper}/bin/cloudflare-mcp-headers\n";
-        in
-        ''
-          mcpServers:
-            - ${name}:
-                type: http
-                url: ${url}
-          ${headersHelperLine}
-        '';
       cloudflareMcpServers = mkCloudflareMcpServers "cloudflare" cloudflareServer.url;
       cloudflareBindingsMcpServers =
         mkCloudflareMcpServers "cloudflare-bindings"
-          config.dotagents.mcpServers."cloudflare-bindings".url;
+          mcpServers."cloudflare-bindings".url;
       cloudflareObservabilityMcpServers =
         mkCloudflareMcpServers "cloudflare-observability"
-          config.dotagents.mcpServers."cloudflare-observability".url;
-      cloudflareMcpBlock = mkCloudflareMcpBlock "cloudflare" cloudflareServer.url;
-      cloudflareBindingsMcpBlock =
-        mkCloudflareMcpBlock "cloudflare-bindings"
-          config.dotagents.mcpServers."cloudflare-bindings".url;
-      cloudflareObservabilityMcpBlock =
-        mkCloudflareMcpBlock "cloudflare-observability"
-          config.dotagents.mcpServers."cloudflare-observability".url;
-      # The self-hosted Plane remote MCP server (makeplane/plane-mcp-server,
-      # PAT streamable-HTTP endpoint) authenticates with a Plane API PAT sent
-      # as an Authorization: Bearer header and needs X-Workspace-slug to
-      # select the workspace. As with cloudflare the token is read at
-      # connection time from the sops-decrypted file via a headersHelper
-      # script, so only the secret file path lands in the store; the slug is
-      # a plain string baked into the script. The plane agent registers only
-      # when the per-user plane instance (`dotagents.mcps.plane.enable`) is
-      # enabled (gating below), so a disabled instance never surfaces.
-      planeServer = config.dotagents.mcpServers.plane;
+          mcpServers."cloudflare-observability".url;
+
+      planeServer = mcpServers.plane;
       planeHeadersHelper = pkgs.writeShellScriptBin "plane-mcp-headers" ''
         out='{"X-Workspace-slug": "${config.dotagents.mcps.plane.workspaceSlug}"'
         ${lib.optionalString (planeTokenPath != null) ''
@@ -236,18 +118,8 @@ in
           headersHelper = "${planeHeadersHelper}/bin/plane-mcp-headers";
         };
       };
-      planeMcpBlock = ''
-        mcpServers:
-          - plane:
-              type: http
-              url: ${planeServer.url}
-              headersHelper: ${planeHeadersHelper}/bin/plane-mcp-headers
-      '';
-      # Official Firebase MCP (firebase-tools `firebase mcp`, local stdio).
-      # Authenticates with the Firebase CLI credentials in the environment;
-      # no headersHelper. The firebase / explore-firebase pair registers only
-      # when `dotagents.mcps.firebase.enable` is set (gating below).
-      firebaseServer = config.dotagents.mcpServers.firebase;
+
+      firebaseServer = mcpServers.firebase;
       firebaseMcpServers = {
         firebase = {
           type = "stdio";
@@ -255,14 +127,8 @@ in
           args = firebaseServer.args;
         };
       };
-      firebaseMcpBlock = ''
-        mcpServers:
-          - firebase:
-              type: stdio
-              command: ${firebaseServer.command}
-              args: ${builtins.toJSON firebaseServer.args}
-      '';
-      argocdServer = config.dotagents.mcpServers.argocd;
+
+      argocdServer = mcpServers.argocd;
       argocdMcpServers = {
         argocd = {
           type = "stdio";
@@ -271,21 +137,8 @@ in
           env = argocdServer.env;
         };
       };
-      argocdMcpBlock = ''
-        mcpServers:
-          - argocd:
-              type: stdio
-              command: ${argocdServer.command}
-              args: ${builtins.toJSON argocdServer.args}
-              env: ${builtins.toJSON argocdServer.env}
-      '';
 
-      # The export-kubernetes subagent, rendered for Claude Code's dialect with
-      # the kubernetes MCP server scoped inline. The server starts with
-      # `--readonly` (nix/dotagents/mcps/kubernetes.nix), which disables the
-      # apply-k8s-resource and k8s-pod-exec write tools, so the agent can only
-      # inspect the cluster. The block is hand-built YAML like githubMcpBlock.
-      kubernetesServer = config.dotagents.mcpServers.kubernetes;
+      kubernetesServer = mcpServers.kubernetes;
       kubernetesMcpServers = {
         kubernetes = {
           type = "stdio";
@@ -293,13 +146,6 @@ in
           args = kubernetesServer.args;
         };
       };
-      kubernetesMcpBlock = ''
-        mcpServers:
-          - kubernetes:
-              type: stdio
-              command: ${kubernetesServer.command}
-              args: ${builtins.toJSON kubernetesServer.args}
-      '';
 
       nixosMcpServers = {
         nixos = {
@@ -308,258 +154,39 @@ in
         };
       };
 
-      # Hand-tuned description/tools for the agents whose opencode frontmatter
-      # does not carry a Claude Code-compatible spec (mode/permission maps,
-      # inline mcpServers). explore-nix and the github pair override their
-      # frontmatter with an inline mcpServers block;
-      # orchestrate/test/commit/explore-git/git get hand-written descriptions
-      # and tool allowlists.
-      agentSpecs = {
-        nix = {
-          description = "'Applies and verifies nix configuration changes on this machine — the state-changing nix operations: nixos-rebuild switch/boot, home-manager switch/build, nix build, nix flake lock --update-input / nix flake update, nix profile and nix store operations, and nix-collect-garbage. Runs the exact write or build command given and reports the result. Read-only exploration and option lookups belong to the explore-nix subagent.'";
-          tools = "Read, Grep, Glob, Bash";
-        };
-        "explore-nix" = {
-          description = "'Explores and answers questions about nix and nixos configurations — this repo''s flake and module code, nixpkgs/home-manager options, and package versions — using read-only file access, read-only nix commands, and the nixos MCP option lookups. Read-only: reports what it finds, never mutates.'";
-          tools = "Read, Grep, Glob, List, Bash";
-          extraFrontmatter = ''
-            mcpServers:
-              - nixos:
-                  type: stdio
-                  command: ${pkgs.mcp-nixos}/bin/mcp-nixos
-          '';
-        };
-        github = {
-          # Single-quoted YAML scalar: the description contains `: ` which a
-          # plain scalar would misparse as a mapping separator.
-          description = "'Full GitHub development assistant — reads repos, commits, branches and code; creates and updates pull requests, issues and discussions; triggers and inspects Actions runs and logs. Write-capable: performs the GitHub operations asked of it.'";
-          tools = "mcp__github__*, Bash";
-          extraFrontmatter = githubMcpBlock;
-          permission = ''
-            permission:
-              allow:
-                - "Bash(gh:*)"
-          '';
-        };
-        "explore-github" = {
-          description = "'Answers questions about git repositories — commits, branches, tags, trees, file contents, and code search — using the github MCP server''s read-only tools. Read-only: reports, never mutates.'";
-          tools = lib.concatStringsSep ", " (
-            [ "Bash" ] ++ map (t: "mcp__github__${t}") githubServer.tools.read
-          );
-          extraFrontmatter = githubMcpBlock;
-          permission = ''
-            permission:
-              allow:
-                - "Bash(gh:*)"
-          '';
-        };
-        gitlab = {
-          description = "'Write-capable GitLab development assistant — reads projects, issues, merge requests and pipelines with the gitlab MCP server, then creates issues, merge requests and notes, adds branches, manages pipelines and work items through its write tools. Write-capable: performs the GitLab operations asked of it.'";
-          tools = "mcp__gitlab__*, Bash";
-          extraFrontmatter = gitlabMcpBlock;
-          permission = ''
-            permission:
-              allow:
-                - "Bash(glab:*)"
-          '';
-        };
-        "explore-gitlab" = {
-          description = "'Answers questions about GitLab — projects, issues, merge requests, repository files, pipelines and their jobs/logs, users, and work items — using the gitlab MCP server''s read-only tools. Read-only: reports, never mutates.'";
-          tools = lib.concatStringsSep ", " (
-            [ "Bash" ] ++ map (t: "mcp__gitlab__${t}") gitlabServer.tools.read
-          );
-          extraFrontmatter = gitlabMcpBlock;
-          permission = ''
-            permission:
-              allow:
-                - "Bash(glab:*)"
-          '';
-        };
-        cloudflare = {
-          # Single-quoted YAML scalar: the description contains `: ` which a
-          # plain scalar would misparse as a mapping separator.
-          description = "'Write-capable Cloudflare development assistant — reads the developer docs and queries the OpenAPI spec with the cloudflare MCP server, then runs the requested API calls through its execute tool (JavaScript against cloudflare.request()) across the whole Cloudflare API. Write-capable: performs the Cloudflare operations asked of it.'";
-          tools = "mcp__cloudflare__*";
-          extraFrontmatter = cloudflareMcpBlock;
-        };
-        "explore-cloudflare" = {
-          description = "'Answers questions about Cloudflare — how the API, a feature or a resource works, or which endpoint covers a task — using the cloudflare MCP server''s read-only docs and search tools. The cloudflare server also registers execute, but it is not in this agent''s allowlist. Read-only: reports what it finds, never mutates.'";
-          tools = lib.concatStringsSep ", " (map (t: "mcp__cloudflare__${t}") cloudflareServer.tools.read);
-          extraFrontmatter = cloudflareMcpBlock;
-        };
-        "cloudflare-bindings" = {
-          # Single-quoted YAML scalar: the description contains `: ` which a
-          # plain scalar would misparse as a mapping separator.
-          description = "'Write-capable Cloudflare Workers Bindings assistant — manages KV namespaces, Workers, R2 buckets, D1 databases and Hyperdrive configs through the cloudflare-bindings MCP server''s per-resource tools; the server registers create/delete/update/query tools alongside list/get reads. Write-capable: performs the binding operations asked of it.'";
-          tools = "mcp__cloudflare-bindings__*";
-          extraFrontmatter = cloudflareBindingsMcpBlock;
-        };
-        "explore-cloudflare-bindings" = {
-          description = "'Answers questions about Cloudflare Workers bindings state — KV namespaces, Workers, R2 buckets, D1 databases and Hyperdrive configs — using the cloudflare-bindings MCP server''s read-only list/get tools. The bindings server also registers create/delete/update/query tools, but none of them are in this agent''s allowlist. Read-only: reports what it finds, never mutates.'";
-          tools = lib.concatStringsSep ", " (
-            map (
-              t: "mcp__cloudflare-bindings__${t}"
-            ) config.dotagents.mcpServers."cloudflare-bindings".tools.read
-          );
-          extraFrontmatter = cloudflareBindingsMcpBlock;
-        };
-        "explore-cloudflare-observability" = {
-          description = "'Queries worker logs, metrics and schema discovery through the cloudflare-observability MCP server''s read-only tools; the observability server registers query tools only. Read-only: reports what it finds, never mutates.'";
-          tools = lib.concatStringsSep ", " (
-            map (
-              t: "mcp__cloudflare-observability__${t}"
-            ) config.dotagents.mcpServers."cloudflare-observability".tools.read
-          );
-          extraFrontmatter = cloudflareObservabilityMcpBlock;
-        };
-        "export-kubernetes" = {
-          description = "'Answers questions about a Kubernetes cluster - contexts, nodes, namespaces, events, resources, and pod logs - using the kubernetes MCP server''s tools. Read-only: reports what it finds, never mutates.'";
-          tools = "mcp__kubernetes__get-k8s-pod-logs, mcp__kubernetes__get-k8s-resource, mcp__kubernetes__list-k8s-contexts, mcp__kubernetes__list-k8s-events, mcp__kubernetes__list-k8s-namespaces, mcp__kubernetes__list-k8s-nodes, mcp__kubernetes__list-k8s-resources";
-          extraFrontmatter = kubernetesMcpBlock;
-        };
-        "explore-argocd" = {
-          # Single-quoted YAML scalar: the description contains `: ` which a
-          # plain scalar would misparse as a mapping separator.
-          description = "'Answers questions about ArgoCD — applications, appprojects, clusters, resource trees, managed resources, and resource events — using the argocd MCP server. Read-only: reports, never mutates.'";
-          tools = "mcp__argocd__list_clusters, mcp__argocd__get_appproject, mcp__argocd__list_applications, mcp__argocd__get_application, mcp__argocd__get_application_resource_tree, mcp__argocd__get_application_managed_resources, mcp__argocd__get_application_workload_logs, mcp__argocd__get_resource_events, mcp__argocd__get_resource_actions";
-          extraFrontmatter = argocdMcpBlock;
-        };
-        plane = {
-          # Single-quoted YAML scalar: the description contains `: ` which a
-          # plain scalar would misparse as a mapping separator.
-          description = "'Full Plane project management assistant — reads and writes Plane workspaces, projects, cycles, modules, work items, comments, labels, members, intake, releases, work logs, attachments, links, relations and custom properties through the plane MCP server. Write-capable: performs the Plane operations asked of it.'";
-          tools = "mcp__plane__*";
-          extraFrontmatter = planeMcpBlock;
-        };
-        firebase = {
-          # Single-quoted YAML scalar: the description contains `: ` which a
-          # plain scalar would misparse as a mapping separator.
-          description = "'Full Firebase development assistant — reads and writes Firebase projects through the firebase MCP server (Auth, Firestore, Realtime Database, Cloud Functions, Crashlytics, Remote Config, Cloud Messaging, App Hosting, Data Connect, Storage). Write-capable: performs the Firebase operations asked of it.'";
-          tools = "mcp__firebase__*";
-          extraFrontmatter = firebaseMcpBlock;
-        };
-        "explore-firebase" = {
-          description = "'Answers questions about Firebase — projects, apps, Auth users, Firestore, Realtime Database, Functions logs, Crashlytics, Remote Config, App Hosting, Data Connect, Storage and security rules — using the firebase MCP server''s read-only tools. The firebase server also registers write tools, but none of them are in this agent''s allowlist. Read-only: reports what it finds, never mutates.'";
-          tools = lib.concatStringsSep ", " (map (t: "mcp__firebase__${t}") firebaseServer.tools.read);
-          extraFrontmatter = firebaseMcpBlock;
-        };
-        orchestrate = {
-          description = "Plans multi-step work, delegates every unit to the right subagent, tracks progress, and assembles the results into one final report. Has no tools of its own for exploring or editing — all lookups, searches, test runs, nix commands, and file changes happen through subagents. The default Claude Code main agent, invoked for every session — even when the user just says \"figure this out\", \"get this done\", or starts claude without naming an agent.";
-          tools = "Agent, AskUserQuestion, TodoWrite, Skill";
-          # gh/glab are denied on orchestrate (the main-session agent) rather
-          # than top-level: gh/glab work must flow through the github/gitlab
-          # subagents, while every other Bash-capable agent keeps the CLIs.
-          permission = ''
-            permission:
-              deny:
-                - "Bash(gh:*)"
-                - "Bash(glab:*)"
-          '';
-        };
-        test = {
-          description = "Runs the test suite for one testing ecosystem, reviews the output, and reports pass/fail results. Reports failures only; never takes corrective action.";
-          tools = "Read, Grep, Glob, List, Bash, Skill";
-        };
-        commit = {
-          description = "Reviews pending changes, decides commit boundaries, and writes conventional + caveman-compressed commit messages.";
-          tools = "Read, Grep, Glob, List, Bash, Skill";
-        };
-        format = {
-          description = "Runs repository formatters and fixes formatting issues across ecosystems — nixfmt for Nix, gofmt for Go, prettier for JS/TS/JSON/Markdown/YAML, ruff format/black for Python, rustfmt for Rust. Detects the ecosystem, runs the formatter, applies fixes, and re-runs to prove the tree is clean. Write-capable: edits files to fix formatting.";
-          tools = "Read, Grep, Glob, List, Bash, Skill";
-        };
-        lint = {
-          description = "Runs repository linters and fixes lint issues across ecosystems — gitleaks and editorconfig-checker for base hygiene, eslint/tsc for JS/TS, golangci-lint/staticcheck for Go, ruff/flake8 for Python, clippy for Rust, shellcheck for shell. Detects the ecosystem, runs the linters, fixes what is safe to fix, and reports what remains. Write-capable: edits files to fix lint findings.";
-          tools = "Read, Grep, Glob, List, Bash, Skill";
-        };
-        "explore-git" = {
-          description = "Answers questions about the current git repository — commits, branches, tags, diffs, logs, and working-tree state — using local git commands and read-only file access. Read-only: reports what it finds, never mutates.";
-          tools = "Read, Grep, Glob, List, Bash";
-        };
-        git = {
-          description = "Full git assistant — reads repo state (commits, branches, tags, diffs, working tree) and performs git operations: stage, commit, push, pull, branch, checkout/switch, worktree, merge, rebase, stash, tag, remote. Write-capable: does the git task asked of it.";
-          tools = "Read, Grep, Glob, List, Bash, Skill";
-        };
-      };
+      # Catalog for Adapter Emit selection (gated servers only when Instance
+      # enable is on, so disabled URLs/secrets stay unevaluated).
+      claudeMcpCatalog =
+        nixosMcpServers
+        // kubernetesMcpServers
+        // lib.optionalAttrs config.dotagents.mcps.github.enable githubMcpServers
+        // lib.optionalAttrs config.dotagents.mcps.gitlab.enable gitlabMcpServers
+        // lib.optionalAttrs config.dotagents.mcps.argocd.enable argocdMcpServers
+        // lib.optionalAttrs config.dotagents.mcps.cloudflare.enable cloudflareMcpServers
+        // lib.optionalAttrs config.dotagents.mcps.cloudflare.bindings.enable cloudflareBindingsMcpServers
+        // lib.optionalAttrs config.dotagents.mcps.cloudflare.observability.enable cloudflareObservabilityMcpServers
+        // lib.optionalAttrs config.dotagents.mcps.plane.enable planeMcpServers
+        // lib.optionalAttrs config.dotagents.mcps.firebase.enable firebaseMcpServers;
 
-      # Agents without a hand-tuned spec fall back to a description extracted
-      # from their agent.md frontmatter (empty if missing) and a sensible
-      # default tool allowlist.
-      defaultTools = "Read, Grep, Glob, List, Bash, Skill";
-      agentDescription =
-        name:
-        let
-          m = builtins.match ".*description:[ \t]*([^\n]*)[\s\S]*" (builtins.readFile agents.${name});
-        in
-        if m == null then "" else builtins.head m;
-      renderAgent =
-        name:
-        let
-          spec = agentSpecs.${name} or { };
-          extra = spec.extraFrontmatter or "";
-          permission = spec.permission or "";
-          # Cheap worker subagents (config.dotagents.cheapSubagents) get their
-          # model + effort pinned from config.dotagents.models.claude.subagent
-          # (Claude Code's effort line carries the variation); every other
-          # agent stays byte-identical (no `model:` or `effort:` line in its
-          # frontmatter).
-          cheap = lib.elem name cheapSubagents;
-          model = if cheap then models.claude.subagent.model else "";
-          effort = if cheap then (models.claude.subagent.variation or "") else "";
-        in
-        claudeAgent name (spec.description or (agentDescription name)) (spec.tools or defaultTools) model
-          effort
-          (lib.optionalString (extra != "") (lib.trim extra))
-          (lib.optionalString (permission != "") (lib.trim permission));
-
-      # Common Model agents → Adapter Emit (shared fields + metadata.claude).
-      # MCP Instance overlays stay adapter-side (attrs form for emit); gated
-      # agents still skip eval when their instance is disabled.
-      commonAgentMcpServers = {
-        github = githubMcpServers;
-        explore-github = githubMcpServers;
-        gitlab = gitlabMcpServers;
-        explore-gitlab = gitlabMcpServers;
-        cloudflare = cloudflareMcpServers;
-        explore-cloudflare = cloudflareMcpServers;
-        cloudflare-bindings = cloudflareBindingsMcpServers;
-        explore-cloudflare-bindings = cloudflareBindingsMcpServers;
-        explore-cloudflare-observability = cloudflareObservabilityMcpServers;
-        export-kubernetes = kubernetesMcpServers;
-        explore-argocd = argocdMcpServers;
-        plane = planeMcpServers;
-        firebase = firebaseMcpServers;
-        explore-firebase = firebaseMcpServers;
-        explore-nix = nixosMcpServers;
-      };
-
+      # Common Model agents → Adapter Emit (shared fields + metadata.claude +
+      # derived mcpServers/tools). No hand-tuned agentSpecs maps.
       renderCommonAgent =
         name: agent:
         let
-          spec = agentSpecs.${name} or { };
           cheap = lib.elem name cheapSubagents;
           model = if cheap then models.claude.subagent.model else null;
           effort = if cheap then (models.claude.subagent.variation or null) else null;
-          # Prefer adapter-derived tools (e.g. explore-github read allowlist)
-          # when present; else metadata.claude.tools from the Authoring Format.
-          tools = if spec ? tools then spec.tools else null;
-          mcpServers = commonAgentMcpServers.${name} or null;
           text = adapterEmit.emitClaudeAgent agent {
-            inherit
-              model
-              effort
-              tools
-              mcpServers
-              ;
+            inherit model effort;
+            mcpCatalog = claudeMcpCatalog;
           };
         in
         pkgs.writeText "dotagents-${name}-agent-claude" text;
 
-      # All agent definitions: legacy directory agents + Common Model tracers.
-      # The github pair is registered only when the per-user github instance is
-      # enabled.
-      allClaudeAgents =
-        (lib.mapAttrs (name: _: renderAgent name) agents) // (lib.mapAttrs renderCommonAgent commonAgents);
+      # All agents from the Common Model (flat Authoring Format). MCP-backed
+      # agents are gated below on their Instance enable flags.
+      allClaudeAgents = lib.mapAttrs renderCommonAgent commonAgents;
+
       githubAgentNames = [
         "explore-github"
         "github"
@@ -992,13 +619,9 @@ in
           # the package root (a whole plugin), not $out/skills/<name>.
           plugins = claudePlugins;
           commands = claudeCommands;
-          # The subagents, re-rendered for Claude Code's agent dialect from the
-          # shared dotagents/agents/<name>/agent.md files (explore-nix with
-          # the nixos MCP server scoped inline, the orchestrate main-session
-          # agent, the test/commit workers, the github and explore-github
-          # agents both with the single github server scoped inline
-          # (explore-github limited to read-only tools by its allowlist), and
-          # the explore-argocd agent with the argocd server scoped inline; the
+          # The subagents, converted for Claude Code via Adapter Emit from the
+          # Common Model (Authoring Format agents + metadata.claude; inline
+          # mcpServers derived from Instance MCP catalog by tool needs). The
           # github pair only when the github instance is enabled, and
           # explore-argocd only when the argocd instance is enabled). The
           # home-manager/claude-code module writes
