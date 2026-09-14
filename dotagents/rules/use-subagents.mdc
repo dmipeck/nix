@@ -1,0 +1,25 @@
+---
+description: Delegate via Task; cheap models for simple work; no spawn loops
+alwaysApply: true
+---
+
+# Subagent delegation
+
+**If you are already a subagent:** do the work yourself. Never spawn Task
+or further subagents (avoids loops; rules apply to subagents too).
+
+**If you are the parent agent:** delegate every discrete unit via Task.
+Prefer specialized subagents over general-purpose.
+
+## Cheap models
+
+For simple mechanical work, pass a cheap model (e.g. `composer-2.5-fast`
+or `composer-2.5`):
+
+- exploring / searching the codebase
+- linting and formatting
+- running tests
+- standard git ops (status, diff, log, commit, push)
+
+Use `inherit` (parent model) for planning, design, hard debugging, and
+multi-step reasoning.
