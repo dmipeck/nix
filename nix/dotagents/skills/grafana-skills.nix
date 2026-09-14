@@ -2,6 +2,7 @@
   lib,
   withSystem,
   inputs,
+  skillPackLib,
   ...
 }:
 let
@@ -15,18 +16,10 @@ let
   # eval time. Upstream layout: skills/<group>/<skill>/SKILL.md.
   grafanaSkillsSrc = inputs.grafana-skills;
 
-  dirs =
-    root: builtins.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir root));
-  skillDirs =
-    root:
-    builtins.attrNames (
-      lib.filterAttrs (
-        name: type: type == "directory" && builtins.pathExists (root + "/" + name + "/SKILL.md")
-      ) (builtins.readDir root)
-    );
+  inherit (skillPackLib) listDirs skillDirs;
 
   # Groups that actually contain skills become whole-bundle (collection) keys.
-  groupNames = dirs (grafanaSkillsSrc + "/skills");
+  groupNames = listDirs (grafanaSkillsSrc + "/skills");
   groups = lib.filter (g: skillDirs (grafanaSkillsSrc + "/skills/" + g) != [ ]) groupNames;
 
   # Build a derivation whose $out/skills/ holds every skill of one group.

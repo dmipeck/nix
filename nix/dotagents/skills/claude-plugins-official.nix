@@ -2,6 +2,7 @@
   lib,
   withSystem,
   inputs,
+  skillPackLib,
   ...
 }:
 let
@@ -18,15 +19,7 @@ let
   # plugins/<plugin>/skills/<name>/SKILL.md.
   claudePluginsOfficial = inputs.claude-plugins-official;
 
-  dirs =
-    root: builtins.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir root));
-  skillDirs =
-    root:
-    builtins.attrNames (
-      lib.filterAttrs (
-        name: type: type == "directory" && builtins.pathExists (root + "/" + name + "/SKILL.md")
-      ) (builtins.readDir root)
-    );
+  inherit (skillPackLib) listDirs skillDirs;
 
   pluginsDir = claudePluginsOfficial + "/plugins";
   skillsOfPlugin =
@@ -35,7 +28,7 @@ let
       skillsDir = pluginsDir + "/" + plugin + "/skills";
     in
     if builtins.pathExists skillsDir then skillDirs skillsDir else [ ];
-  skillBearingPlugins = lib.filter (p: skillsOfPlugin p != [ ]) (dirs pluginsDir);
+  skillBearingPlugins = lib.filter (p: skillsOfPlugin p != [ ]) (listDirs pluginsDir);
 
   # Copy an entire plugin dir to $out (its .claude-plugin + skills/ subtree).
   mkPlugin =
