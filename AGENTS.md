@@ -54,12 +54,13 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `nix/dotagents/auto.nix` auto-discovers it with `builtins.readDir` — skill
   public name = directory name; agent public name = flat `.md` stem — and
   exposes skills as `config.dotagents.skills` (attrsOf package, layout
-  `$out/skills/<name>/SKILL.md`), agents as `config.dotagents.commonModel.agents`
-  (`{ frontmatter, body, path }` via Frontmatter Parser), plus
-  `config.dotagents.skillLayouts` (attrsOf `"skill" | "collection"`, default
-  `"skill"`) — per-key layout metadata telling adapters whether a skill key
-  is a plain skill or a whole bundle. Legacy `config.dotagents.agents`
-  (directory `agent.md` paths) is empty once all agents are Authoring Format.
+  `$out/skills/<name>/SKILL.md`), agents as
+  `config.dotagents.commonModel.agents` (`{ frontmatter, body, path }` via
+  Frontmatter Parser), plus `config.dotagents.skillLayouts` (attrsOf
+  `"skill" | "collection"`, default `"skill"`) — per-key layout metadata
+  telling adapters whether a skill key is a plain skill or a whole bundle.
+  Legacy `config.dotagents.agents` (directory `agent.md` paths) is empty once
+  all agents are Authoring Format.
   Auto values are `lib.mkOptionDefault` (priority 1500, same as
   an option default) so a profile can still override them;
   `config.dotagents.localPackages.whole-tree` is the whole content tree in one
