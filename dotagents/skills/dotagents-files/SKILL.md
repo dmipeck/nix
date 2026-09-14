@@ -1,130 +1,117 @@
 ---
 name: dotagents-files
 description: >-
-  Use when creating or editing agent files that must conform to the DotAgents
-  protocol (dotagentsprotocol.com): "set up a .agents directory", "create
-  .agents agent files", "add a sub-agent profile / agent.md", "author
-  agents.md", "add a skill under skills/", "write mcp.json", "dotagents
-  protocol", "add a repeat task / task.md", or "write a memory file /
-  memories/". The protocol is a filesystem directory convention: conformance is
-  placing files at the right paths with simple `key: value` frontmatter. It is
-  NOT about @-directives — no @agents/@skills/@commands/@mcp_servers/@hooks
-  grammar exists in this spec, so do not invent syntax. NOT for: editing a
-  repo-root AGENTS.md or existing skill/agent content — use writing-for-agents
-  or skill-authoring; Claude/plugin-specific agent authoring (subagents, agent
-  tools, colors) — use agent-development.
+  Use when creating or editing Cursor Authoring Format files under
+  `dotagents/`: flat agents (`agents/<id>.md`), Cursor-pure skills
+  (`skills/<id>/SKILL.md`), `.mdc` rules, or Cursor-shaped `mcp.json`.
+  Triggers: "add a subagent", "author an agent.md", "write a skill under
+  dotagents/skills", "add a rule .mdc", "edit mcp.json", "Authoring Format",
+  "metadata.opencode", "Common Model". NOT for: repo-root AGENTS.md content
+  quality — use writing-for-agents; Claude/plugin-only agent tooling — use
+  agent-development; DotAgents protocol / OpenCode dialect as on-disk SoT.
 ---
 
-# DotAgents Files
+# DotAgents Files (Cursor Authoring Format)
 
-The DotAgents spec (the "agents Protocol", DRAFT 2026-02-24) is a filesystem
-  directory convention for agent config and content. Conformance = right path +
-  simple `---` frontmatter. No `@`-directive blocks, no tool-specific grammar.
-  The spec calls itself "a convergence point, not a replacement" for existing
-  standards. Ecosystem mapping: MCP → `mcp.json`; AGENTS.md → `agents.md`;
-  Skills → `skills/*/skill.md`; Sub-Agents → `agents/*/agent.md`; ACP →
-  agent profiles; Tasks → `tasks/*/task.md`; Memories → `memories/*.md`.
+On-disk **Authoring Format** under `vendor/nix/dotagents/` is the Cursor
+dialect: flat agents, Cursor-pure skills, `.mdc` rules, Cursor-shaped
+`mcp.json`. Eval parses into a **Common Model**; **Adapter Emit**
+passthroughs to Cursor and converts to OpenCode/Claude. OpenCode dialect and
+DotAgents protocol flat frontmatter are **not** the source of truth.
 
-Use this skill when a task creates or edits any of those files. Invent nothing
-  beyond what is shown below: no fields, no grammar, no file names.
+Use this skill to create or edit those files. Invent nothing beyond the
+recipes and glossary below.
 
-## Decide where files live
+## Glossary
 
-The protocol defines exactly two layers with overlay semantics:
+| Term | Meaning |
+|---|---|
+| **Authoring Format** | On-disk Cursor dialect SoT: `agents/<id>.md`, `skills/<id>/SKILL.md`, `rules/*.mdc`, Cursor-shaped `mcp.json`. |
+| **Metadata** | Agent frontmatter field `metadata` holding nested `opencode` / `claude` portability knobs. Not a separate `meta` key. Skills stay Cursor-pure (no portability nests). |
+| **Common Model** | Structured Nix attrs from parsing Authoring Format (agents, skills, MCP, rules) before Adapter Emit. |
+| **Adapter Emit** | Per-consumer render: Cursor = passthrough (agents: documented fields only, strip `metadata`); OpenCode/Claude = convert from Common Model + `metadata.*`. |
+| **MCP Server Definition** | Cursor-shaped entry in authored `mcp.json` (`stdio` / `url` / `headers` / `auth` / `env`). |
+| **MCP Instance** | Per-user Nix overlays under `dotagents.mcps.<name>` (enable, secrets, URL/OAuth). Tool allowlists stay Nix-side, not non-Cursor keys in `mcp.json`. |
 
-1. `~/.agents/` — global layer, canonical base config.
-2. `<project>/.agents/` — workspace layer, optional overrides, commit to git.
+## Where files live
 
-Merge order, verbatim from the spec:
-
-```
-defaults ← config.json ← ~/.agents ← ./.agents
-```
-
-JSON shallow-merges by key; `skills`/`memories`/`agents`/`tasks` merge by ID,
-  workspace wins. The workspace layer is only discovered if already present —
-  "safe by default". Pick: rules for every session → `~/.agents`; per-project
-  instructions that ship with the repo → `./.agents` (only when the owner
-  wants it — discovery is off until it exists). `nix/dotagents/` is
-  packaging/deploy machinery (home-manager switch), NOT a protocol layer and NOT
-  part of the merge order above — see Deploy note.
-
-## Canonical layout
+Author under the library tree `vendor/nix/dotagents/` (this repo when working
+in `dmipeck/nix`). home-manager deploys via adapters after `home-manager
+switch`. Upstream/collection skills stay Nix packages under
+`nix/dotagents/skills/*.nix` — do **not** rewrite those into Authoring
+Format; only local `dotagents/skills/` is Cursor SoT.
 
 ```
-.agents/
-├── agents.md            # instructions (AGENTS.md compatible)
-├── system-prompt.md     # system prompt
-├── mcp.json             # MCP server configuration
-├── models.json          # model presets & provider keys
+dotagents/
+├── agents/
+│   └── github.md           # flat agent (stem = name)
 ├── skills/
 │   └── code-review/
-│       └── skill.md    # skill definition
-├── agents/
-│   └── code-reviewer/
-│       └── agent.md   # sub-agent profile
-├── tasks/
-│   └── daily-code-review/
-│       └── task.md    # repeat task
-└── memories/
-    └── project-arch.md  # persistent memory
+│       └── SKILL.md        # Cursor-pure skill
+├── rules/
+│   └── dotagents.mdc       # Cursor rules
+└── mcp.json                # MCP Server Definitions
 ```
-
-The full spec layout also lists settings (`speakmcp-settings.json` /
-  `dotagents-settings.json`), `layouts/ui.json`, and an auto-managed
-  `.backups/`. Those settings/layout files are out of scope for hand-authoring.
-  Optional `agents/<id>/config.json` is NOT out of scope — it gets its own
-  recipe below.
-
-## Frontmatter and config rules
-
-Content files = `---` frontmatter + markdown. Config files (`mcp.json`,
-  `models.json`, `agents/<id>/config.json`) = plain JSON, never frontmatter.
-  Frontmatter rule, verbatim from the spec:
-
-> Uses `---` fences with simple `key: value` lines. Not full YAML — no
-> external dependencies. Values can be quoted. List fields accept CSV
-> (`tags: a, b, c`) or JSON arrays (`tags: ["a", "b"]`). Keys are sorted
-> deterministically for clean diffs.
-
-So: flat `key: value` lines only — no nested maps, no `- ` list lines, no YAML
-  anchors. Sort keys alphabetically in files you author. For `skills/<id>/`,
-  `agents/<id>/`, `tasks/<id>/`, keep `id` lowercase-hyphen and matching the
-  folder name (the reference implementation defaults `id` from the folder).
-  Memories are folder-less flat files — see the memories recipe for their id
-  convention. Never emit `@agents`/`@skills`/`@commands`/`@mcp_servers`/`@hooks`
-  blocks — that grammar is not part of this protocol.
 
 ## Authoring recipes
 
-### agents.md — project guidelines
-`agents.md` is "AGENTS.md compatible" plain markdown (sections, rules,
-  commands). Optional frontmatter `kind: agents`.
+### agents/<id>.md — flat agent
+
+Path `agents/<id>.md`. Required: `name` equals filename stem. Cursor
+top-level: `name`, `description`, optional `model`, `readonly`,
+`is_background`. Portability only under `metadata.opencode` /
+`metadata.claude`. Body = second-person system prompt.
+
+- `orchestrate` → `metadata.opencode.mode: primary`; others → `subagent`.
+- Explore/export agents author `readonly: true` in the file (no adapter
+  name-list).
+- Optional top-level `model`; optional `metadata.opencode.variant`; else
+  Nix `dotagents.models.*` + `cheapSubagents` inject at emit.
 
 ```markdown
 ---
-kind: agents
+name: github
+description: >-
+  Full GitHub development assistant — repos, PRs, issues, Actions.
+  Write-capable.
+readonly: false
+metadata:
+  opencode:
+    mode: subagent
+    temperature: 0.1
+    permission:
+      read: allow
+      bash:
+        "*": deny
+        "gh *": allow
+    tools:
+      "github_*": true
+  claude:
+    tools: []
 ---
 
-# Project Guidelines
-
-## Build & Test
-
-- Run the test suite before pushing.
-- Lint must pass; fix warnings, do not silence them.
+You are the github subagent. ...
 ```
 
-### skills/<skill-id>/skill.md — skill definition
-Path `skills/<skill-id>/skill.md`; folder name = skill id (lowercase-hyphen).
-  Fields on the spec site: `id`, `name`, `description`, `enabled: true`. Keys
-  sorted — passes this skill's own checklist:
+**Cursor emit:** `name`, `description`, `model` (injected or file),
+`readonly` — no `metadata`. **OpenCode/Claude emit:** hoist
+`metadata.opencode` / `metadata.claude` + shared fields.
+
+Never author OpenCode `mode` / `permission` / `tools` at the top level.
+Never use `agents/<id>/agent.md` or sibling `config.json` as SoT.
+
+### skills/<id>/SKILL.md — Cursor-pure skill
+
+Path `skills/<id>/SKILL.md`; folder name = skill id (lowercase-hyphen).
+Cursor Agent Skills frontmatter only (`name`, `description`, optional
+`disable-model-invocation`, `argument-hint`, …). No `metadata.opencode` /
+`metadata.claude` nests — skills stay Cursor-pure.
 
 ```markdown
 ---
-description: Thorough code review
-enabled: true
-id: code-review
-name: Code Review Expert
+name: code-review
+description: >-
+  Thorough code review for security, performance, and coverage gaps.
 ---
 
 Review code changes for:
@@ -133,179 +120,75 @@ Review code changes for:
 - Test coverage gaps
 ```
 
-The spec's own published sample is unsorted (`id, name, description, enabled`)
-  — that is illustrative only; the spec's sorting rule and this skill's
-  checklist want the alphabetical order above. The spec lowercases the file
-  (`skill.md`); the Anthropic Skills standard capitalizes `SKILL.md`. Pick one
-  spelling per repo, stay consistent on case-sensitive filesystems.
+Slash-only (user-invoked) skills set `disable-model-invocation: true`.
 
-### agents/<agent-id>/agent.md — sub-agent profile
-Path `agents/<agent-id>/agent.md`. Identity fields in frontmatter; body is the
-  agent's system prompt, second person. Spec example values: `role`
-  `delegation-target`, `connection-type` `internal`.
+### rules/<name>.mdc — Cursor rules
+
+Path `rules/<name>.mdc`. Frontmatter uses Cursor rule fields (at minimum
+`description`, `alwaysApply` as needed). Body = the shared instructions.
+Cursor Adapter Emit passthrough-copies; OpenCode/Claude take body / tool-
+native wrap from the Common Model.
 
 ```markdown
 ---
-connection-type: internal
-description: Reviews code changes
-enabled: true
-id: code-reviewer
-name: Code Reviewer
-role: delegation-target
+description: Shared dotagents global agent instructions
+alwaysApply: true
 ---
 
-You are a code review specialist. Focus on security vulnerabilities,
-performance, and test coverage.
+Be extremely concise. Sacrifice grammar for the sake of concision.
 ```
 
-Optional sibling `agents/<id>/config.json` nests tool/model/connection; leave it
-  out unless the target consumer documents it.
+Do not use plain `agents.md` as the rules SoT.
 
-### tasks/<task-id>/task.md — repeat task
-Path `tasks/<task-id>/task.md`; folder name = task id (lowercase-hyphen).
-  Frontmatter: `kind: task`, `id`, `name`, `intervalMinutes`, `enabled`,
-  `runOnStartup`, optional `profileId`. Body = the prompt run on schedule.
-  `profileId` semantics are undefined by the spec (opaque external profile
-  reference) — do not invent a link to a local `agents/` id:
+### mcp.json — MCP Server Definitions
 
-```markdown
----
-enabled: true
-id: daily-code-review
-intervalMinutes: 1440
-kind: task
-name: Daily Code Review
-profileId: abc-123
-runOnStartup: false
----
+Plain JSON: `{ "mcpServers": { "<name>": { ... } } }`. Cursor shape only:
 
-Review unmerged PRs. Flag security, performance, and test-coverage gaps.
-```
+- stdio: `"type": "stdio"`, `command`, optional `args` / `env`
+- remote: `url`, optional `headers` / `auth`
 
-### memories/<name>.md — persistent memory
-Folder-less flat file under `memories/`, one per memory; the filename is NOT the
-  `id`. Spec-listed frontmatter fields: `id`, `title`, `content`, `importance`
-  (e.g. `high`), `tags` (CSV or JSON array). Markdown below the fence is the
-  remembered content. The spec shows underscore ids (e.g. `arch_001`) with no
-  published name regex — the lowercase-hyphen/folder rule does NOT apply here:
-
-```markdown
----
-content: Architecture decisions
-id: arch_001
-importance: high
-tags: architecture, decisions
-title: Project Architecture
----
-
-Control plane talks to agents over stdio. State lives in `~/.agents/state`;
-never commit it.
-```
-
-### mcp.json — MCP server config
-Plain JSON: `{ "mcpServers": { "<name>": { ... } } }`. stdio servers use
-  `command` + `args`; HTTP servers use `url`. Spec site example (verbatim):
+Authored values may use Cursor `${env:NAME}` placeholders. **MCP Instance**
+Nix overlays secrets/enable/URL before emit. Do not put tool allowlists or
+Nix-only `local`/`remote` naming in this file.
 
 ```json
 {
   "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["@mcp/server-filesystem"],
-      "transport": "stdio"
+    "nixos": {
+      "type": "stdio",
+      "command": "nixos-mcp",
+      "args": []
     },
-    "github": {
-      "url": "https://api.github.com/mcp",
-      "transport": "streamable-http"
+    "gitlab": {
+      "url": "https://gitlab.com/api/v4/mcp"
     }
-  }
-}
-```
-
-Spec site spells HTTP transport `streamable-http`; the reference impl spells it
-  `streamableHttp`. Pick one spelling per repo, note the mismatch, do not mix.
-
-### agents/<id>/config.json — agent tool/model/connection
-Optional, plain JSON. Verbatim spec site example:
-
-```json
-{
-  "toolConfig": {
-    "disabledServers": ["filesystem"],
-    "enabledBuiltinTools": ["mark_work_complete"]
-  },
-  "modelConfig": {
-    "mcpToolsProviderId": "openai",
-    "mcpToolsOpenaiModel": "gpt-4o"
-  },
-  "connection": {
-    "type": "stdio",
-    "command": "my-agent",
-    "args": ["--mode", "review"]
   }
 }
 ```
 
 ## Authoring workflow
 
-1. Pick the target layer and exact path (Decide where files live + Canonical
-  layout). Confirm `./.agents` already exists before writing to it.
-2. Create the directory chain: `skills/<id>/`, `agents/<id>/`, `tasks/<id>/`, or
-  none for `memories/*.md`. Name files per the layout; the folder name equals
-  the artifact `id`.
-3. Write frontmatter: `---` fence, flat `key: value` lines, keys sorted, lists
-  as CSV or JSON arrays. Config files (`mcp.json`, `config.json`,
-  `models.json`): plain JSON, no frontmatter.
-4. Write the body: plain markdown, imperative (for agents: second-person system
-  prompt).
-5. Verify conformance against this checklist:
+1. Pick the artifact: agent / skill / rule / MCP Server Definition.
+2. Create the path from Canonical layout above (`agents/<id>.md` flat;
+   `skills/<id>/SKILL.md`; `rules/<name>.mdc`; or edit `mcp.json`).
+3. Write frontmatter in Cursor Authoring Format. Agents: nest OpenCode/Claude
+   knobs under `metadata` only. Skills: Cursor-pure. Rules: `.mdc` fields.
+   `mcp.json`: Cursor Server Definition shape, no frontmatter.
+4. Write the body (agents: second-person system prompt).
+5. Verify:
 
-- Right path? File sits at the canonical path in the chosen layer;
-  skill/agent/task folders match their `id`.
-- Frontmatter flat + sorted? Only `---` fences + `key: value` lines; no nested
-  YAML, no `- ` list lines; keys alphabetical.
-- `id` matches folder? For skills/agents/tasks only: lowercase-hyphen, identical
-  to the directory name. Memories: folder-less, id independent of filename.
-- No @-directives? No `@agents`/`@skills`/`@commands`/`@mcp_servers`/`@hooks`
-  blocks anywhere in the files.
-- Plain JSON config? `mcp.json` / `config.json` are JSON, not frontmatter.
-- Workspace rule respected? `./.agents` only when already present or owner
-  consented; otherwise global `~/.agents`.
-- Case consistent? One `skill.md`/`SKILL.md` spelling per repo; one
-  `streamable-http`/`streamableHttp` spelling per repo.
-- Nothing invented? No fields, values, or file names beyond the spec examples.
+- Right path? Flat agent stem, skill folder = id, rules under `rules/`.
+- `name` ≡ stem for agents?
+- No OpenCode dialect at agent top level; no DotAgents protocol FM as SoT?
+- Skills have no portability `metadata` nests?
+- `mcp.json` is Cursor-shaped Server Definitions only?
+- Nothing invented beyond ADR-0001 / this skill?
 
-## Known spec ambiguities
+## Deploy note
 
-- DRAFT (2026-02-24), no published version number — do not claim stable
-  adoption.
-- `skill.md` (spec) vs `SKILL.md` (Anthropic Skills) — pick one per repo.
-- `memories/` (spec) vs `knowledge/` (reference app) — follow the SPEC
-  (`memories/`) unless the target consumer documents `knowledge/`.
-- `connection-type` in `agent.md` frontmatter vs `connection.type` in
-  `config.json` both appear. Site example puts identity fields in `agent.md`
-  frontmatter and MAY repeat connection in `config.json`. Recommend:
-  identity/`role`/`connection-type` in `agent.md`; no `config.json` unless the
-  consumer documents it.
-- Settings file named `speakmcp-settings.json` in one spec tree vs
-  `dotagents-settings.json` elsewhere — not hand-authored, ignore.
-- No required-field lists or name regexes published at spec level. For
-  skills/agents/tasks, default `id` lowercase-hyphen to the folder name; memory
-  ids (e.g. `arch_001`) are independent of filename.
-- Tool support across Claude Code / Cursor / Codex / OpenCode is only claimed by
-  the protocol author's own app repo, not independently verified. Phrase
-  portability as "designed to be", not "works in".
-
-## Deploy note for this ecosystem
-
-This skill ships from the `nix` repo's `dotagents/` tree; home-manager deploys
-  it to both `~/.config/opencode/skills/` and `~/.claude/skills/`. To author a
-  NEW reusable skill/agent/global rule here, drop the file under
-  `nix/dotagents/skills/<name>/SKILL.md` (or
-  `nix/dotagents/agents/<name>/agent.md`, `nix/dotagents/agents.md`) and run
-  `home-manager switch` — no nix edits needed. Per-project agent config in a
-  repo: follow the protocol — create `./.agents/` (workspace layer) and/or the
-  repo root `AGENTS.md`; `agents.md` is "AGENTS.md compatible". Repos in this
-  ecosystem conventionally use a root `AGENTS.md` that opencode/claude read
-  directly — prefer editing that for repo-local rules over duplicating into a
-  workspace `.agents/agents.md`.
+This skill ships from `dmipeck/nix` `dotagents/skills/dotagents-files/`.
+home-manager deploys it to Cursor / OpenCode / Claude skill locations.
+New local agent/skill/rule: drop the file under `dotagents/` and run
+`home-manager switch` — adapters pick it up. Per-user MCP enablement and
+secrets are **MCP Instance** options in home-manager, not edits to the
+authored Server Definition beyond `${env:…}` placeholders.
