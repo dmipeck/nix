@@ -46,18 +46,20 @@ flakes. `CLAUDE.md` is a symlink to this file.
 
 - Local AI content — skills, agent (subagent) definitions and global rules —
   lives in the repo root `dotagents/` dir (Cursor Authoring Format layout:
-  `dotagents/skills/<name>/SKILL.md`, `dotagents/agents/<name>/agent.md`,
+  `dotagents/skills/<name>/SKILL.md`, flat `dotagents/agents/<name>.md`,
   `dotagents/rules/*.mdc` global rules with `alwaysApply`). There is no
   `commands/` layer: user-
   invoked (slash-only) workflows are skills with
   `disable-model-invocation: true` in SKILL.md frontmatter.
-  `nix/dotagents/auto.nix` auto-discovers it with `builtins.readDir` — the
-  public name is the directory name, no index files — and exposes it as two
-  options with uniform contracts: `config.dotagents.skills` (attrsOf package,
-  layout `$out/skills/<name>/SKILL.md`), `config.dotagents.agents` (attrsOf
-  path to `agent.md`), plus `config.dotagents.skillLayouts` (attrsOf
-  `"skill" | "collection"`, default `"skill"`) — per-key layout metadata
-  telling adapters whether a skill key is a plain skill or a whole bundle.
+  `nix/dotagents/auto.nix` auto-discovers it with `builtins.readDir` — skill
+  public name = directory name; agent public name = flat `.md` stem — and
+  exposes skills as `config.dotagents.skills` (attrsOf package, layout
+  `$out/skills/<name>/SKILL.md`), agents as `config.dotagents.commonModel.agents`
+  (`{ frontmatter, body, path }` via Frontmatter Parser), plus
+  `config.dotagents.skillLayouts` (attrsOf `"skill" | "collection"`, default
+  `"skill"`) — per-key layout metadata telling adapters whether a skill key
+  is a plain skill or a whole bundle. Legacy `config.dotagents.agents`
+  (directory `agent.md` paths) is empty once all agents are Authoring Format.
   Auto values are `lib.mkOptionDefault` (priority 1500, same as
   an option default) so a profile can still override them;
   `config.dotagents.localPackages.whole-tree` is the whole content tree in one
@@ -72,14 +74,14 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `dotagents/rules/*.mdc` via Frontmatter Parser).
   Auto-imported as flake-parts modules like everything else under `nix/`.
   The upstream skill modules emit `config.dotagents.skills` via `lib.genAttrs`
-  over their exposed skill names; agent definitions are the auto-discovered
-  `dotagents/agents/<name>/agent.md` files, not per-name nix modules. The
-  `skills`/`agents` option parents are submodules with a
-  `freeformType = attrsOf ...`, so auto-discovered and upstream-emitted keys
-  share one type — there are no per-name option declarations. Skill keys with
-  layout `"collection"` (grafana-core, grafana-lgtm, grafana-datasources,
-  mcp-server-dev, skill-optimizer) are whole bundles whose `$out/skills/`
-  holds many constituent skills, not a `$out/skills/<name>/SKILL.md` entry.
+  over their exposed skill names; agents are flat Authoring Format files under
+  `dotagents/agents/<id>.md`, not per-name nix modules. The `skills` option
+  parent is a submodule with a `freeformType = attrsOf ...`, so
+  auto-discovered and upstream-emitted keys share one type — there are no
+  per-name option declarations. Skill keys with layout `"collection"`
+  (grafana-core, grafana-lgtm, grafana-datasources, mcp-server-dev,
+  skill-optimizer) are whole bundles whose `$out/skills/` holds many
+  constituent skills, not a `$out/skills/<name>/SKILL.md` entry.
 - `nix/homeModules/dotagents.nix` is the home-manager config layer: per-user
   `dotagents.mcps` options, the shared global context (defaulting to the
   Common Model `dotagents.rules` body), and the overlay of instance values
@@ -89,18 +91,18 @@ flakes. `CLAUDE.md` is a symlink to this file.
   Add an instance option → edit `nix/homeModules/dotagents.nix`; add a
   server → edit `nix/dotagents/mcps/`.
 - `nix/homeModules/opencode.nix`, `claude.nix` and `cursor.nix` are thin
-  adapters: each iterates `config.dotagents.skills` and
-  `config.dotagents.agents` generically and maps them onto the tool's
-  config dialect. Every skill becomes a `$out/skills/<name>` entry (opencode
-  `skills`, claude `plugins`, cursor `~/.cursor/skills/<name>`); a collection
+  adapters over the Common Model (`dotagents.commonModel.agents` from flat
+  Authoring Format `agents/<id>.md`, plus skills/MCP/rules). Every skill
+  becomes a `$out/skills/<name>` entry (opencode `skills`, claude `plugins`,
+  cursor `~/.cursor/skills/<name>` — copy/symlink as authored); a collection
   key (layout `"collection"`) is a whole bundle — claude renders the package
   root as a plugin, opencode and cursor skip it (constituents are registered
-  as separate keys already); every agent is rendered from its `agent.md` —
-  opencode passes the files through, claude/cursor re-render them with a
-  generic renderer plus a per-agent override map (e.g. `nix`, `explore-github`
-  and `github` carry inline `mcpServers` blocks on claude; cursor writes
-  `name`/`description`/`model`/`readonly` frontmatter under
-  `~/.cursor/agents/`). Skills with `disable-model-invocation: true` are
+  as separate keys already). Cursor Adapter Emit is passthrough: documented
+  agent FM fields only (`name`/`description`/`model`/`readonly`/
+  `is_background`), `metadata` stripped; no hand-tuned description or
+  readonly lists. OpenCode/Claude convert from Common Model +
+  `metadata.opencode` / `metadata.claude` (claude may still carry derived
+  inline `mcpServers`). Skills with `disable-model-invocation: true` are
   slash-only (user-invoked); adapters pass that frontmatter through as-is.
   The github pair (`explore-github`, `github`) is registered only when
   `config.dotagents.mcps.github.enable` is set. Cursor
@@ -108,8 +110,8 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `~/.cursor/rules/` and writes MCP servers to `~/.cursor/mcp.json`.
   Claude still ships the external `set-budget` slash command from the
   statusline package; that is not part of the local `dotagents/` tree.
-- Auto-pickup: to add a skill or agent, just drop the content into
-  `dotagents/skills/<name>/SKILL.md` or `dotagents/agents/<name>/agent.md` —
+- Auto-pickup: to add a skill or agent, drop content into
+  `dotagents/skills/<name>/SKILL.md` or flat `dotagents/agents/<name>.md` —
   every adapter picks it up on the next `home-manager switch`, with no nix
   edits. For a user-invoked (slash-only) skill, set
   `disable-model-invocation: true` in the SKILL.md frontmatter.
