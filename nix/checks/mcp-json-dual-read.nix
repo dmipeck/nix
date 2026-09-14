@@ -1,7 +1,7 @@
-# MCP Server Definitions dual-read seam — authored mcp.json + Nix modules →
-# Common Model mcpServers (Cursor-shaped), with Instance overlay. Asserts
-# external behavior only: Cursor wire shape, secrets as ''${env:…}, no tool enums
-# in authored content, Nix modules still contribute during migration.
+# MCP Server Definitions emit seam — authored mcp.json is the single SoT;
+# Instance overlay + package resolve → Cursor wire shape; {file:} → ${env:…}
+# before Cursor emit. No dual-read of Nix Server Definitions. Tool enums stay
+# out of authored content.
 { lib, ... }:
 {
   perSystem =
@@ -16,41 +16,17 @@
       # Literal ${env:…} placeholders (avoid Nix antiquotation).
       envPh = name: "$" + "{env:${name}}";
       envPrefix = "$" + "{env:";
+      filePh = path: "{file:${path}}";
 
       authoredPath = ../../dotagents/mcp.json;
       authoredFile = builtins.fromJSON (builtins.readFile authoredPath);
       authored = authoredFile.mcpServers;
 
-      # Stand-in Nix Server Definitions (legacy local/remote) — proves dual-read
-      # still accepts mcps/*.nix shape during migration.
-      nixServers = {
-        nixos = {
-          type = "local";
-          command = "/nix/store/fake-mcp-nixos/bin/mcp-nixos";
-          args = [ ];
-          env = { };
-          url = null;
-          headers = { };
-          oauth = null;
-        };
-        # Nix-only server (not in authored mcp.json) must still appear.
-        "nix-only-probe" = {
-          type = "remote";
-          command = null;
-          args = [ ];
-          env = { };
-          url = "https://example.test/nix-only";
-          headers = { };
-          oauth = null;
-        };
-      };
+      # resolveMcpPackages expects packages coercible via "${pkg}/bin/…".
+      resolved = mcpLib.resolveMcpPackages {
+        mcp-nixos = "/nix/store/fake-mcp-nixos";
+      } authored;
 
-      dual = mcpLib.dualReadMcpServers {
-        inherit authored;
-        inherit nixServers;
-      };
-
-      # Instance overlay: URL + secret env placeholder (no literal secrets).
       overlaid = mcpLib.applyInstanceOverlay {
         gitlab = {
           enable = true;
@@ -66,22 +42,21 @@
         plane = {
           enable = true;
           headers = {
-            Authorization = "Bearer ${envPh "PLANE_API_TOKEN"}";
+            Authorization = "Bearer ${filePh "/run/secrets/plane-token"}";
             "X-Workspace-slug" = "littlemonkey";
           };
         };
-        # Disabled servers drop out of the Common Model view used for emit.
-        "nix-only-probe" = {
+        # Disabled servers drop out of the catalog used for emit.
+        firebase = {
           enable = false;
         };
-      } dual;
+      } resolved;
 
       cursorMcp = adapterEmit.emitCursorMcp { mcpServers = overlaid; };
+      fileRefs = adapterEmit.collectCursorMcpFileRefs { mcpServers = overlaid; };
 
-      # Authored file must not carry Nix tool allowlists (Cursor-illegal keys).
       authoredHasTools = builtins.any (s: s ? tools) (builtins.attrValues authored);
 
-      # Every Authorization header in authored content uses ''${env:…} placeholders.
       authoredAuthOk =
         let
           headers = lib.concatMap (s: lib.attrValues (s.headers or { })) (builtins.attrValues authored);
@@ -94,16 +69,13 @@
           ok = authored ? nixos && authored ? gitlab && authored.nixos.type == "stdio";
         }
         {
-          name = "dual-read-nix-overlays-command";
-          ok = dual.nixos.command == nixServers.nixos.command;
+          name = "no-dual-read-nix-server-defs";
+          # Catalog comes from authored only; Nix-only probe keys must not appear.
+          ok = !(overlaid ? "nix-only-probe") && overlaid ? nixos;
         }
         {
-          name = "dual-read-nix-only-server";
-          ok = dual ? "nix-only-probe" && dual."nix-only-probe".url == "https://example.test/nix-only";
-        }
-        {
-          name = "dual-read-keeps-authored-remote";
-          ok = dual ? cloudflare && dual.cloudflare.url == authored.cloudflare.url;
+          name = "package-resolve-rewrites-command";
+          ok = lib.hasPrefix "/nix/store/fake-mcp-nixos/bin/" resolved.nixos.command;
         }
         {
           name = "instance-overlay-url";
@@ -116,12 +88,8 @@
             == envPh "GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE";
         }
         {
-          name = "instance-overlay-headers-placeholder";
-          ok = lib.hasInfix (envPh "PLANE_API_TOKEN") overlaid.plane.headers.Authorization;
-        }
-        {
           name = "instance-disable-drops-server";
-          ok = !(overlaid ? "nix-only-probe");
+          ok = !(overlaid ? firebase);
         }
         {
           name = "no-tool-enums-in-authored";
@@ -145,6 +113,18 @@
               builtins.attrValues cursorMcp.mcpServers
             ));
         }
+        {
+          name = "cursor-emit-rewrites-file-refs";
+          ok =
+            lib.hasInfix (
+              envPrefix + "DOTAGENTS_CURSOR_PLANE_AUTHORIZATION"
+            ) cursorMcp.mcpServers.plane.headers.Authorization
+            && !(lib.hasInfix "{file:" cursorMcp.mcpServers.plane.headers.Authorization);
+        }
+        {
+          name = "cursor-file-refs-collected";
+          ok = builtins.any (r: r.name == "DOTAGENTS_CURSOR_PLANE_AUTHORIZATION") fileRefs;
+        }
       ];
 
       failures = builtins.filter (a: !a.ok) assertions;
@@ -152,10 +132,10 @@
     {
       checks.mcp-json-dual-read =
         if failures != [ ] then
-          throw ("mcp-json-dual-read mismatches: " + lib.concatMapStringsSep ", " (a: a.name) failures)
+          throw ("mcp-json-emit mismatches: " + lib.concatMapStringsSep ", " (a: a.name) failures)
         else
-          pkgs.runCommand "mcp-json-dual-read" { } ''
-            echo "mcp-json-dual-read: authored mcp.json dual-read + Instance overlay OK"
+          pkgs.runCommand "mcp-json-emit" { } ''
+            echo "mcp-json-emit: mcp.json SoT + Instance overlay + Cursor {file:} rewrite OK"
             touch "$out"
           '';
     };

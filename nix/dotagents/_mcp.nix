@@ -1,6 +1,6 @@
-# MCP Server Definition dual-read — authored Cursor-shaped mcp.json + legacy
-# Nix local/remote modules → Common Model mcpServers (Cursor wire shape).
-# Tool allowlists stay Nix-side (not in authored mcp.json / Cursor emit).
+# MCP Server Definitions — authored Cursor-shaped mcp.json is the single SoT.
+# Instance overlays (enable / url / env / headers / auth / command / args) apply
+# before Adapter Emit. Tool allowlists stay Nix-side (not in mcp.json / Cursor emit).
 { lib }:
 let
   inherit (lib)
@@ -19,51 +19,7 @@ let
     in
     raw.mcpServers or raw;
 
-  # Map legacy Nix oauth → Cursor auth { CLIENT_ID, CLIENT_SECRET, scopes }.
-  oauthToAuth =
-    oauth:
-    optionalAttrs (oauth != null && oauth.clientId != null) {
-      auth = {
-        CLIENT_ID = oauth.clientId;
-      }
-      // optionalAttrs (oauth.clientSecret != null) {
-        CLIENT_SECRET = oauth.clientSecret;
-      }
-      // optionalAttrs (oauth.scope != null) {
-        scopes = lib.splitString " " oauth.scope;
-      };
-    };
-
-  # Convert one Nix Server Definition (type = local|remote) → Cursor shape.
-  # Drops tools / mcpToolEnum — those remain Nix-only.
-  nixServerToCursor =
-    srv:
-    if (srv.type or null) == "remote" then
-      optionalAttrs ((srv.url or null) != null) { url = srv.url; }
-      // optionalAttrs ((srv.headers or { }) != { }) { headers = srv.headers; }
-      // oauthToAuth (srv.oauth or null)
-    else
-      {
-        type = "stdio";
-        command = srv.command;
-        args = srv.args or [ ];
-      }
-      // optionalAttrs ((srv.env or { }) != { }) { env = srv.env; };
-
-  # Dual-read: authored mcp.json is the baseline; Nix modules overlay the same
-  # keys (so store-path commands / existing defs keep working) and contribute
-  # Nix-only servers. Result is Cursor-shaped Common Model mcpServers.
-  dualReadMcpServers =
-    {
-      authored,
-      nixServers,
-    }:
-    let
-      fromNix = mapAttrs (_: nixServerToCursor) nixServers;
-    in
-    authored // fromNix;
-
-  # Apply MCP Instance overlays (enable / url / env / headers / auth).
+  # Apply MCP Instance overlays (enable / url / env / headers / auth / command / args).
   # enable = false drops the server; missing overlay leaves the definition.
   applyInstanceOverlay =
     instances: mcpServers:
@@ -95,13 +51,104 @@ let
     in
     filterAttrs (_: v: v != null) merged;
 
+  # Resolve authored stdio `command` names to store paths via mcpPackages
+  # (keyed by the same binary name as in mcp.json, e.g. "mcp-nixos").
+  resolveMcpPackages =
+    mcpPackages: mcpServers:
+    mapAttrs (
+      _: srv:
+      let
+        cmd = srv.command or null;
+        pkg = if cmd != null then mcpPackages.${cmd} or null else null;
+      in
+      if pkg == null then srv else srv // { command = "${pkg}/bin/${cmd}"; }
+    ) mcpServers;
+
+  # POSIX ERE (builtins.match): literal braces via character classes — "\{"
+  # is invalid and throws at eval time.
+  fileRefMatch = builtins.match ".*[{]file:([^}]+)[}].*";
+
+  # Stable env var name for a "{file:...}" value keyed by server + field.
+  fileEnvName =
+    server: field:
+    "DOTAGENTS_CURSOR_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] server)}_${lib.toUpper field}";
+
+  # Rewrite one string; return { value, refs } where refs are { name, path }.
+  rewriteFileRef =
+    server: field: val:
+    let
+      m = if builtins.isString val then fileRefMatch val else null;
+    in
+    if m == null then
+      {
+        value = val;
+        refs = [ ];
+      }
+    else
+      let
+        path = builtins.head m;
+        name = fileEnvName server field;
+      in
+      {
+        value = lib.replaceStrings [ "{file:${path}}" ] [ "\${env:${name}}" ] val;
+        refs = [
+          {
+            inherit name path;
+          }
+        ];
+      };
+
+  # Rewrite {file:} → ${env:…} across Cursor-shaped mcpServers (headers + auth).
+  # Returns { mcpServers, fileRefs }.
+  rewriteFileRefsForCursor =
+    mcpServers:
+    let
+      step =
+        server: srv:
+        let
+          headerSteps = mapAttrs (
+            hname: hval: rewriteFileRef server (lib.replaceStrings [ "-" ] [ "_" ] hname) hval
+          ) (srv.headers or { });
+          auth = srv.auth or { };
+          secretStep =
+            if auth ? CLIENT_SECRET then
+              rewriteFileRef server "CLIENT_SECRET" auth.CLIENT_SECRET
+            else
+              {
+                value = null;
+                refs = [ ];
+              };
+          newHeaders = mapAttrs (_: s: s.value) headerSteps;
+          newAuth =
+            if auth == { } then
+              null
+            else
+              auth // optionalAttrs (auth ? CLIENT_SECRET) { CLIENT_SECRET = secretStep.value; };
+          refs = lib.concatLists (map (s: s.refs) (builtins.attrValues headerSteps)) ++ secretStep.refs;
+        in
+        {
+          server =
+            srv
+            // optionalAttrs (srv ? headers) { headers = newHeaders; }
+            // optionalAttrs (newAuth != null) { auth = newAuth; };
+          inherit refs;
+        };
+      mapped = mapAttrs step mcpServers;
+    in
+    {
+      mcpServers = mapAttrs (_: s: s.server) mapped;
+      fileRefs = lib.concatLists (map (s: s.refs) (builtins.attrValues mapped));
+    };
+
 in
 {
   inherit
     importJSON
     importMcpJson
-    nixServerToCursor
-    dualReadMcpServers
     applyInstanceOverlay
+    resolveMcpPackages
+    rewriteFileRefsForCursor
+    fileRefMatch
+    fileEnvName
     ;
 }

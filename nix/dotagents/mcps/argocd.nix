@@ -1,9 +1,5 @@
 { lib, withSystem, ... }:
 let
-  # flake-parts flake modules get no `pkgs` argument (only perSystem does), so
-  # reach into the x86_64-linux system's pkgs via withSystem, mirroring
-  # nix/skills/ai-tools.nix. The package is a derivation; evaluation stays
-  # lazy until a consumer forces it.
   pkgs = withSystem "x86_64-linux" ({ pkgs, ... }: pkgs);
 
   argocdMcp = pkgs.stdenv.mkDerivation (finalAttrs: {
@@ -67,28 +63,10 @@ let
   ];
 in
 {
-  options.dotagents.mcpPackages."argocd-mcp" = lib.mkOption {
-    type = lib.types.package;
-    description = "argocd-mcp MCP server package.";
-  };
+  config.dotagents.mcpPackages.argocd-mcp = lib.mkDefault argocdMcp;
 
-  config.dotagents.mcpPackages."argocd-mcp" = lib.mkDefault argocdMcp;
-
+  # Tool enum only — Server Definition is in authored mcp.json.
   config.dotagents.mcpServers.argocd = {
-    type = "local";
-    command = "${argocdMcp}/bin/argocd-mcp";
-    args = [ "stdio" ];
-    # API token and base URL are per-user placeholders; the consumer's
-    # home-manager config wraps the server so the token is read from a
-    # sops-decrypted file at startup (see dmipeck/nix homeModules/dotagents.nix).
-    env = {
-      MCP_READ_ONLY = "true";
-      ARGOCD_BASE_URL = "";
-      ARGOCD_API_TOKEN = "";
-    };
-    # Mirrors the "never make changes directly to the cluster" principle:
-    # block create/update/delete/sync/run-action tools, leaving only
-    # inspection. Cluster changes still flow through ./kustomize and ArgoCD.
     _module.args.mcpToolEnum = lib.types.enum readTools;
     tools.read = readTools;
   };

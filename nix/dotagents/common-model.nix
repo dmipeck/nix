@@ -1,9 +1,8 @@
-# Common Model MCP — dual-read authored dotagents/mcp.json with Nix Server
-# Definition modules (mcps/*.nix). Instance overlays apply via mcpLib;
-# adapters still consume config.dotagents.mcpServers until the emit flip (#66).
+# Common Model MCP — authored dotagents/mcp.json is the single SoT for Server
+# Definitions (Cursor wire shape). Instance overlays apply in homeModules;
+# tool enums stay on Nix modules under nix/dotagents/mcps/.
 {
   lib,
-  config,
   ...
 }:
 let
@@ -16,18 +15,14 @@ in
     type = lib.types.attrsOf lib.types.anything;
     description = ''
       Common Model MCP Server Definitions in Cursor wire shape (stdio / url /
-      headers / auth / env). Dual-read from authored mcp.json and legacy Nix
-      modules under nix/dotagents/mcps/; Nix overlays the same keys so existing
-      Server Definitions keep working during migration. Tool enums stay on the
-      Nix modules, not here.
+      headers / auth / env), loaded from authored mcp.json via importJSON.
+      MCP Instance overlays (enable, URL, sops, package resolve) apply before
+      Adapter Emit. Tool enums stay on Nix modules, not here.
     '';
   };
 
   config = {
     _module.args.mcpLib = mcpLib;
-    dotagents.commonModel.mcpServers = mcpLib.dualReadMcpServers {
-      inherit authored;
-      nixServers = config.dotagents.mcpServers;
-    };
+    dotagents.commonModel.mcpServers = authored;
   };
 }
