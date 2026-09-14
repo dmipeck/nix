@@ -2,9 +2,9 @@ name: pre-commit
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/57-cursor-authoring-format]
   pull_request:
-    branches: [main]
+    branches: [main, feat/57-cursor-authoring-format]
   workflow_dispatch:
 
 jobs:
