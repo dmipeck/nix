@@ -20,8 +20,9 @@ flakes. `CLAUDE.md` is a symlink to this file.
   filename; one file may export several (e.g. `desktop/firefox.nix` exports
   `firefox` and `firefoxNixGL`).
 - Shared flake-parts helpers live under `nix/lib/` and reach other
-  flakeModules via `_module.args` (e.g. `nix/lib/sops.nix` → `sopsLib`),
-  same pattern as `mcpToolEnum` in `nix/dotagents/`.
+  flakeModules via `_module.args` (e.g. `nix/lib/sops.nix` → `sopsLib`,
+  `nix/lib/skill-pack.nix` → `skillPackLib` for URL-agnostic skill-tree
+  discovery/pack), same pattern as `mcpToolEnum` in `nix/dotagents/`.
 - `systems = [ "x86_64-linux" ]` only (nix/devShells/default.nix:20).
 - `nix/homeModules/desktop/` = GUI apps (nixGL-wrapped variants under
   `<app>NixGL`); top-level homeModules = tooling / AI stack / dev env.
