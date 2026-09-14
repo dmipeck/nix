@@ -32,6 +32,7 @@ let
     "model"
     "effort"
     "mcpServers"
+    "permission"
   ];
 
   pick = keys: attrs: filterAttrs (k: _: builtins.elem k keys) attrs;
@@ -90,6 +91,7 @@ let
       effort ? null,
       mcpServers ? null,
       tools ? null,
+      permission ? null,
     }:
     let
       fm = agent.frontmatter;
@@ -104,7 +106,13 @@ let
       // optionalAttrs (model != null) { inherit model; }
       // optionalAttrs (effort != null && effort != "") { inherit effort; }
       // optionalAttrs (mcpServers != null) { inherit mcpServers; }
-      // (builtins.removeAttrs cl [ "tools" ]);
+      // optionalAttrs (permission != null || cl ? permission) {
+        permission = if permission != null then permission else cl.permission;
+      }
+      // (builtins.removeAttrs cl [
+        "tools"
+        "permission"
+      ]);
     in
     renderMarkdown claudeAgentKeys base agent.body;
 
