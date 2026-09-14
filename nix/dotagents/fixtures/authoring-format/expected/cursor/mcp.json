@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "gitlab": {
+      "url": "https://gitlab.com/api/v4/mcp"
+    },
+    "nixos": {
+      "args": [],
+      "command": "nixos-mcp",
+      "type": "stdio"
+    }
+  }
+}
