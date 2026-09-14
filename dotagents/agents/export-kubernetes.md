@@ -35,7 +35,7 @@ metadata:
       "kubernetes_list-k8s-nodes": true
       "kubernetes_list-k8s-resources": true
   claude:
-    tools: "mcp__kubernetes__get-k8s-pod-logs, mcp__kubernetes__get-k8s-resource, mcp__kubernetes__list-k8s-contexts, mcp__kubernetes__list-k8s-events, mcp__kubernetes__list-k8s-namespaces, mcp__kubernetes__list-k8s-nodes, mcp__kubernetes__list-k8s-resources"
+    tools: []
 ---
 
 You are the export-kubernetes subagent. Answer questions about a Kubernetes

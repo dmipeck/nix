@@ -38,7 +38,7 @@ metadata:
       "argocd_get_resource_events": true
       "argocd_get_resource_actions": true
   claude:
-    tools: "mcp__argocd__list_clusters, mcp__argocd__get_appproject, mcp__argocd__list_applications, mcp__argocd__get_application, mcp__argocd__get_application_resource_tree, mcp__argocd__get_application_managed_resources, mcp__argocd__get_application_workload_logs, mcp__argocd__get_resource_events, mcp__argocd__get_resource_actions"
+    tools: []
 ---
 
 You are the explore-argocd subagent. Answer questions about ArgoCD using the
