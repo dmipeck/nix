@@ -1,6 +1,7 @@
 {
   config,
   sopsLib,
+  adapterEmit,
   ...
 }@flakeArgs:
 let
@@ -12,6 +13,8 @@ let
   skills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
+  # Authoring Format tracers (Common Model); legacy agents stay in `agents`.
+  commonAgents = flakeArgs.config.dotagents.commonModel.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Per-client default model + variation (config.dotagents.models); this
   # adapter reads the `claude` client.
@@ -88,6 +91,16 @@ in
       # (config.dotagents.mcpServers.github) is Docker stdio with loopback
       # OAuth on 8085 — same shape as firebase/argocd/kubernetes blocks.
       githubServer = config.dotagents.mcpServers.github;
+      # Attrs form for Adapter Emit (Common Model tracers); list YAML block
+      # below remains for legacy directory agents.
+      githubMcpServers = {
+        github = {
+          type = "stdio";
+          command = githubServer.command;
+          args = githubServer.args;
+          env = githubServer.env;
+        };
+      };
       githubMcpBlock = ''
         mcpServers:
           - github:
@@ -430,10 +443,43 @@ in
           (lib.optionalString (extra != "") (lib.trim extra))
           (lib.optionalString (permission != "") (lib.trim permission));
 
-      # All agent definitions (dotagents/agents/<name>/agent.md), rendered for
-      # Claude Code's dialect; the github pair is registered only when the
-      # per-user github instance is enabled.
-      allClaudeAgents = lib.mapAttrs (name: _: renderAgent name) agents;
+      # Common Model tracers → Adapter Emit (shared fields + metadata.claude).
+      renderCommonAgent =
+        name: agent:
+        let
+          spec = agentSpecs.${name} or { };
+          cheap = lib.elem name cheapSubagents;
+          model = if cheap then models.claude.subagent.model else null;
+          effort = if cheap then (models.claude.subagent.variation or null) else null;
+          # Prefer adapter-derived tools (e.g. explore-github read allowlist)
+          # when present; else metadata.claude.tools from the Authoring Format.
+          tools = if spec ? tools then spec.tools else null;
+          mcpServers =
+            if
+              builtins.elem name [
+                "github"
+                "explore-github"
+              ]
+            then
+              githubMcpServers
+            else
+              null;
+          text = adapterEmit.emitClaudeAgent agent {
+            inherit
+              model
+              effort
+              tools
+              mcpServers
+              ;
+          };
+        in
+        pkgs.writeText "dotagents-${name}-agent-claude" text;
+
+      # All agent definitions: legacy directory agents + Common Model tracers.
+      # The github pair is registered only when the per-user github instance is
+      # enabled.
+      allClaudeAgents =
+        (lib.mapAttrs (name: _: renderAgent name) agents) // (lib.mapAttrs renderCommonAgent commonAgents);
       githubAgentNames = [
         "explore-github"
         "github"

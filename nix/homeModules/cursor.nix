@@ -1,10 +1,12 @@
-{ config, ... }@flakeArgs:
+{ config, adapterEmit, ... }@flakeArgs:
 let
   # Skill/plugin packages and agent definitions are owned by nix/dotagents/;
   # captured once so the home-manager module below can reference them.
   agentSkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
+  # Authoring Format tracers (Common Model); legacy agents stay in `agents`.
+  commonAgents = flakeArgs.config.dotagents.commonModel.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Per-client default model + variation; this adapter reads the `cursor` client.
   models = flakeArgs.config.dotagents.models.cursor;
@@ -243,21 +245,38 @@ in
         model: variation:
         if model == "inherit" || variation == null then model else "${model}[effort=${variation}]";
 
-      renderAgent =
+      cursorModelFor =
         name:
         let
           cheap = lib.elem name cheapSubagents;
-          # Cheap workers pin the subagent model; orchestrate uses the primary
-          # model; every other agent inherits the session model.
-          model =
-            if cheap then
-              withVariation models.subagent.model models.subagent.variation
-            else if name == "orchestrate" then
-              withVariation models.primary.model models.primary.variation
-            else
-              "inherit";
         in
-        cursorAgent name (agentDescription name) model (lib.elem name readonlyAgents);
+        # Cheap workers pin the subagent model; orchestrate uses the primary
+        # model; every other agent inherits the session model.
+        if cheap then
+          withVariation models.subagent.model models.subagent.variation
+        else if name == "orchestrate" then
+          withVariation models.primary.model models.primary.variation
+        else
+          "inherit";
+
+      renderAgent =
+        name: cursorAgent name (agentDescription name) (cursorModelFor name) (lib.elem name readonlyAgents);
+
+      # Common Model tracers → Adapter Emit (Cursor passthrough + injected model).
+      renderCommonAgent =
+        name: agent:
+        let
+          model = cursorModelFor name;
+          text = adapterEmit.emitCursorAgent (
+            agent
+            // {
+              frontmatter = agent.frontmatter // {
+                inherit model;
+              };
+            }
+          );
+        in
+        pkgs.writeText "dotagents-${name}-agent-cursor" text;
 
       githubAgentNames = [
         "explore-github"
@@ -282,7 +301,8 @@ in
         "firebase"
       ];
 
-      allCursorAgents = lib.mapAttrs (name: _: renderAgent name) agents;
+      allCursorAgents =
+        (lib.mapAttrs (name: _: renderAgent name) agents) // (lib.mapAttrs renderCommonAgent commonAgents);
 
       cursorAgents =
         (lib.removeAttrs allCursorAgents (

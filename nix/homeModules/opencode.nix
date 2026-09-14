@@ -1,4 +1,4 @@
-{ config, ... }@flakeArgs:
+{ config, adapterEmit, ... }@flakeArgs:
 let
   # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix). `config`
   # here is flake-parts state (auto-imported under nix/); captured once so the
@@ -6,6 +6,8 @@ let
   agentSkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   agents = flakeArgs.config.dotagents.agents;
+  # Authoring Format tracers (Common Model); legacy agents stay in `agents`.
+  commonAgents = flakeArgs.config.dotagents.commonModel.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
   # Per-client default model + variation (dotagents/models), driven by the
   # config.dotagents.models option; this adapter reads the `opencode` client.
@@ -47,7 +49,7 @@ in
           } next} {print}' ${src} > "$out"
         '';
 
-      allAgents = lib.mapAttrs (
+      legacyAgents = lib.mapAttrs (
         name: src:
         if lib.elem name cheapSubagents then
           opencodeAgent models.subagent.model models.subagent.variation name src
@@ -56,6 +58,34 @@ in
         else
           src
       ) agents;
+
+      # Common Model tracers → Adapter Emit (hoist metadata.opencode + model).
+      renderCommonAgent =
+        name: agent:
+        let
+          cheap = lib.elem name cheapSubagents;
+          model =
+            if cheap then
+              models.subagent.model
+            else if name == "orchestrate" then
+              models.primary.model
+            else
+              null;
+          variation =
+            if cheap then
+              models.subagent.variation
+            else if name == "orchestrate" then
+              models.primary.variation
+            else
+              null;
+          text = adapterEmit.emitOpenCodeAgent agent {
+            inherit model;
+            variant = variation;
+          };
+        in
+        pkgs.writeText "dotagents-${name}-agent-opencode" text;
+
+      allAgents = legacyAgents // (lib.mapAttrs renderCommonAgent commonAgents);
 
       # Registered agent set: the same conditional composition as before (github
       # pair / argocd / gitlab gating), over `allAgents`. plane is a write-only
