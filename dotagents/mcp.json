@@ -1,0 +1,91 @@
+{
+  "mcpServers": {
+    "nixos": {
+      "type": "stdio",
+      "command": "mcp-nixos",
+      "args": []
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "playwright-mcp",
+      "args": []
+    },
+    "kubernetes": {
+      "type": "stdio",
+      "command": "mcp-k8s-go",
+      "args": ["--readonly"]
+    },
+    "grafana": {
+      "type": "stdio",
+      "command": "mcp-grafana",
+      "args": ["-t", "stdio", "-disable-write"],
+      "env": {
+        "GRAFANA_URL": "${env:GRAFANA_URL}",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE": "${env:GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE}"
+      }
+    },
+    "argocd": {
+      "type": "stdio",
+      "command": "argocd-mcp",
+      "args": ["stdio"],
+      "env": {
+        "MCP_READ_ONLY": "true",
+        "ARGOCD_BASE_URL": "${env:ARGOCD_BASE_URL}",
+        "ARGOCD_API_TOKEN": "${env:ARGOCD_API_TOKEN}"
+      }
+    },
+    "github": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-p",
+        "127.0.0.1:8085:8085",
+        "-e",
+        "GITHUB_OAUTH_CALLBACK_PORT",
+        "ghcr.io/github/github-mcp-server:v1.12.1",
+        "stdio",
+        "--toolsets",
+        "all"
+      ],
+      "env": {
+        "GITHUB_OAUTH_CALLBACK_PORT": "8085"
+      }
+    },
+    "gitlab": {
+      "url": "https://gitlab.com/api/v4/mcp"
+    },
+    "cloudflare": {
+      "url": "https://mcp.cloudflare.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:CLOUDFLARE_API_TOKEN}"
+      }
+    },
+    "cloudflare-bindings": {
+      "url": "https://bindings.mcp.cloudflare.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:CLOUDFLARE_API_TOKEN}"
+      }
+    },
+    "cloudflare-observability": {
+      "url": "https://observability.mcp.cloudflare.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:CLOUDFLARE_API_TOKEN}"
+      }
+    },
+    "plane": {
+      "url": "https://mcp.plane.littlemonkey.co.nz/http/api-key/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:PLANE_API_TOKEN}",
+        "X-Workspace-slug": "littlemonkey"
+      }
+    },
+    "firebase": {
+      "type": "stdio",
+      "command": "firebase",
+      "args": ["mcp"]
+    }
+  }
+}
