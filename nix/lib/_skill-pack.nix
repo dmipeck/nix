@@ -91,9 +91,9 @@ let
       [ ]
     else
       attrNames (
-        lib.filterAttrs (
-          name: type: type == "directory" && !(pathExists (root + "/${name}/SKILL.md"))
-        ) (readDir root)
+        lib.filterAttrs (name: type: type == "directory" && !(pathExists (root + "/${name}/SKILL.md"))) (
+          readDir root
+        )
       );
 
   # Copy each discovered skill dir to $out/skills/<name>/, plus optional
@@ -142,7 +142,12 @@ let
       inherit skills siblingDirs;
       names = map (s: s.name) skills;
       package = mkSkillsPackage {
-        inherit pkgs pname skills siblingDirs;
+        inherit
+          pkgs
+          pname
+          skills
+          siblingDirs
+          ;
       };
     };
 

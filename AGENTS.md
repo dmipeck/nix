@@ -90,9 +90,13 @@ flakes. `CLAUDE.md` is a symlink to this file.
   `dotagents.mcps` options, the shared global context (defaulting to the
   Common Model `dotagents.rules` body), and MCP Instance overlay (enable,
   URL, sops, package resolve) onto authored `mcp.json` Server Definitions.
-  Add an instance option → edit `nix/homeModules/dotagents.nix`; add a
-  Server Definition → edit `dotagents/mcp.json`; add tool enums → edit
-  `nix/dotagents/mcps/`.
+  Skill Sources (`dotagents.skillSources.<name>`: enable/src/root/layout,
+  packed via `skillPackLib.packSkillSource`) and a Content Source stub
+  (`dotagents.contentSources`, docs-only empty attrs) live in
+  `nix/homeModules/_skill-sources.nix`. Adapter merge of Skill Source
+  packages into the skill catalog is a separate cut. Add an instance
+  option → edit `nix/homeModules/dotagents.nix`; add a Server Definition →
+  edit `dotagents/mcp.json`; add tool enums → edit `nix/dotagents/mcps/`.
 - `nix/homeModules/opencode.nix`, `claude.nix` and `cursor.nix` are thin
   adapters over the Common Model (`dotagents.commonModel.agents` from flat
   Authoring Format `agents/<id>.md`, plus skills/MCP/rules). Every skill
