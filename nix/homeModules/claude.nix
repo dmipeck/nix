@@ -35,41 +35,11 @@ in
       planeTokenPath = sopsLib.pathOrNull config config.dotagents.mcps.plane.sops "token";
       deepseekApiKeyPath = sopsLib.pathOrNull config ds.sops "apiKey";
 
-      # Common Model + Instance is Cursor-shaped (stdio / url). Claude Adapter
-      # Emit converts to Claude wire (stdio / http) with headersHelper for
+      # Common Model + Instance is Cursor-shaped (stdio / url). Shared Adapter
+      # Emit converts to Claude wire (stdio / http); headersHelper overlays cover
       # sops-backed tokens (Claude has no {file:} / ${env:} in MCP headers).
       mcpServers = config.dotagents.mcpServers;
 
-      githubServer = mcpServers.github or null;
-      githubMcpServers = lib.optionalAttrs (githubServer != null) {
-        github = {
-          type = "stdio";
-          command = githubServer.command;
-          args = githubServer.args or [ ];
-        }
-        // lib.optionalAttrs ((githubServer.env or { }) != { }) { env = githubServer.env; };
-      };
-
-      gitlabServer = mcpServers.gitlab or null;
-      gitlabMcpServers =
-        let
-          oauth = config.dotagents.mcps.gitlab.oauth;
-        in
-        lib.optionalAttrs (gitlabServer != null) {
-          gitlab = {
-            type = "http";
-            url = gitlabServer.url;
-          }
-          // lib.optionalAttrs (oauth.clientId != null) {
-            oauth = {
-              clientId = oauth.clientId;
-              callbackPort = oauth.callbackPort;
-            }
-            // lib.optionalAttrs (oauth.scopes != null) { scopes = oauth.scopes; };
-          };
-        };
-
-      cloudflareServer = mcpServers.cloudflare or null;
       cloudflareHeadersHelper =
         if cloudflareTokenPath != null then
           pkgs.writeShellScriptBin "cloudflare-mcp-headers" ''
@@ -77,26 +47,6 @@ in
           ''
         else
           null;
-      mkCloudflareMcpServers = name: url: {
-        ${name} = {
-          type = "http";
-          inherit url;
-        }
-        // lib.optionalAttrs (cloudflareTokenPath != null) {
-          headersHelper = "${cloudflareHeadersHelper}/bin/cloudflare-mcp-headers";
-        };
-      };
-      cloudflareMcpServers = lib.optionalAttrs (cloudflareServer != null) (
-        mkCloudflareMcpServers "cloudflare" cloudflareServer.url
-      );
-      cloudflareBindingsMcpServers = lib.optionalAttrs (mcpServers ? "cloudflare-bindings") (
-        mkCloudflareMcpServers "cloudflare-bindings" mcpServers."cloudflare-bindings".url
-      );
-      cloudflareObservabilityMcpServers = lib.optionalAttrs (mcpServers ? "cloudflare-observability") (
-        mkCloudflareMcpServers "cloudflare-observability" mcpServers."cloudflare-observability".url
-      );
-
-      planeServer = mcpServers.plane or null;
       planeHeadersHelper = pkgs.writeShellScriptBin "plane-mcp-headers" ''
         out='{"X-Workspace-slug": "${config.dotagents.mcps.plane.workspaceSlug}"'
         ${lib.optionalString (planeTokenPath != null) ''
@@ -106,64 +56,60 @@ in
         out="$out}"
         printf '%s' "$out"
       '';
-      planeMcpServers = lib.optionalAttrs (planeServer != null) {
-        plane = {
-          type = "http";
-          url = planeServer.url;
-          headersHelper = "${planeHeadersHelper}/bin/plane-mcp-headers";
-        };
-      };
 
-      firebaseServer = mcpServers.firebase or null;
-      firebaseMcpServers = lib.optionalAttrs (firebaseServer != null) {
-        firebase = {
-          type = "stdio";
-          command = firebaseServer.command;
-          args = firebaseServer.args or [ ];
-        };
-      };
+      # Base catalog from Adapter Emit (every Instance-enabled server, including
+      # grafana / playwright that the old hand-rolled map dropped).
+      claudeMcpBase = adapterEmit.emitClaudeMcp mcpServers;
 
-      argocdServer = mcpServers.argocd or null;
-      argocdMcpServers = lib.optionalAttrs (argocdServer != null) {
-        argocd = {
-          type = "stdio";
-          command = argocdServer.command;
-          args = argocdServer.args or [ ];
-        }
-        // lib.optionalAttrs ((argocdServer.env or { }) != { }) { env = argocdServer.env; };
-      };
+      withCloudflareHeaders =
+        name: srv:
+        if
+          builtins.elem name [
+            "cloudflare"
+            "cloudflare-bindings"
+            "cloudflare-observability"
+          ]
+          && cloudflareTokenPath != null
+        then
+          (builtins.removeAttrs srv [ "headers" ])
+          // {
+            headersHelper = "${cloudflareHeadersHelper}/bin/cloudflare-mcp-headers";
+          }
+        else
+          srv;
 
-      kubernetesServer = mcpServers.kubernetes or null;
-      kubernetesMcpServers = lib.optionalAttrs (kubernetesServer != null) {
-        kubernetes = {
-          type = "stdio";
-          command = kubernetesServer.command;
-          args = kubernetesServer.args or [ ];
-        };
-      };
+      withPlaneHeaders =
+        name: srv:
+        if name == "plane" then
+          (builtins.removeAttrs srv [ "headers" ])
+          // {
+            headersHelper = "${planeHeadersHelper}/bin/plane-mcp-headers";
+          }
+        else
+          srv;
 
-      nixosServer = mcpServers.nixos or null;
-      nixosMcpServers = lib.optionalAttrs (nixosServer != null) {
-        nixos = {
-          type = "stdio";
-          command = nixosServer.command;
-          args = nixosServer.args or [ ];
-        };
-      };
+      withGitlabOauth =
+        name: srv:
+        let
+          oauth = config.dotagents.mcps.gitlab.oauth;
+        in
+        if name == "gitlab" && oauth.clientId != null then
+          srv
+          // {
+            oauth = {
+              clientId = oauth.clientId;
+              callbackPort = oauth.callbackPort;
+            }
+            // lib.optionalAttrs (oauth.scopes != null) { scopes = oauth.scopes; };
+          }
+        else
+          srv;
 
       # Catalog for Adapter Emit selection (gated servers only when Instance
       # enable left them in config.dotagents.mcpServers).
-      claudeMcpCatalog =
-        nixosMcpServers
-        // kubernetesMcpServers
-        // githubMcpServers
-        // gitlabMcpServers
-        // argocdMcpServers
-        // cloudflareMcpServers
-        // cloudflareBindingsMcpServers
-        // cloudflareObservabilityMcpServers
-        // planeMcpServers
-        // firebaseMcpServers;
+      claudeMcpCatalog = lib.mapAttrs (
+        name: srv: withGitlabOauth name (withPlaneHeaders name (withCloudflareHeaders name srv))
+      ) claudeMcpBase;
 
       # Common Model agents → Adapter Emit (shared fields + metadata.claude +
       # derived mcpServers/tools). No hand-tuned agentSpecs maps.

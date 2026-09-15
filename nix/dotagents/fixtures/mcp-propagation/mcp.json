@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "nixos": {
+      "type": "stdio",
+      "command": "mcp-nixos",
+      "args": []
+    },
+    "grafana": {
+      "type": "stdio",
+      "command": "mcp-grafana",
+      "args": ["-t", "stdio", "-disable-write"],
+      "env": {
+        "GRAFANA_URL": "https://grafana.example"
+      }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "playwright-mcp",
+      "args": []
+    },
+    "gitlab": {
+      "url": "https://gitlab.example/api/v4/mcp"
+    },
+    "plane": {
+      "url": "https://mcp.plane.example/http/api-key/mcp",
+      "headers": {
+        "Authorization": "Bearer {file:/run/secrets/plane-token}",
+        "X-Workspace-slug": "example"
+      }
+    }
+  }
+}

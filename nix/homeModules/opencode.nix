@@ -149,33 +149,8 @@ in
       deniedMcpTools = lib.genAttrs (map (name: "${name}_*") (lib.attrNames mcpServers)) (_: false);
 
       # Cursor-shaped Common Model → OpenCode v1 mcp dialect (local/remote).
-      # Secrets keep "{file:...}" substitution; Cursor rewrite is Cursor-only.
-      toMcp =
-        _name: srv:
-        if (srv.type or null) == "stdio" || (srv ? command) then
-          {
-            type = "local";
-            command = [ srv.command ] ++ (srv.args or [ ]);
-          }
-          // lib.optionalAttrs ((srv.env or { }) != { }) { environment = srv.env; }
-        else
-          {
-            type = "remote";
-            url = srv.url;
-          }
-          // lib.optionalAttrs ((srv.headers or { }) != { }) { inherit (srv) headers; }
-          // lib.optionalAttrs (srv ? auth && srv.auth != { }) {
-            oauth =
-              lib.optionalAttrs (srv.auth ? CLIENT_ID) { clientId = srv.auth.CLIENT_ID; }
-              // lib.optionalAttrs (srv.auth ? CLIENT_SECRET) {
-                clientSecret = srv.auth.CLIENT_SECRET;
-              }
-              // lib.optionalAttrs (srv.auth ? scopes) {
-                scope = lib.concatStringsSep " " srv.auth.scopes;
-              };
-          };
-
-      mcp = lib.mapAttrs toMcp mcpServers;
+      # Shared Adapter Emit; secrets keep "{file:...}" (Cursor rewrite is Cursor-only).
+      mcp = adapterEmit.emitOpenCodeMcp mcpServers;
 
       # The workspaces feature (`/warp`, `/workspaces`) is env-var gated by
       # OPENCODE_EXPERIMENTAL_WORKSPACES. Wrap the default binary with the var
