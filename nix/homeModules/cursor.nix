@@ -2,7 +2,8 @@
 let
   # Skill/plugin packages and Common Model agents are owned by nix/dotagents/;
   # captured once so the home-manager module below can reference them.
-  agentSkills = flakeArgs.config.dotagents.skills;
+  # Adapters merge enabled Skill Sources at HM eval (see agentSkills below).
+  librarySkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   # Authoring Format agents → Common Model (Cursor Adapter Emit passthrough).
   commonAgents = flakeArgs.config.dotagents.commonModel.agents;
@@ -41,10 +42,14 @@ in
 
       # -----------------------------------------------------------------
       # Skills → ~/.cursor/skills/<name>/
+      # Library catalog ∪ enabled Skill Sources (fail on duplicate ids).
       # Skip collection bundles (constituents are separate keys). Skills with
       # `disable-model-invocation: true` in frontmatter are slash-only; that
       # flag is preserved as written in SKILL.md (no commands layer).
       # -----------------------------------------------------------------
+      mergeSkillCatalog = (import ./_merge-skill-catalog.nix { inherit lib; }).mergeSkillCatalog;
+      agentSkills = mergeSkillCatalog librarySkills config.dotagents.skillSources;
+
       plainSkills = lib.filterAttrs (
         name: _: (skillLayouts.${name} or "skill") != "collection"
       ) agentSkills;
