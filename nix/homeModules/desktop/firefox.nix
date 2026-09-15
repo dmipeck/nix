@@ -43,6 +43,13 @@ let
         default_area = "navbar";
         private_browsing = true;
       };
+      # Youtube Shorts Block
+      "gethismail@duck.com" = {
+        install_url = "https://addons.mozilla.org/firefox/downloads/latest/shorts-block/latest.xpi";
+        installation_mode = "force_installed";
+        default_area = "navbar";
+        private_browsing = true;
+      };
     };
 
     Preferences = {
