@@ -83,22 +83,42 @@ let
     else
       throw "skillPackLib.discoverSkills: unknown layout '${layout}' (expected flat|recursive)";
 
-  # Copy each discovered skill dir to $out/skills/<name>/.
+  # Top-level directories under `root` that are not skill keys (no SKILL.md).
+  # Kept in the packed tree so relative shared/docs siblings still resolve.
+  nonSkillSiblingDirs =
+    root:
+    if !(pathExists root) then
+      [ ]
+    else
+      attrNames (
+        lib.filterAttrs (name: type: type == "directory" && !(pathExists (root + "/${name}/SKILL.md"))) (
+          readDir root
+        )
+      );
+
+  # Copy each discovered skill dir to $out/skills/<name>/, plus optional
+  # non-skill sibling directories (shared/, docs/, …) under the same root.
   mkSkillsPackage =
     {
       pkgs,
       pname,
       skills,
+      siblingDirs ? [ ],
     }:
     pkgs.runCommand pname { } ''
       mkdir -p "$out/skills"
       ${lib.concatMapStringsSep "\n" (s: ''
         cp -rL ${s.path} "$out/skills/${s.name}"
       '') skills}
+      ${lib.concatMapStringsSep "\n" (s: ''
+        cp -rL ${s.path} "$out/skills/${s.name}"
+      '') siblingDirs}
     '';
 
   # Discover + pack from a content tree. `root` is relative to `src`
   # (Authoring Format default: "skills"); empty/null means `src` itself.
+  # Skill keys are only directories with SKILL.md; non-skill top-level siblings
+  # remain under $out/skills/<sibling>/ for relative references.
   packSkillRoot =
     {
       pkgs,
@@ -113,21 +133,36 @@ let
         root = skillsRoot;
         inherit layout;
       };
+      siblingDirs = map (name: {
+        inherit name;
+        path = skillsRoot + "/${name}";
+      }) (nonSkillSiblingDirs skillsRoot);
     in
     {
-      inherit skills;
+      inherit skills siblingDirs;
       names = map (s: s.name) skills;
       package = mkSkillsPackage {
-        inherit pkgs pname skills;
+        inherit
+          pkgs
+          pname
+          skills
+          siblingDirs
+          ;
       };
     };
+
+  # Skill Source pack entry: same as packSkillRoot (URL-agnostic src/layout).
+  # Named for the HM Skill Source seam; adapters merge packages in a later cut.
+  packSkillSource = packSkillRoot;
 in
 {
   inherit
     listDirs
     skillDirs
+    nonSkillSiblingDirs
     discoverSkills
     mkSkillsPackage
     packSkillRoot
+    packSkillSource
     ;
 }

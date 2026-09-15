@@ -374,7 +374,8 @@ in
             env); tool enums merged from Nix when present.
           '';
         };
-      };
+      }
+      // (import ./_skill-sources.nix { inherit lib pkgs; });
 
       config.dotagents = {
         # OpenCode/Claude Adapter Emit: bodies only from Common Model rules.
