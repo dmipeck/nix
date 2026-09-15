@@ -23,12 +23,20 @@
         }
       );
 
-      packed = skillPackLib.packSkillRoot {
+      packedFlat = skillPackLib.packSkillRoot {
         inherit pkgs;
         pname = "skill-pack-fixture-flat";
         src = fixture;
         root = "flat";
         layout = "flat";
+      };
+
+      packedRecursive = skillPackLib.packSkillRoot {
+        inherit pkgs;
+        pname = "skill-pack-fixture-recursive";
+        src = fixture;
+        root = "recursive";
+        layout = "recursive";
       };
 
       sortedEq = a: b: (lib.sort builtins.lessThan a) == (lib.sort builtins.lessThan b);
@@ -58,21 +66,34 @@
         }
         {
           name = "pack-skill-root-names";
-          ok = sortedEq packed.names [
+          ok = sortedEq packedFlat.names [
             "alpha"
             "beta"
+          ];
+        }
+        {
+          name = "pack-recursive-names-exclude-non-skills";
+          ok = sortedEq packedRecursive.names [
+            "alpha"
+            "gamma"
           ];
         }
       ];
 
       failures = builtins.filter (a: !a.ok) assertions;
 
-      # Build-time: packed derivation must expose adapter layout paths.
+      # Build-time: packed derivation must expose adapter layout paths and keep
+      # non-skill siblings (shared/, docs/) in the tree — not as skill keys.
       packCheck = pkgs.runCommand "skill-pack-layout" { } ''
         set -euo pipefail
-        test -f ${packed.package}/skills/alpha/SKILL.md
-        test -f ${packed.package}/skills/beta/SKILL.md
-        test ! -e ${packed.package}/skills/empty-dir
+        test -f ${packedFlat.package}/skills/alpha/SKILL.md
+        test -f ${packedFlat.package}/skills/beta/SKILL.md
+        test ! -e ${packedFlat.package}/skills/empty-dir
+        test -f ${packedRecursive.package}/skills/alpha/SKILL.md
+        test -f ${packedRecursive.package}/skills/gamma/SKILL.md
+        test -f ${packedRecursive.package}/skills/shared/helper.md
+        test -f ${packedRecursive.package}/skills/docs/README.md
+        test ! -e ${packedRecursive.package}/skills/shared/SKILL.md
         echo "skill-pack layout OK" > "$out"
       '';
     in
