@@ -281,6 +281,69 @@ let
 
   emitCursorMcpJson = mcp: builtins.toJSON (emitCursorMcp mcp);
 
+  # Cursor-shaped Common Model → OpenCode v1 mcp dialect (local/remote).
+  # Secrets keep "{file:...}" substitution; Cursor ${env:} rewrite is Cursor-only.
+  # Accepts either { mcpServers = … } or a bare server attrs set.
+  emitOpenCodeMcp =
+    mcp:
+    let
+      servers = lib.mapAttrs (_: srv: builtins.removeAttrs srv [ "tools" ]) (mcp.mcpServers or mcp);
+      toMcp =
+        _name: srv:
+        if (srv.type or null) == "stdio" || (srv ? command) then
+          {
+            type = "local";
+            command = [ srv.command ] ++ (srv.args or [ ]);
+          }
+          // optionalAttrs ((srv.env or { }) != { }) { environment = srv.env; }
+        else
+          {
+            type = "remote";
+            url = srv.url;
+          }
+          // optionalAttrs ((srv.headers or { }) != { }) { inherit (srv) headers; }
+          // optionalAttrs (srv ? auth && srv.auth != { }) {
+            oauth =
+              optionalAttrs (srv.auth ? CLIENT_ID) { clientId = srv.auth.CLIENT_ID; }
+              // optionalAttrs (srv.auth ? CLIENT_SECRET) {
+                clientSecret = srv.auth.CLIENT_SECRET;
+              }
+              // optionalAttrs (srv.auth ? scopes) {
+                scope = lib.concatStringsSep " " srv.auth.scopes;
+              };
+          };
+    in
+    mapAttrs toMcp servers;
+
+  # Cursor-shaped Common Model → Claude wire mcpServers (stdio / http).
+  # Drops tool enums. Does not invent headersHelper — adapters overlay that for
+  # sops-backed tokens (Claude has no {file:} / ${env:} header expansion).
+  # Static headers from the Common Model are omitted so ${env:} placeholders
+  # never land in Claude agent frontmatter; pass headers via adapter overlay.
+  emitClaudeMcp =
+    mcp:
+    let
+      servers = lib.mapAttrs (_: srv: builtins.removeAttrs srv [ "tools" ]) (mcp.mcpServers or mcp);
+      toClaude =
+        _name: srv:
+        if (srv.type or null) == "stdio" || (srv ? command) then
+          {
+            type = "stdio";
+            command = srv.command;
+            args = srv.args or [ ];
+          }
+          // optionalAttrs ((srv.env or { }) != { }) { inherit (srv) env; }
+        else
+          {
+            type = "http";
+            url = srv.url;
+          }
+          // optionalAttrs (srv ? oauth && srv.oauth != null && srv.oauth != { }) {
+            inherit (srv) oauth;
+          };
+    in
+    mapAttrs toClaude servers;
+
   # Cursor .mdc rule fields (Authoring Format SoT). alwaysApply is required for
   # global rules; description is optional but authored for clarity.
   cursorRulesKeys = [
@@ -321,6 +384,8 @@ in
     emitClaudeAgent
     emitCursorMcp
     emitCursorMcpJson
+    emitOpenCodeMcp
+    emitClaudeMcp
     collectCursorMcpFileRefs
     emitCursorRules
     emitOpenCodeRules
