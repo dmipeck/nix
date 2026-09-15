@@ -106,18 +106,21 @@
       };
 
       # Library already owns "alpha"; flat fixture also packs alpha → eval aborts.
-      dupTry = builtins.tryEval (eval {
-        librarySkills = defaultLibrary // {
-          alpha = alphaLib;
-        };
-        module = {
-          config.dotagents.skillSources.demo = {
-            src = fixture;
-            root = "flat";
-            layout = "flat";
+      # Force deployedSkills inside tryEval — merge is lazy on the attrset shell.
+      dupTry = builtins.tryEval (
+        (eval {
+          librarySkills = defaultLibrary // {
+            alpha = alphaLib;
           };
-        };
-      });
+          module = {
+            config.dotagents.skillSources.demo = {
+              src = fixture;
+              root = "flat";
+              layout = "flat";
+            };
+          };
+        }).deployedSkills
+      );
 
       sortedEq = a: b: (lib.sort builtins.lessThan a) == (lib.sort builtins.lessThan b);
 
