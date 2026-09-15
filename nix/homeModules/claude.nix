@@ -8,8 +8,9 @@ let
   # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix); agents
   # come from the Common Model (flat Authoring Format via auto.nix). `config`
   # here is flake-parts state (auto-imported under nix/); captured once so the
-  # home-manager module below can reference the packages.
-  skills = flakeArgs.config.dotagents.skills;
+  # home-manager module below can reference the packages. Enabled Skill Sources
+  # merge in at HM eval (see skills below).
+  librarySkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   commonAgents = flakeArgs.config.dotagents.commonModel.agents;
   cheapSubagents = flakeArgs.config.dotagents.cheapSubagents;
@@ -249,6 +250,11 @@ in
       # byte-identical to the pre-refactor module.
       # ---------------------------------------------------------------------
       claudeContext = config.dotagents.context;
+
+      # Library catalog ∪ enabled Skill Sources (fail on duplicate ids).
+      # Collection layout filter unchanged; Skill Source keys default to "skill".
+      mergeSkillCatalog = (import ./_merge-skill-catalog.nix { inherit lib; }).mergeSkillCatalog;
+      skills = mergeSkillCatalog librarySkills config.dotagents.skillSources;
 
       claudePlugins = lib.mapAttrs' (
         name: pkg:
@@ -605,14 +611,13 @@ in
           # Claude Code session. Content lives once in config.dotagents.context
           # (homeModules/dotagents.nix), shared with opencode.
           context = claudeContext;
-          # Every key of config.dotagents.skills (local auto-discovered skills +
-          # every upstream skill package) becomes a Claude plugin named after the
-          # skill, referenced by its $out/skills/<name> directory. The package
-          # values coerce to paths, so no hand-curated name→package map lives
-          # here — dropping a new skill into dotagents/skills/ needs no adapter
-          # edit. Collection keys (layout "collection") are whole bundles
+          # Library catalog ∪ enabled Skill Sources (merged above into
+          # `skills` / `claudePlugins`). Each key becomes a Claude plugin named
+          # after the skill, referenced by its $out/skills/<name> directory.
+          # Collection keys (layout "collection") are whole bundles
           # ($out/skills/ holds many constituent skills): they're rendered as
-          # the package root (a whole plugin), not $out/skills/<name>.
+          # the package root (a whole plugin), not $out/skills/<name>. Skill
+          # Source keys use default layout "skill".
           plugins = claudePlugins;
           commands = claudeCommands;
           # The subagents, converted for Claude Code via Adapter Emit from the
