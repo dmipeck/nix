@@ -2,8 +2,9 @@
 let
   # Skill/plugin packages are owned by nix/dotagents/ (skills/*.nix). `config`
   # here is flake-parts state (auto-imported under nix/); captured once so the
-  # home-manager module below can reference the packages.
-  agentSkills = flakeArgs.config.dotagents.skills;
+  # home-manager module below can reference the packages. Enabled Skill Sources
+  # merge in at HM eval (see agentSkills below).
+  librarySkills = flakeArgs.config.dotagents.skills;
   skillLayouts = flakeArgs.config.dotagents.skillLayouts;
   # Common Model agents (flat Authoring Format); OpenCode Adapter Emit converts.
   commonAgents = flakeArgs.config.dotagents.commonModel.agents;
@@ -22,10 +23,11 @@ in
     }:
     let
       # Neutral MCP server configs + per-user instance options live in
-      # homeModules/dotagents.nix; skill packages come from nix/dotagents/
-      # (`agentSkills`, captured above). This module is a thin adapter that
-      # maps them onto opencode's config dialect and renders opencode's
-      # permission rules from the shared per-server tool lists.
+      # homeModules/dotagents.nix; skill packages come from the library
+      # catalog merged with enabled Skill Sources (`agentSkills` below).
+      # This module is a thin adapter that maps them onto opencode's config
+      # dialect and renders opencode's permission rules from the shared
+      # per-server tool lists.
       mcpServers = config.dotagents.mcpServers;
 
       # All agents: Common Model → Adapter Emit convert (hoist metadata.opencode,
@@ -192,13 +194,15 @@ in
       };
 
       # Skill/plugin packages expose $out/skills/<name>/SKILL.md; opencode
-      # wants each skill referenced by its directory path. The whole
-      # config.dotagents.skills attrset (local auto-discovered skills + every
-      # upstream skill package) is rendered generically, so dropping a new
-      # skill into dotagents/skills/ needs no adapter edit. Collection keys
-      # (whole bundles whose $out/skills/ holds many constituent skills) are
-      # skipped: opencode has no single-skill form for them, and their
-      # constituents are already registered as separate keys.
+      # wants each skill referenced by its directory path. Library catalog ∪
+      # enabled Skill Sources (fail on duplicate). Collection keys (whole
+      # bundles whose $out/skills/ holds many constituent skills) are skipped:
+      # opencode has no single-skill form for them, and their constituents are
+      # already registered as separate keys. Skill Source keys use default
+      # layout "skill" and pass the same filter.
+      mergeSkillCatalog = (import ./_merge-skill-catalog.nix { inherit lib; }).mergeSkillCatalog;
+      agentSkills = mergeSkillCatalog librarySkills config.dotagents.skillSources;
+
       skills = lib.mapAttrs' (name: pkg: lib.nameValuePair name "${pkg}/skills/${name}") (
         lib.filterAttrs (name: _: (skillLayouts.${name} or "skill") != "collection") agentSkills
       );

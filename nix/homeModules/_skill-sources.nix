@@ -86,8 +86,8 @@ in
       Skill Sources — consumer-declared origins of skill packages. Each enabled
       entry is packed with the URL-agnostic skill pack helpers (`flat` /
       `recursive`). The merged value includes `package` and `skillNames`.
-      Adapter merge into the DotAgents skill catalog is separate; this option
-      only declares and packs.
+      Cursor / OpenCode / Claude adapters merge enabled packages into the
+      library skill catalog via `_merge-skill-catalog.nix` (fail on duplicate).
     '';
   };
 
