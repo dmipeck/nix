@@ -41,6 +41,7 @@
         };
         plane = {
           enable = true;
+          url = "https://mcp.plane.example/http/api-key/mcp";
           headers = {
             Authorization = "Bearer ${filePh "/run/secrets/plane-token"}";
             "X-Workspace-slug" = "littlemonkey";
@@ -79,7 +80,9 @@
         }
         {
           name = "instance-overlay-url";
-          ok = overlaid.gitlab.url == "https://gitlab.example/api/v4/mcp";
+          ok =
+            overlaid.gitlab.url == "https://gitlab.example/api/v4/mcp"
+            && overlaid.plane.url == "https://mcp.plane.example/http/api-key/mcp";
         }
         {
           name = "instance-overlay-env-placeholder";
