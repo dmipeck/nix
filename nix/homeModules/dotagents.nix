@@ -322,10 +322,20 @@ in
               default = false;
               description = ''
                 Whether to add the plane MCP server to the AI tool's config.
-                The server is the self-hosted remote Plane MCP endpoint
-                (https://mcp.plane.littlemonkey.co.nz). Off by default since
-                not every profile has a Plane instance; set to true and
-                provide `sops.secrets.token` to enable it.
+                Off by default since not every profile has a Plane instance;
+                set to true and provide `dotagents.mcps.plane.url` (and
+                usually `sops.secrets.token`) to enable it.
+              '';
+            };
+            url = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                Base URL of the Plane MCP endpoint (e.g.
+                https://mcp.plane.littlemonkey.co.nz). The remote server path
+                "/http/api-key/mcp" is appended. Only read when
+                `dotagents.mcps.plane.enable` is true. Leave null to keep the
+                authored mcp.json URL.
               '';
             };
             workspaceSlug = lib.mkOption {
@@ -507,7 +517,10 @@ in
               plane = {
                 enable = mcps.plane.enable;
               }
-              // lib.optionalAttrs mcps.plane.enable { headers = planeHeaders; };
+              // lib.optionalAttrs mcps.plane.enable { headers = planeHeaders; }
+              // lib.optionalAttrs (mcps.plane.enable && mcps.plane.url != null) {
+                url = "${mcps.plane.url}/http/api-key/mcp";
+              };
               firebase = {
                 enable = mcps.firebase.enable;
               };
