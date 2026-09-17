@@ -1,0 +1,5 @@
+interface:
+  display_name: "GitLab Tracker"
+  short_description: "Preferred GitLab issue/task conventions"
+policy:
+  allow_implicit_invocation: false
