@@ -462,7 +462,6 @@ in
             bash = {
               "awk *" = "deny";
               "sed *" = "deny";
-              "kubectl *" = "deny";
               "sops *" = "deny";
             };
             external_directory = {
