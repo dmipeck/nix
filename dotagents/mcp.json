@@ -13,7 +13,7 @@
     "kubernetes": {
       "type": "stdio",
       "command": "mcp-k8s-go",
-      "args": ["--readonly"]
+      "args": []
     },
     "grafana": {
       "type": "stdio",

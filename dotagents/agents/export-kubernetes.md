@@ -2,11 +2,12 @@
 name: export-kubernetes
 description: >-
   Answers questions about a Kubernetes cluster — contexts, nodes, namespaces,
-  events, resources, and pod logs — using the kubernetes MCP server's tools.
-  Read-only: reports what it finds, never mutates. Use when you need cluster
-  state, workloads, manifests, events, or pod logs — even when the user says
-  "show me the pods", "what is running in", "describe this resource", or
-  "check the logs".
+  events, resources, and pod logs — using the kubernetes MCP server's read
+  tools. Read-only: reports what it finds, never mutates. For applies, pod
+  exec, or other cluster mutations, use the `kubernetes` subagent instead.
+  Use when you need cluster state, workloads, manifests, events, or pod
+  logs — even when the user says "show me the pods", "what is running in",
+  "describe this resource", or "check the logs".
 readonly: true
 metadata:
   opencode:

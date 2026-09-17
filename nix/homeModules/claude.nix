@@ -376,21 +376,21 @@ in
         # `general-purpose` subagent stays available as a last resort and
         # spawning it prompts (permissions.ask below), matching opencode's
         # `general` contract. Spawning `fork` or the write-capable
-        # `github`/`gitlab` subagents (which connect their servers inline) also
-        # requires confirmation. The gh/glab CLIs stay installed for human
-        # shell use but are denied only on the orchestrate main-session agent
-        # (its frontmatter above), not in the top-level permissions.deny:
-        # delegation of gh/glab work routes through the
-        # github/explore-github and gitlab/explore-gitlab subagents, which
-        # allow the CLIs explicitly as a fallback when their MCP servers are
-        # unavailable, and every other Bash-capable agent keeps them usable.
+        # `github`/`gitlab`/`kubernetes` subagents (which connect their
+        # servers inline) also requires confirmation. The gh/glab/kubectl
+        # CLIs stay installed for human shell use but are denied only on the
+        # orchestrate main-session agent (its frontmatter above), not in the
+        # top-level permissions.deny: delegation of gh/glab/kubectl work
+        # routes through the github/explore-github, gitlab/explore-gitlab,
+        # and kubernetes/export-kubernetes subagents, which allow the CLIs
+        # explicitly as a fallback when their MCP servers are unavailable,
+        # and every other Bash-capable agent keeps them usable.
         # sops stays denied at the top level because agents have no need to
         # decrypt secrets; sops-nix already hands them the decrypted file
         # paths, so a top-level deny is the simplest gate.
         permissions.deny = [
           "Bash(awk:*)"
           "Bash(sed:*)"
-          "Bash(kubectl:*)"
           "Bash(sops:*)"
           "Agent(claude)"
           "DesignSync"
@@ -404,14 +404,19 @@ in
           "CronList"
         ];
         # PR merges always prompt, even inside the github subagent, and
-        # spawning the write-capable github/gitlab subagents always prompts,
-        # even inside orchestrate. The github server only connects inside those
-        # agents, so the merge pattern never fires in the main session.
+        # spawning the write-capable github/gitlab/kubernetes subagents
+        # always prompts, even inside orchestrate. Mutating kubernetes MCP
+        # tools (apply / pod exec) also prompt inside the kubernetes agent.
+        # The github/kubernetes servers only connect inside those agents,
+        # so the merge/apply patterns never fire in the main session.
         permissions.ask = [
           "mcp__github__merge_pull_request"
+          "mcp__kubernetes__apply-k8s-resource"
+          "mcp__kubernetes__k8s-pod-exec"
           "Agent(fork)"
           "Agent(github)"
           "Agent(gitlab)"
+          "Agent(kubernetes)"
           "Agent(general-purpose)"
           "Agent(cloudflare)"
           "Agent(cloudflare-bindings)"

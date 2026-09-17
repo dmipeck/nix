@@ -437,10 +437,12 @@ in
 
           # The github and gitlab MCP servers' tools are denied by default
           # (tools map above); orchestrate asks before spawning the
-          # write-capable github/gitlab subagent (permission.task). The
-          # glab/gh CLIs stay installed for human shell use; orchestrate
-          # already denies all bash in its own agent file, so they need no
-          # top-level deny here and every Bash-capable agent may use them.
+          # write-capable github/gitlab/kubernetes subagent (permission.task).
+          # The glab/gh/kubectl CLIs stay installed for human shell use;
+          # orchestrate already denies all bash in its own agent file, so they
+          # need no top-level deny here and every Bash-capable agent may use
+          # them. The kubernetes write agent allows kubectl as a fallback when
+          # its MCP server is unavailable.
           # sops stays denied at the top level because agents have no need
           # to decrypt secrets; sops-nix already hands them the decrypted
           # file paths, so a top-level deny is the simplest gate.
@@ -454,6 +456,7 @@ in
             task = {
               github = "ask";
               gitlab = "ask";
+              kubernetes = "ask";
               cloudflare = "ask";
               cloudflare-bindings = "ask";
               plane = "ask";
@@ -462,7 +465,6 @@ in
             bash = {
               "awk *" = "deny";
               "sed *" = "deny";
-              "kubectl *" = "deny";
               "sops *" = "deny";
             };
             external_directory = {
