@@ -390,7 +390,6 @@ in
         permissions.deny = [
           "Bash(awk:*)"
           "Bash(sed:*)"
-          "Bash(kubectl:*)"
           "Bash(sops:*)"
           "Agent(claude)"
           "DesignSync"
