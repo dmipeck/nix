@@ -34,6 +34,7 @@
         "git"
         "github"
         "gitlab"
+        "kubernetes"
         "lint"
         "nix"
         "orchestrate"
