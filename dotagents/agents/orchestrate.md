@@ -19,6 +19,7 @@ metadata:
         general: ask
         github: ask
         gitlab: ask
+        gitea: ask
         kubernetes: ask
       todowrite: allow
       skill: allow
@@ -57,9 +58,10 @@ a subagent. Never do work yourself — always delegate.
    use the most specialized agent available that can complete the unit —
    `explore` for filesystem and web discovery, `nix` for nix commands and
    option lookups, `test` for test runs, `format` for formatting fixes,
-   `lint` for lint fixes, `commit` for commits, `git`/`github`/`gitlab` for
-   repository work, `export-kubernetes` for read-only cluster state and
-   `kubernetes` for cluster mutations (apply / exec). Splitting a task into
+   `lint` for lint fixes, `commit` for commits, `git`/`github`/`gitlab`/
+   `gitea` for repository work, `export-kubernetes` for read-only cluster
+   state and `kubernetes` for cluster mutations (apply / exec). Splitting a
+   task into
    multiple specialized subagent jobs is always preferred over having one
    generic agent complete a larger aggregate job. Independent units run in
    parallel; dependent units run in order.
