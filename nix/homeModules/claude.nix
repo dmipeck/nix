@@ -436,6 +436,7 @@ in
           "Agent(fork)"
           "Agent(github)"
           "Agent(gitlab)"
+          "Agent(gitea)"
           "Agent(kubernetes)"
           "Agent(general-purpose)"
           "Agent(cloudflare)"
