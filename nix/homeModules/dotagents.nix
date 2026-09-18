@@ -40,6 +40,7 @@ in
       githubClientSecretPath = sopsLib.pathOrNull config mcps.github.sops "clientSecret";
       cloudflareTokenPath = sopsLib.pathOrNull config mcps.cloudflare.sops "token";
       planeTokenPath = sopsLib.pathOrNull config mcps.plane.sops "token";
+      giteaTokenPath = sopsLib.pathOrNull config mcps.gitea.sops "token";
 
       # Cloudflare's managed MCP servers all authenticate with one Cloudflare
       # API token sent as an Authorization: Bearer header. The header value
@@ -405,6 +406,39 @@ in
               '';
             };
           };
+          gitea = {
+            enable = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
+                Whether to add the gitea MCP server to the AI tool's config.
+                Off by default since not every profile has a Gitea instance to
+                point it at; set to true and provide `dotagents.mcps.gitea.url`
+                and/or `dotagents.mcps.gitea.sops` to configure it.
+              '';
+            };
+            url = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                Gitea instance URL passed as GITEA_HOST to gitea-mcp. Leave
+                as null to inherit GITEA_HOST from the shell environment
+                instead.
+              '';
+            };
+            sops = lib.mkOption {
+              type = sopsLib.mkType;
+              default = { };
+              description = ''
+                Sops-backed secrets for gitea-mcp. Gate with
+                `dotagents.mcps.gitea.sops.enable`, then set
+                `secrets.token.key`. gitea-mcp reads GITEA_ACCESS_TOKEN (no
+                token-file env), so the server is wrapped in a bash shim that
+                reads the decrypted file at startup. Leave disabled to inherit
+                GITEA_ACCESS_TOKEN from the shell.
+              '';
+            };
+          };
         };
 
         mcpServers = lib.mkOption {
@@ -571,6 +605,40 @@ in
               firebase = {
                 enable = mcps.firebase.enable;
               };
+              gitea = {
+                enable = mcps.gitea.enable;
+              }
+              // lib.optionalAttrs mcps.gitea.enable (
+                let
+                  baseCmd = resolved.gitea.command;
+                  baseArgs = resolved.gitea.args or [ ];
+                in
+                {
+                  # gitea-mcp reads GITEA_ACCESS_TOKEN (no token-file env), so
+                  # wrap with bash that reads the sops file at startup.
+                  command = if giteaTokenPath != null then "${pkgs.bash}/bin/bash" else baseCmd;
+                  args =
+                    if giteaTokenPath != null then
+                      [
+                        "-c"
+                        ''
+                          set -e
+                          GITEA_ACCESS_TOKEN="$(<"$GITEA_ACCESS_TOKEN_FILE")" \
+                            exec ${baseCmd} ${lib.concatStringsSep " " (map lib.escapeShellArg baseArgs)}
+                        ''
+                      ]
+                    else
+                      baseArgs;
+                  env =
+                    (resolved.gitea.env or { })
+                    // lib.optionalAttrs (mcps.gitea.url != null) {
+                      GITEA_HOST = mcps.gitea.url;
+                    }
+                    // lib.optionalAttrs (giteaTokenPath != null) {
+                      GITEA_ACCESS_TOKEN_FILE = giteaTokenPath;
+                    };
+                }
+              );
             };
 
             overlaid = mcpLib.applyInstanceOverlay instances resolvedWithGrafana;

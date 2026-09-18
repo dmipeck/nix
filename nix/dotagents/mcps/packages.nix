@@ -11,6 +11,7 @@ in
     playwright-mcp = pkgs.playwright-mcp;
     mcp-k8s-go = pkgs.mcp-k8s-go;
     mcp-grafana = pkgs.mcp-grafana;
+    gitea-mcp = pkgs.gitea-mcp-server;
     firebase = pkgs.firebase-tools;
   };
 }
