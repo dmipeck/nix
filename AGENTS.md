@@ -139,7 +139,7 @@ harmless noise.
   `<module>.sops.secrets.<program-key-name>.key = "<sops-key-name>"` and
   optionally `.keyFile` for a path override. Examples:
   `comin.sops.secrets.accessToken`,
-  `dotagents.mcps.grafana.sops.secrets.serviceAccountToken`,
+  `dotagents.mcps.grafana.<name>.sops.secrets.serviceAccountToken`,
   `dotagents.mcps.*.sops.secrets.token`. Decrypted at runtime; the value is
   only ever pointed to by file path (`GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE`),
   never inlined. Never inline tokens in module code; gitleaks enforces this.

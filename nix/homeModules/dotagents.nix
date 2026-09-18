@@ -36,7 +36,6 @@ in
     let
       mcps = config.dotagents.mcps;
 
-      grafanaTokenPath = sopsLib.pathOrNull config mcps.grafana.sops "serviceAccountToken";
       argocdTokenPath = sopsLib.pathOrNull config mcps.argocd.sops "token";
       githubClientSecretPath = sopsLib.pathOrNull config mcps.github.sops "clientSecret";
       cloudflareTokenPath = sopsLib.pathOrNull config mcps.cloudflare.sops "token";
@@ -81,22 +80,55 @@ in
         };
 
         mcps = {
-          grafana = {
-            url = lib.mkOption {
-              type = lib.types.str;
-              description = "Grafana instance URL passed as GRAFANA_URL to the mcp-grafana MCP server.";
-            };
-            sops = lib.mkOption {
-              type = sopsLib.mkType;
-              default = { };
-              description = ''
-                Sops-backed secrets for mcp-grafana. Gate with
-                `dotagents.mcps.grafana.sops.enable`, then set
-                `secrets.serviceAccountToken.key` (exposed as
-                GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE). Leave disabled for
-                anonymous/unauthenticated access.
-              '';
-            };
+          # Attr names become MCP server names (e.g. `grafana`,
+          # `build13-grafana`). Each clones the authored `grafana` template
+          # from mcp.json with per-instance URL / token env.
+          grafana = lib.mkOption {
+            type = lib.types.attrsOf (
+              lib.types.submodule {
+                options = {
+                  enable = lib.mkOption {
+                    type = lib.types.bool;
+                    default = true;
+                    description = "Whether to include this Grafana MCP server in the catalog.";
+                  };
+                  url = lib.mkOption {
+                    type = lib.types.str;
+                    description = "Grafana instance URL passed as GRAFANA_URL to mcp-grafana.";
+                  };
+                  sops = lib.mkOption {
+                    type = sopsLib.mkType;
+                    default = { };
+                    description = ''
+                      Sops-backed secrets for this Grafana MCP instance. Gate with
+                      `sops.enable`, then set `secrets.serviceAccountToken.key`
+                      (exposed as GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE). Leave
+                      disabled for anonymous/unauthenticated access.
+                    '';
+                  };
+                };
+              }
+            );
+            default = { };
+            description = ''
+              Named Grafana MCP instances. Attr names are MCP server names in
+              the catalog. Example:
+
+                dotagents.mcps.grafana = {
+                  grafana = {
+                    url = "https://grafana.example";
+                    sops = {
+                      enable = true;
+                      secrets.serviceAccountToken.key = "grafana_sa_token";
+                    };
+                  };
+                  "build13-grafana" = {
+                    url = "https://metrics.build13.example";
+                    sops.enable = true;
+                    sops.secrets.serviceAccountToken.key = "build13_grafana_sa_token";
+                  };
+                };
+            '';
           };
           argocd = {
             enable = lib.mkOption {
@@ -398,8 +430,9 @@ in
         );
 
         # mcp.json SoT → resolve packages → Instance overlay → Cursor shape.
-        # Always-on servers (nixos/playwright/kubernetes/grafana) keep enable
-        # implicit; gated servers drop out when Instance enable is false.
+        # Always-on servers (nixos/playwright/kubernetes) keep enable
+        # implicit; grafana expands from mcps.grafana attrs; gated servers
+        # drop out when Instance enable is false.
         mcpServers =
           let
             resolved = mcpLib.resolveMcpPackages mcpPackages authoredMcpServers;
@@ -411,15 +444,29 @@ in
 
             githubPort = toString mcps.github.callbackPort;
 
-            instances = {
-              # Always present when in authored set.
-              grafana = {
+            # Clone authored `grafana` template once per named Instance.
+            grafanaTemplate = resolved.grafana or null;
+            enabledGrafana = lib.filterAttrs (_: inst: inst.enable) mcps.grafana;
+            resolvedWithGrafana =
+              assert grafanaTemplate != null || enabledGrafana == { };
+              (builtins.removeAttrs resolved [ "grafana" ])
+              // lib.mapAttrs (_: _: grafanaTemplate) enabledGrafana;
+
+            grafanaInstances = lib.mapAttrs (
+              _name: inst:
+              let
+                tokenPath = sopsLib.pathOrNull config inst.sops "serviceAccountToken";
+              in
+              {
                 enable = true;
                 env = {
-                  GRAFANA_URL = mcps.grafana.url;
-                  GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE = if grafanaTokenPath != null then grafanaTokenPath else "";
+                  GRAFANA_URL = inst.url;
+                  GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE = if tokenPath != null then tokenPath else "";
                 };
-              };
+              }
+            ) enabledGrafana;
+
+            instances = grafanaInstances // {
               # Gated servers: enable=false drops them from the catalog.
               argocd = {
                 enable = mcps.argocd.enable;
@@ -526,16 +573,24 @@ in
               };
             };
 
-            overlaid = mcpLib.applyInstanceOverlay instances resolved;
+            overlaid = mcpLib.applyInstanceOverlay instances resolvedWithGrafana;
 
             # Merge Nix tool enums onto Cursor-shaped definitions (adapters
             # that still read tools.*; Cursor emit strips non-wire keys).
+            # Grafana instances share the authored `grafana` tool enum.
+            grafanaTools = mcpToolEnums.grafana.tools or null;
             withTools = lib.mapAttrs (
               name: srv:
-              srv
-              // lib.optionalAttrs (mcpToolEnums ? ${name}) {
-                tools = mcpToolEnums.${name}.tools;
-              }
+              let
+                tools =
+                  if mcpToolEnums ? ${name} then
+                    mcpToolEnums.${name}.tools
+                  else if (enabledGrafana ? ${name}) && grafanaTools != null then
+                    grafanaTools
+                  else
+                    null;
+              in
+              srv // lib.optionalAttrs (tools != null) { inherit tools; }
             ) overlaid;
           in
           withTools;
