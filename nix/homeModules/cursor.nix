@@ -104,6 +104,10 @@ in
         "explore-gitlab"
         "gitlab"
       ];
+      giteaAgentNames = [
+        "explore-gitea"
+        "gitea"
+      ];
       argocdAgentNames = [ "explore-argocd" ];
       cloudflareAgentNames = [
         "explore-cloudflare"
@@ -125,6 +129,7 @@ in
         (lib.removeAttrs allCursorAgents (
           githubAgentNames
           ++ gitlabAgentNames
+          ++ giteaAgentNames
           ++ argocdAgentNames
           ++ cloudflareAgentNames
           ++ cloudflareBindingsAgentNames
@@ -139,6 +144,9 @@ in
         )
         // lib.optionalAttrs config.dotagents.mcps.gitlab.enable (
           lib.genAttrs gitlabAgentNames (n: allCursorAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.gitea.enable (
+          lib.genAttrs giteaAgentNames (n: allCursorAgents.${n})
         )
         // lib.optionalAttrs config.dotagents.mcps.cloudflare.enable (
           lib.genAttrs cloudflareAgentNames (n: allCursorAgents.${n})

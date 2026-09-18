@@ -71,6 +71,7 @@ in
         (lib.removeAttrs allAgents (
           githubAgentNames
           ++ gitlabAgentNames
+          ++ giteaAgentNames
           ++ argocdAgentNames
           ++ cloudflareAgentNames
           ++ cloudflareBindingsAgentNames
@@ -86,6 +87,9 @@ in
         )
         // lib.optionalAttrs config.dotagents.mcps.gitlab.enable (
           lib.genAttrs gitlabAgentNames (n: allAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.gitea.enable (
+          lib.genAttrs giteaAgentNames (n: allAgents.${n})
         )
         // lib.optionalAttrs config.dotagents.mcps.cloudflare.enable (
           lib.genAttrs cloudflareAgentNames (n: allAgents.${n})
@@ -117,6 +121,10 @@ in
       gitlabAgentNames = [
         "explore-gitlab"
         "gitlab"
+      ];
+      giteaAgentNames = [
+        "explore-gitea"
+        "gitea"
       ];
       argocdAgentNames = [
         "explore-argocd"
@@ -456,6 +464,7 @@ in
             task = {
               github = "ask";
               gitlab = "ask";
+              gitea = "ask";
               kubernetes = "ask";
               cloudflare = "ask";
               cloudflare-bindings = "ask";

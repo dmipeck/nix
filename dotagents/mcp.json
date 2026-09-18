@@ -57,6 +57,15 @@
     "gitlab": {
       "url": "https://gitlab.com/api/v4/mcp"
     },
+    "gitea": {
+      "type": "stdio",
+      "command": "gitea-mcp",
+      "args": ["-t", "stdio"],
+      "env": {
+        "GITEA_HOST": "${env:GITEA_HOST}",
+        "GITEA_ACCESS_TOKEN": "${env:GITEA_ACCESS_TOKEN}"
+      }
+    },
     "cloudflare": {
       "url": "https://mcp.cloudflare.com/mcp",
       "headers": {

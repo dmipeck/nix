@@ -204,6 +204,10 @@ in
         "explore-gitlab"
         "gitlab"
       ];
+      giteaAgentNames = [
+        "explore-gitea"
+        "gitea"
+      ];
       argocdAgentNames = [
         "explore-argocd"
       ];
@@ -283,6 +287,7 @@ in
         (lib.removeAttrs allClaudeAgents (
           githubAgentNames
           ++ gitlabAgentNames
+          ++ giteaAgentNames
           ++ argocdAgentNames
           ++ cloudflareAgentNames
           ++ cloudflareBindingsAgentNames
@@ -295,6 +300,9 @@ in
         )
         // lib.optionalAttrs config.dotagents.mcps.gitlab.enable (
           lib.genAttrs gitlabAgentNames (n: allClaudeAgents.${n})
+        )
+        // lib.optionalAttrs config.dotagents.mcps.gitea.enable (
+          lib.genAttrs giteaAgentNames (n: allClaudeAgents.${n})
         )
         // lib.optionalAttrs config.dotagents.mcps.argocd.enable (
           lib.genAttrs argocdAgentNames (n: allClaudeAgents.${n})
