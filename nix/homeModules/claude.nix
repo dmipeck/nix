@@ -133,6 +133,17 @@ in
         // lib.optionalAttrs ((argocdServer.env or { }) != { }) { env = argocdServer.env; };
       };
 
+      # Named Grafana instances from dotagents.mcps.grafana.<name>.
+      grafanaMcpServers = lib.mapAttrs (
+        _name: srv:
+        {
+          type = "stdio";
+          command = srv.command;
+          args = srv.args or [ ];
+        }
+        // lib.optionalAttrs ((srv.env or { }) != { }) { env = srv.env; }
+      ) (lib.filterAttrs (name: _: config.dotagents.mcps.grafana ? ${name}) mcpServers);
+
       kubernetesServer = mcpServers.kubernetes or null;
       kubernetesMcpServers = lib.optionalAttrs (kubernetesServer != null) {
         kubernetes = {
@@ -156,6 +167,7 @@ in
       claudeMcpCatalog =
         nixosMcpServers
         // kubernetesMcpServers
+        // grafanaMcpServers
         // githubMcpServers
         // gitlabMcpServers
         // argocdMcpServers
