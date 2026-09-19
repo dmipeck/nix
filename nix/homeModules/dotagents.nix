@@ -43,13 +43,19 @@ in
       giteaTokenPath = sopsLib.pathOrNull config mcps.gitea.sops "token";
 
       # Cloudflare's managed MCP servers all authenticate with one Cloudflare
-      # API token sent as an Authorization: Bearer header. The header value
+      # API token sent as an Authorization: Bearer header. Multi-account user
+      # tokens also need a cf-account-id header (from
+      # `dotagents.mcps.cloudflare.accountId`). The Authorization value
       # references the sops-decrypted secret file via opencode's "{file:...}"
       # substitution, so only the file path ever appears in the Nix store /
       # generated config, never the token.
-      cloudflareHeaders = lib.optionalAttrs (cloudflareTokenPath != null) {
-        Authorization = "Bearer {file:${cloudflareTokenPath}}";
-      };
+      cloudflareHeaders =
+        lib.optionalAttrs (cloudflareTokenPath != null) {
+          Authorization = "Bearer {file:${cloudflareTokenPath}}";
+        }
+        // lib.optionalAttrs (mcps.cloudflare.accountId != null) {
+          "cf-account-id" = mcps.cloudflare.accountId;
+        };
 
       # The self-hosted Plane MCP server authenticates with a Plane API PAT
       # sent as an Authorization: Bearer header, plus a required
@@ -336,6 +342,16 @@ in
                   `dotagents.mcps.cloudflare.sops.secrets.token`.
                 '';
               };
+            };
+            accountId = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                Cloudflare account ID sent as the cf-account-id header to Cloudflare
+                MCP servers. Used when the API token can access multiple accounts
+                (user tokens); account-scoped tokens pin the account via auth and
+                do not need this. Leave null to omit the header.
+              '';
             };
             sops = lib.mkOption {
               type = sopsLib.mkType;
