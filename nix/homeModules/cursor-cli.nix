@@ -408,31 +408,26 @@
       # Upstream ships `cursor-agent`; default binaryName is `cursor` so the
       # CLI owns that name (desktop is wrapped to `cursor-desktop` instead).
       upstreamBin = "cursor-agent";
-      needsWrap = cfg.binaryName != upstreamBin || cfg.aliases != [ ];
-      cursorPackage =
-        if !needsWrap then
-          cfg.package
-        else
-          pkgs.symlinkJoin {
-            name = "cursor-cli-${cfg.binaryName}";
-            paths = [ cfg.package ];
-            postBuild =
-              let
-                target = "../share/cursor-agent/cursor-agent";
-                link = name: ''
-                  ln -sf ${target} "$out/bin/"${lib.escapeShellArg name}
-                '';
-                aliasNames = lib.filter (a: a != cfg.binaryName) cfg.aliases;
-              in
-              ''
-                mkdir -p "$out/bin"
-                ${lib.optionalString (cfg.binaryName != upstreamBin) ''
-                  ${link cfg.binaryName}
-                  rm -f "$out/bin/"${lib.escapeShellArg upstreamBin}
-                ''}
-                ${lib.concatMapStrings link aliasNames}
-              '';
-          };
+      # Always wrap so every invocation sources cursor MCP sops env (soft
+      # coupling with cursor.nix's ~/.config/dotagents/cursor-mcp-env.sh —
+      # missing script is a no-op). Avoids sticky empty session vars from an
+      # early hm-session-vars source before sops-nix materialises secrets.
+      realAgent = "${cfg.package}/share/cursor-agent/cursor-agent";
+      mkCursorWrapper =
+        name:
+        pkgs.writeShellScriptBin name ''
+          env_script="''${XDG_CONFIG_HOME:-$HOME/.config}/dotagents/cursor-mcp-env.sh"
+          [ -f "$env_script" ] && . "$env_script"
+          exec ${lib.escapeShellArg realAgent} "$@"
+        '';
+      wrapperNames = lib.unique ([ cfg.binaryName ] ++ cfg.aliases);
+      cursorPackage = pkgs.symlinkJoin {
+        name = "cursor-cli-${cfg.binaryName}";
+        paths = [ cfg.package ] ++ map mkCursorWrapper wrapperNames;
+        postBuild = lib.optionalString (cfg.binaryName != upstreamBin) ''
+          rm -f "$out/bin/"${lib.escapeShellArg upstreamBin}
+        '';
+      };
     in
     {
       options.programs.cursor-cli = {
