@@ -31,24 +31,15 @@ let
   # in their SKILL.md frontmatter; adapters pass that through as-is (no
   # separate auto-generated slash-command layer).
   #
-  # setup-matt-pocock-skills is patched so it auto-discovers the local
-  # `gitlab-tracker` skill (dotagents/skills/gitlab-tracker) and
-  # prefers that template when configuring a GitLab repo.
-  setupGitlabTrackerPatch = ./patches/setup-matt-pocock-skills-gitlab-tracker.patch;
-
+  # Preferred tracker skills (gitlab-tracker, gitea-tracker) self-advertise
+  # discovery in their skill descriptions for /setup-matt-pocock-skills — no
+  # patch of the upstream setup skill.
   mkSkill =
     { name, category }:
-    pkgs.runCommand "dotagents-${name}"
-      {
-        nativeBuildInputs = lib.optionals (name == "setup-matt-pocock-skills") [ pkgs.patch ];
-      }
-      ''
-        mkdir -p $out/skills/${name}
-        cp -rL ${mattpocockSkillsSrc}/skills/${category}/${name}/. $out/skills/${name}/
-        ${lib.optionalString (name == "setup-matt-pocock-skills") ''
-          patch -p1 -d $out/skills/${name} < ${setupGitlabTrackerPatch}
-        ''}
-      '';
+    pkgs.runCommand "dotagents-${name}" { } ''
+      mkdir -p $out/skills/${name}
+      cp -rL ${mattpocockSkillsSrc}/skills/${category}/${name}/. $out/skills/${name}/
+    '';
 in
 {
   config.dotagents.skills = builtins.listToAttrs (

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Gitea Tracker"
+  short_description: "Preferred Gitea issue conventions (MCP + dependencies)"
+policy:
+  allow_implicit_invocation: false
