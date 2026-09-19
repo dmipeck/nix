@@ -39,6 +39,8 @@ in
 
       cursorMcp = adapterEmit.emitCursorMcp { mcpServers = wireMcpServers; };
       allFileRefs = adapterEmit.collectCursorMcpFileRefs { mcpServers = wireMcpServers; };
+      hasFileRefs = allFileRefs != [ ];
+      fileRefNames = map (ref: ref.name) allFileRefs;
 
       # -----------------------------------------------------------------
       # Skills → ~/.cursor/skills/<name>/
@@ -173,24 +175,118 @@ in
         name: rule: lib.nameValuePair ".cursor/rules/${name}.mdc" { source = rule.path; }
       ) rules;
 
-      # Session env exports for "{file:...}" → "${env:VAR}" rewrites.
-      fileRefExports = lib.concatMapStrings (ref: ''
-        export ${ref.name}="$(<${ref.path})"
+      # WHY sticky-empty race: hm-session-vars.sh is guarded by
+      # __HM_SESS_VARS_SOURCED=1 (sourced once). Inline
+      # `export VAR=$(</sops/path)` before sops-nix materialises the file
+      # sticks empty forever; Cursor `${env:VAR}` then sends empty Bearer.
+      # Guarded loads (`[ -s path ]`) never export empty; shell init + CLI
+      # wrap + systemd oneshot re-apply once secrets exist.
+      mcpEnvScriptPath = "${config.xdg.configHome}/dotagents/cursor-mcp-env.sh";
+      mcpEnvScriptText = lib.concatMapStrings (ref: ''
+        [ -s ${ref.path} ] && export ${ref.name}="$(${pkgs.coreutils}/bin/tr -d '\n' < ${ref.path})"
       '') allFileRefs;
+
+      # Push non-empty secrets into the systemd user manager (and dbus
+      # activation env) after sops-nix, so GUI Cursor / user units see them.
+      mcpEnvSystemdScript = pkgs.writeShellScript "dotagents-cursor-mcp-env" (
+        ''
+          systemctl="${config.systemd.user.systemctlPath}"
+          vars=()
+        ''
+        + lib.concatMapStrings (ref: ''
+          if [ -s ${lib.escapeShellArg ref.path} ]; then
+            value="$(${pkgs.coreutils}/bin/tr -d '\n' < ${lib.escapeShellArg ref.path})"
+            export ${ref.name}="$value"
+            "$systemctl" --user set-environment "${ref.name}=$value"
+            vars+=(${lib.escapeShellArg ref.name})
+          fi
+        '') allFileRefs
+        + ''
+          if [ "''${#vars[@]}" -gt 0 ]; then
+            ${pkgs.dbus}/bin/dbus-update-activation-environment --systemd "''${vars[@]}"
+          fi
+        ''
+      );
+
+      sourceMcpEnv = ''
+        # Re-load Cursor MCP sops env when secrets exist (undo sticky empties
+        # from an early hm-session-vars source before sops-nix was ready).
+        [ -f ${lib.escapeShellArg mcpEnvScriptPath} ] && . ${lib.escapeShellArg mcpEnvScriptPath}
+      '';
     in
     {
-      config = {
-        home.file =
-          skillFiles
-          // agentFiles
-          // rulesFile
-          // {
-            ".cursor/mcp.json".source = jsonFormat.generate "cursor-mcp.json" cursorMcp;
+      config = lib.mkMerge [
+        {
+          home.file =
+            skillFiles
+            // agentFiles
+            // rulesFile
+            // {
+              ".cursor/mcp.json".source = jsonFormat.generate "cursor-mcp.json" cursorMcp;
+            };
+        }
+
+        (lib.mkIf hasFileRefs {
+          # Guarded per-var loads; sourced by sessionVariablesExtra, shells,
+          # CLI wrap (cursor-cli.nix), and the systemd oneshot below.
+          xdg.configFile."dotagents/cursor-mcp-env.sh".text = mcpEnvScriptText;
+
+          # Source the script instead of unguarded inline exports so a
+          # pre-sops first source does not sticky-export empties.
+          home.sessionVariablesExtra = ''
+            . ${lib.escapeShellArg mcpEnvScriptPath}
+          '';
+
+          systemd.user.services.dotagents-cursor-mcp-env = {
+            Unit = {
+              Description = "Load Cursor MCP sops secrets into systemd user environment";
+              After = [ "sops-nix.service" ];
+            };
+            Service = {
+              Type = "oneshot";
+              RemainAfterExit = true;
+              ExecStart = "${mcpEnvSystemdScript}";
+            };
+            Install.WantedBy = [ "default.target" ];
           };
 
-        # Export sops-backed secrets referenced from mcp.json into the user
-        # session so Cursor's ${env:VAR} interpolation can resolve them.
-        home.sessionVariablesExtra = lib.mkIf (allFileRefs != [ ]) fileRefExports;
-      };
+          # sops-nix's HM hook can leave a stale unit; after linkGeneration:
+          # daemon-reload, restart sops-nix, wait for files, then push env.
+          home.activation.cursorMcpEnv = lib.hm.dag.entryAfter [ "linkGeneration" "sops-nix" ] ''
+            systemctl="${config.systemd.user.systemctlPath}"
+            systemctlStatus="$($systemctl --user is-system-running 2>&1 || true)"
+            if [[ $systemctlStatus == 'running' || $systemctlStatus == 'degraded' ]]; then
+              $systemctl daemon-reload --user
+              $systemctl restart --user sops-nix
+            fi
+            ${lib.concatMapStrings (ref: ''
+              secret_file=${lib.escapeShellArg ref.path}
+              for _ in $(${pkgs.coreutils}/bin/seq 1 100); do
+                if [ -f "$secret_file" ]; then
+                  break
+                fi
+                ${pkgs.coreutils}/bin/sleep 0.1
+              done
+              if [ ! -f "$secret_file" ]; then
+                echo "cursor MCP env: timed out waiting for sops secret at $secret_file" >&2
+                exit 1
+              fi
+            '') allFileRefs}
+            if [[ $systemctlStatus == 'running' || $systemctlStatus == 'degraded' ]]; then
+              $systemctl restart --user dotagents-cursor-mcp-env.service
+            fi
+            unset systemctlStatus
+            # Apply into this activation's environment + dbus for already-open
+            # sessions (oneshot covers systemd user manager).
+            if [ -f ${lib.escapeShellArg mcpEnvScriptPath} ]; then
+              . ${lib.escapeShellArg mcpEnvScriptPath}
+              ${pkgs.dbus}/bin/dbus-update-activation-environment --systemd ${lib.concatStringsSep " " fileRefNames}
+            fi
+          '';
+
+          programs.bash.initExtra = lib.mkIf config.programs.bash.enable (lib.mkAfter sourceMcpEnv);
+          programs.zsh.initExtra = lib.mkIf config.programs.zsh.enable (lib.mkAfter sourceMcpEnv);
+        })
+      ];
     };
 }
