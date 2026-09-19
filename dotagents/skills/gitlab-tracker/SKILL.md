@@ -1,12 +1,12 @@
 ---
 name: gitlab-tracker
 description: >-
-  Preferred GitLab issue-tracker conventions for the engineering skills:
-  specs and wayfinder maps as Issues, tickets and wayfinder items as child
-  Tasks, blocking edges as description footnotes (no native blocked-by). Use
-  whenever configuring a GitLab repo with /setup-matt-pocock-skills,
-  publishing specs/tickets to GitLab, or running /wayfinder on a GitLab
-  remote.
+  Preferred GitLab issue-tracker conventions for the engineering skills.
+  Auto-discovered by /setup-matt-pocock-skills: when the git remote is GitLab
+  (or the user picks GitLab), copy this skill's issue-tracker.md to
+  docs/agents/issue-tracker.md. Specs/maps as Issues, tickets/wayfinder items
+  as child Tasks, blocking as description footnotes. Also use when publishing
+  specs/tickets to GitLab or running /wayfinder on a GitLab remote.
 disable-model-invocation: true
 ---
 
