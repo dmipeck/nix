@@ -32,7 +32,6 @@ in
       # content in its own config dir (options declared below).
       ds = config.dotagents.claudeDeepseek;
       cloudflareTokenPath = sopsLib.pathOrNull config config.dotagents.mcps.cloudflare.sops "token";
-      planeTokenPath = sopsLib.pathOrNull config config.dotagents.mcps.plane.sops "token";
       deepseekApiKeyPath = sopsLib.pathOrNull config ds.sops "apiKey";
 
       # Common Model + Instance is Cursor-shaped (stdio / url). Claude Adapter
@@ -97,21 +96,13 @@ in
       );
 
       planeServer = mcpServers.plane or null;
-      planeHeadersHelper = pkgs.writeShellScriptBin "plane-mcp-headers" ''
-        out='{"X-Workspace-slug": "${config.dotagents.mcps.plane.workspaceSlug}"'
-        ${lib.optionalString (planeTokenPath != null) ''
-          token="$(<"${planeTokenPath}")"
-          out="$out, \"Authorization\": \"Bearer $token\""
-        ''}
-        out="$out}"
-        printf '%s' "$out"
-      '';
       planeMcpServers = lib.optionalAttrs (planeServer != null) {
         plane = {
-          type = "http";
-          url = planeServer.url;
-          headersHelper = "${planeHeadersHelper}/bin/plane-mcp-headers";
-        };
+          type = "stdio";
+          command = planeServer.command;
+          args = planeServer.args or [ ];
+        }
+        // lib.optionalAttrs ((planeServer.env or { }) != { }) { env = planeServer.env; };
       };
 
       firebaseServer = mcpServers.firebase or null;
