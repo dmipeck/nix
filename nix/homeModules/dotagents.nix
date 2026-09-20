@@ -56,20 +56,6 @@ in
         // lib.optionalAttrs (mcps.cloudflare.accountId != null) {
           "cf-account-id" = mcps.cloudflare.accountId;
         };
-
-      # The self-hosted Plane MCP server authenticates with a Plane API PAT
-      # sent as an Authorization: Bearer header, plus a required
-      # X-Workspace-slug header. The token header value references the
-      # sops-decrypted secret file via opencode's "{file:...}" substitution,
-      # so only the file path ever appears in the Nix store / generated
-      # config, never the token. The workspace slug comes from the per-user
-      # `dotagents.mcps.plane.workspaceSlug` option (default "littlemonkey").
-      planeHeaders = {
-        "X-Workspace-slug" = mcps.plane.workspaceSlug;
-      }
-      // lib.optionalAttrs (planeTokenPath != null) {
-        Authorization = "Bearer {file:${planeTokenPath}}";
-      };
     in
     {
       options.dotagents = {
@@ -373,38 +359,33 @@ in
                 Whether to add the plane MCP server to the AI tool's config.
                 Off by default since not every profile has a Plane instance;
                 set to true and provide `dotagents.mcps.plane.url` (and
-                usually `sops.secrets.token`) to enable it.
+                usually `sops.secrets.token`) to enable it. Uses
+                github.com/dmipeck/plane-mcp (local stdio): one Connection,
+                every tool takes an explicit `workspace` slug — no per-workspace
+                reconfigure.
               '';
             };
             url = lib.mkOption {
               type = lib.types.nullOr lib.types.str;
               default = null;
               description = ''
-                Base URL of the Plane MCP endpoint (e.g.
-                https://mcp.plane.littlemonkey.co.nz). The remote server path
-                "/http/api-key/mcp" is appended. Only read when
-                `dotagents.mcps.plane.enable` is true. Leave null to keep the
-                authored mcp.json URL.
-              '';
-            };
-            workspaceSlug = lib.mkOption {
-              type = lib.types.str;
-              default = "littlemonkey";
-              description = ''
-                Plane workspace slug sent as the X-Workspace-slug header to
-                the remote MCP server. The server requires this header to
-                select the workspace. Defaults to "littlemonkey".
+                Plane API base URL passed as PLANE_BASE_URL to plane-mcp
+                (e.g. https://plane.example.com/api). Only read when
+                `dotagents.mcps.plane.enable` is true. Leave null to inherit
+                PLANE_BASE_URL from the shell (plane-mcp default is
+                https://api.plane.so).
               '';
             };
             sops = lib.mkOption {
               type = sopsLib.mkType;
               default = { };
               description = ''
-                Sops-backed secrets for the plane MCP server. Gate with
+                Sops-backed secrets for plane-mcp. Gate with
                 `dotagents.mcps.plane.sops.enable`, then set
-                `secrets.token.key`. Sent as Authorization: Bearer via
-                "{file:...}" substitution. Leave disabled to connect without
-                a token.
+                `secrets.token.key`. plane-mcp reads PLANE_API_KEY (no
+                token-file env), so the server is wrapped in a bash shim that
+                reads the decrypted file at startup. Leave disabled to inherit
+                PLANE_API_KEY from the shell.
               '';
             };
           };
@@ -614,10 +595,37 @@ in
               plane = {
                 enable = mcps.plane.enable;
               }
-              // lib.optionalAttrs mcps.plane.enable { headers = planeHeaders; }
-              // lib.optionalAttrs (mcps.plane.enable && mcps.plane.url != null) {
-                url = "${mcps.plane.url}/http/api-key/mcp";
-              };
+              // lib.optionalAttrs mcps.plane.enable (
+                let
+                  baseCmd = resolved.plane.command;
+                  baseArgs = resolved.plane.args or [ ];
+                in
+                {
+                  # plane-mcp reads PLANE_API_KEY (no token-file env), so wrap
+                  # with bash that reads the sops file at startup.
+                  command = if planeTokenPath != null then "${pkgs.bash}/bin/bash" else baseCmd;
+                  args =
+                    if planeTokenPath != null then
+                      [
+                        "-c"
+                        ''
+                          set -e
+                          PLANE_API_KEY="$(<"$PLANE_API_KEY_FILE")" \
+                            exec ${baseCmd} ${lib.concatStringsSep " " (map lib.escapeShellArg baseArgs)}
+                        ''
+                      ]
+                    else
+                      baseArgs;
+                  env =
+                    (resolved.plane.env or { })
+                    // lib.optionalAttrs (mcps.plane.url != null) {
+                      PLANE_BASE_URL = mcps.plane.url;
+                    }
+                    // lib.optionalAttrs (planeTokenPath != null) {
+                      PLANE_API_KEY_FILE = planeTokenPath;
+                    };
+                }
+              );
               firebase = {
                 enable = mcps.firebase.enable;
               };

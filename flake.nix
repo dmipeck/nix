@@ -41,6 +41,10 @@
       url = "github:hardikpandya/stop-slop";
       flake = false;
     };
+    plane-mcp = {
+      url = "github:dmipeck/plane-mcp/v0.1.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./nix);

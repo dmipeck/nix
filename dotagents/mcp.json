@@ -85,10 +85,12 @@
       }
     },
     "plane": {
-      "url": "https://mcp.plane.littlemonkey.co.nz/http/api-key/mcp",
-      "headers": {
-        "Authorization": "Bearer ${env:PLANE_API_TOKEN}",
-        "X-Workspace-slug": "littlemonkey"
+      "type": "stdio",
+      "command": "plane-mcp",
+      "args": [],
+      "env": {
+        "PLANE_BASE_URL": "${env:PLANE_BASE_URL}",
+        "PLANE_API_KEY": "${env:PLANE_API_KEY}"
       }
     },
     "firebase": {

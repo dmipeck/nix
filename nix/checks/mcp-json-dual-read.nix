@@ -25,6 +25,7 @@
       # resolveMcpPackages expects packages coercible via "${pkg}/bin/…".
       resolved = mcpLib.resolveMcpPackages {
         mcp-nixos = "/nix/store/fake-mcp-nixos";
+        plane-mcp = "/nix/store/fake-plane-mcp";
       } authored;
 
       overlaid = mcpLib.applyInstanceOverlay {
@@ -41,10 +42,15 @@
         };
         plane = {
           enable = true;
-          url = "https://mcp.plane.example/http/api-key/mcp";
+          env = {
+            PLANE_BASE_URL = "https://plane.example/api";
+            PLANE_API_KEY_FILE = "/run/secrets/plane-token";
+          };
+        };
+        cloudflare = {
+          enable = true;
           headers = {
-            Authorization = "Bearer ${filePh "/run/secrets/plane-token"}";
-            "X-Workspace-slug" = "littlemonkey";
+            Authorization = "Bearer ${filePh "/run/secrets/cloudflare-token"}";
           };
         };
         # Disabled servers drop out of the catalog used for emit.
@@ -76,19 +82,20 @@
         }
         {
           name = "package-resolve-rewrites-command";
-          ok = lib.hasPrefix "/nix/store/fake-mcp-nixos/bin/" resolved.nixos.command;
+          ok =
+            lib.hasPrefix "/nix/store/fake-mcp-nixos/bin/" resolved.nixos.command
+            && lib.hasPrefix "/nix/store/fake-plane-mcp/bin/" resolved.plane.command;
         }
         {
           name = "instance-overlay-url";
-          ok =
-            overlaid.gitlab.url == "https://gitlab.example/api/v4/mcp"
-            && overlaid.plane.url == "https://mcp.plane.example/http/api-key/mcp";
+          ok = overlaid.gitlab.url == "https://gitlab.example/api/v4/mcp";
         }
         {
           name = "instance-overlay-env-placeholder";
           ok =
             overlaid.grafana.env.GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE
-            == envPh "GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE";
+            == envPh "GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE"
+            && overlaid.plane.env.PLANE_BASE_URL == "https://plane.example/api";
         }
         {
           name = "instance-disable-drops-server";
@@ -106,6 +113,7 @@
           name = "cursor-emit-stdio-shape";
           ok =
             cursorMcp.mcpServers.nixos.type or null == "stdio"
+            && cursorMcp.mcpServers.plane.type or null == "stdio"
             && cursorMcp.mcpServers.gitlab ? url
             && !(cursorMcp.mcpServers.gitlab ? type && cursorMcp.mcpServers.gitlab.type == "remote");
         }
@@ -120,13 +128,13 @@
           name = "cursor-emit-rewrites-file-refs";
           ok =
             lib.hasInfix (
-              envPrefix + "DOTAGENTS_CURSOR_PLANE_AUTHORIZATION"
-            ) cursorMcp.mcpServers.plane.headers.Authorization
-            && !(lib.hasInfix "{file:" cursorMcp.mcpServers.plane.headers.Authorization);
+              envPrefix + "DOTAGENTS_CURSOR_CLOUDFLARE_AUTHORIZATION"
+            ) cursorMcp.mcpServers.cloudflare.headers.Authorization
+            && !(lib.hasInfix "{file:" cursorMcp.mcpServers.cloudflare.headers.Authorization);
         }
         {
           name = "cursor-file-refs-collected";
-          ok = builtins.any (r: r.name == "DOTAGENTS_CURSOR_PLANE_AUTHORIZATION") fileRefs;
+          ok = builtins.any (r: r.name == "DOTAGENTS_CURSOR_CLOUDFLARE_AUTHORIZATION") fileRefs;
         }
       ];
 
