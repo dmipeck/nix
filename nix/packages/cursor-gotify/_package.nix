@@ -5,6 +5,7 @@
   writeShellApplication,
   curl,
   coreutils,
+  jq,
 }:
 
 writeShellApplication {
@@ -12,6 +13,7 @@ writeShellApplication {
   runtimeInputs = [
     curl
     coreutils
+    jq
   ];
   text = ''
     set -euo pipefail
@@ -32,18 +34,24 @@ writeShellApplication {
     title="Cursor"
     priority="5"
     message=""
+    # Max body length for heuristic afterAgentResponse pushes (chars).
+    max_chars="''${CURSOR_GOTIFY_MAX_CHARS:-400}"
 
     usage() {
       cat <<'EOF'
     Usage:
       cursor-gotify push [-t title] [-p priority] <message>
       cursor-gotify hook-stop
+      cursor-gotify hook-after-agent-response
 
     Config (env overrides file):
       GOTIFY_URL / GOTIFY_TOKEN
       $XDG_CONFIG_HOME/cursor-gotify/env
+      CURSOR_GOTIFY_MAX_CHARS (default 400) — truncate afterAgentResponse text
 
-    hook-stop drains Cursor hook stdin and pushes "Agent stopped".
+    hook-stop drains Cursor stop-hook stdin and pushes "Agent stopped".
+    hook-after-agent-response reads afterAgentResponse JSON (.text), truncates,
+    and pushes a heuristic "Agent replied" notification (noisy; not needs-input).
     EOF
     }
 
@@ -63,6 +71,18 @@ writeShellApplication {
         -F "message=$message" \
         -F "priority=$priority" \
         "$base/message" >/dev/null
+    }
+
+    # Collapse whitespace and truncate to max_chars (append … if cut).
+    truncate_message() {
+      local raw="$1"
+      local flat
+      flat="$(printf '%s' "$raw" | tr '\n\r\t' '   ' | tr -s ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      if [ "''${#flat}" -le "$max_chars" ]; then
+        printf '%s' "$flat"
+        return
+      fi
+      printf '%s…' "''${flat:0:max_chars}"
     }
 
     if [ "$#" -lt 1 ]; then
@@ -113,6 +133,22 @@ writeShellApplication {
         push_message || true
         exit 0
         ;;
+      hook-after-agent-response)
+        # Heuristic: last assistant text from afterAgentResponse hook stdin.
+        # Not a reliable "needs input" signal — fires on every agent reply.
+        payload="$(cat || true)"
+        text="$(printf '%s' "$payload" | jq -r '.text // empty' 2>/dev/null || true)"
+        if [ -z "$text" ]; then
+          exit 0
+        fi
+        message="$(truncate_message "$text")"
+        if [ -z "$message" ]; then
+          exit 0
+        fi
+        title="Cursor · agent replied"
+        push_message || true
+        exit 0
+        ;;
       -h|--help|help)
         usage
         exit 0
@@ -126,7 +162,7 @@ writeShellApplication {
   '';
 
   meta = {
-    description = "Push Cursor agent stop events to a Gotify server";
+    description = "Push Cursor agent stop / reply events to a Gotify server";
     homepage = "https://gotify.net/docs/pushmsg";
     license = lib.licenses.mit;
     mainProgram = "cursor-gotify";

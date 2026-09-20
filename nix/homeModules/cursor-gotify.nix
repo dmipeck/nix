@@ -1,4 +1,4 @@
-# Cursor agent stop → local Gotify push (deterministic hook, not model-called).
+# Cursor agent stop / reply → local Gotify push (deterministic hooks, not model-called).
 {
   sopsLib,
   ...
@@ -17,15 +17,20 @@
       tokenPath = sopsLib.pathOrNull config cfg.sops "token";
       jsonFormat = pkgs.formats.json { };
 
-      # User-hook entry Cursor resolves relative to ~/.cursor/
+      # User-hook entries Cursor resolves relative to ~/.cursor/
       stopHookCommand = "./hooks/cursor-gotify-stop.sh";
+      afterAgentResponseHookCommand = "./hooks/cursor-gotify-after-agent-response.sh";
 
       stopHookScript = pkgs.writeShellScript "cursor-gotify-stop.sh" ''
         exec ${cfg.package}/bin/cursor-gotify hook-stop
       '';
 
-      # Seed / merge payload: only our stop hook; jq merge preserves other hooks.
-      hooksMergeFile = jsonFormat.generate "cursor-gotify-hooks-merge.json" {
+      afterAgentResponseHookScript = pkgs.writeShellScript "cursor-gotify-after-agent-response.sh" ''
+        exec ${cfg.package}/bin/cursor-gotify hook-after-agent-response
+      '';
+
+      # Seed / merge payload; jq merge preserves other hooks.
+      hooksMergeFile = jsonFormat.generate "cursor-gotify-hooks-merge.json" ({
         version = 1;
         hooks = {
           stop = [
@@ -33,8 +38,15 @@
               command = stopHookCommand;
             }
           ];
+        }
+        // lib.optionalAttrs cfg.afterAgentResponse.enable {
+          afterAgentResponse = [
+            {
+              command = afterAgentResponseHookCommand;
+            }
+          ];
         };
-      };
+      });
     in
     {
       options.programs.cursor-gotify = {
@@ -43,7 +55,7 @@
         package = lib.mkOption {
           type = lib.types.package;
           default = defaultPackage;
-          description = "cursor-gotify package (Gotify push CLI + hook-stop).";
+          description = "cursor-gotify package (Gotify push CLI + lifecycle hooks).";
         };
 
         url = lib.mkOption {
@@ -73,6 +85,18 @@
             `secrets.token.key`.
           '';
         };
+
+        afterAgentResponse = {
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            default = true;
+            description = ''
+              Wire Cursor `afterAgentResponse` → Gotify with truncated assistant
+              text (heuristic context). Noisy: fires on every agent reply; does
+              not mean the agent needs input.
+            '';
+          };
+        };
       };
 
       config = lib.mkIf cfg.enable {
@@ -89,13 +113,20 @@
 
         home.packages = [ cfg.package ];
 
-        # Hook script Cursor invokes from ~/.cursor/hooks.json
+        # Hook scripts Cursor invokes from ~/.cursor/hooks.json
         home.file.".cursor/hooks/cursor-gotify-stop.sh" = {
           source = stopHookScript;
           executable = true;
         };
 
-        # Write GOTIFY_* env for the CLI; merge stop hook into hooks.json
+        home.file.".cursor/hooks/cursor-gotify-after-agent-response.sh" =
+          lib.mkIf cfg.afterAgentResponse.enable
+            {
+              source = afterAgentResponseHookScript;
+              executable = true;
+            };
+
+        # Write GOTIFY_* env for the CLI; merge hooks into hooks.json
         # without wiping unrelated hooks (same idea as cursor-cli jq merge).
         home.activation.cursorGotify =
           lib.hm.dag.entryAfter ([ "linkGeneration" ] ++ lib.optional (tokenPath != null) "sops-nix")
@@ -149,6 +180,12 @@
                     ((.hooks.stop // []) + ($add.hooks.stop // []))
                     | unique_by(.command)
                   )
+                | if ($add.hooks.afterAgentResponse // null) != null then
+                    .hooks.afterAgentResponse = (
+                      ((.hooks.afterAgentResponse // []) + ($add.hooks.afterAgentResponse // []))
+                      | unique_by(.command)
+                    )
+                  else . end
               ' "$hooks" "$merge" > "$tmp"
                   ${pkgs.coreutils}/bin/mv "$tmp" "$hooks"
                 fi
