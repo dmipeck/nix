@@ -1,0 +1,5 @@
+interface:
+  display_name: "Cursor Handoff"
+  short_description: "Hand off to a background Cursor agent"
+policy:
+  allow_implicit_invocation: false
