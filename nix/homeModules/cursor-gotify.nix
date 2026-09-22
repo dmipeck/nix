@@ -1,4 +1,5 @@
 # Cursor agent stop / reply → local Gotify push (deterministic hooks, not model-called).
+# stop is suppressed when afterAgentResponse already pushed for the same generation.
 {
   sopsLib,
   ...
@@ -50,7 +51,7 @@
     in
     {
       options.programs.cursor-gotify = {
-        enable = lib.mkEnableOption "Cursor stop-hook → Gotify notifications";
+        enable = lib.mkEnableOption "Cursor agent lifecycle → Gotify notifications";
 
         package = lib.mkOption {
           type = lib.types.package;
@@ -93,7 +94,8 @@
             description = ''
               Wire Cursor `afterAgentResponse` → Gotify with truncated assistant
               text (heuristic context). Noisy: fires on every agent reply; does
-              not mean the agent needs input.
+              not mean the agent needs input. When enabled, successful reply
+              pushes suppress the matching `stop` "Agent stopped" notification.
             '';
           };
         };
