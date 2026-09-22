@@ -1,5 +1,5 @@
 ---
-description: Never create or accept merge commits — FF or rebase only
+description: MR/PR FF or rebase only. Use when merging MR/PR changes
 alwaysApply: true
 ---
 

@@ -1,18 +1,10 @@
 ---
-description: MR/PR titles must follow conventional-commit format
+description: MR/PR conventional-commit titles. Use when creating/editing MR/PR
 alwaysApply: true
 ---
 
-Every merge request and pull request title must use Conventional Commits:
-`<type>(<scope>): <subject>`. Same types, scope rules, and subject style as
-the `conventional-commits` skill (imperative, ≤50 chars, no trailing
-period). Type from the change content, not the ticket name.
+Every merge request and pull request title must use conventional-commits format
+Apply when creating or updating an MR/PR. Never ship a free-form, sentence-case
+or ticket-only title (`Fix bug`, `Update docs`, `ABC-123`). This prevents any
+squash and merge/rebase flows from landing an invalid commit title.
 
-Apply when creating or updating an MR/PR (`gh pr create` / `gh pr edit`,
-`glab mr create` / `glab mr update`, GitHub/GitLab MCP equivalents). Never
-ship a free-form, sentence-case, or ticket-only title (`Fix bug`,
-`Update docs`, `ABC-123`). Optional scope when it adds signal; `!` or a
-`BREAKING CHANGE:` footer for breaking changes.
-
-Draft vs ready does not relax this — the title is conventional from the
-first pushable open.
