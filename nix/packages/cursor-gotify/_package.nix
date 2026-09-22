@@ -20,6 +20,10 @@ writeShellApplication {
 
     config_dir="''${XDG_CONFIG_HOME:-$HOME/.config}/cursor-gotify"
     config_file="$config_dir/env"
+    reply_marker_dir="$config_dir/reply-by-gen"
+    last_reply_file="$config_dir/last-reply-push"
+    # Fallback window when generation_id is missing (seconds).
+    stop_dedupe_secs="''${CURSOR_GOTIFY_STOP_DEDUPE_SECS:-30}"
 
     # Optional env file (GOTIFY_URL / GOTIFY_TOKEN). Shell env wins.
     if [ -f "$config_file" ]; then
@@ -48,10 +52,15 @@ writeShellApplication {
       GOTIFY_URL / GOTIFY_TOKEN
       $XDG_CONFIG_HOME/cursor-gotify/env
       CURSOR_GOTIFY_MAX_CHARS (default 400) — truncate afterAgentResponse text
+      CURSOR_GOTIFY_STOP_DEDUPE_SECS (default 30) — fallback stop suppress window
 
-    hook-stop drains Cursor stop-hook stdin and pushes "Agent stopped".
     hook-after-agent-response reads afterAgentResponse JSON (.text), truncates,
     and pushes a heuristic "Agent replied" notification (noisy; not needs-input).
+    On successful push it records the generation so hook-stop can stay quiet.
+
+    hook-stop pushes "Agent stopped" only when no "agent replied" push was
+    recorded for this generation (abort/error/empty text, or afterAgentResponse
+    disabled). Skips when a reply notification already covered the turn.
     EOF
     }
 
@@ -83,6 +92,45 @@ writeShellApplication {
         return
       fi
       printf '%s…' "''${flat:0:max_chars}"
+    }
+
+    safe_gen_name() {
+      printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_'
+    }
+
+    mark_reply_sent() {
+      local gen="$1"
+      mkdir -p "$reply_marker_dir"
+      date +%s > "$last_reply_file"
+      if [ -n "$gen" ]; then
+        : > "$reply_marker_dir/$(safe_gen_name "$gen")"
+      fi
+    }
+
+    # True if an agent-replied push already covered this turn.
+    reply_already_notified() {
+      local gen="$1"
+      if [ -n "$gen" ] && [ -f "$reply_marker_dir/$(safe_gen_name "$gen")" ]; then
+        return 0
+      fi
+      # Fallback when generation_id missing from either hook payload.
+      if [ -z "$gen" ] && [ -f "$last_reply_file" ]; then
+        local now prev age
+        now="$(date +%s)"
+        prev="$(cat "$last_reply_file" 2>/dev/null || echo 0)"
+        age=$((now - prev))
+        if [ "$age" -ge 0 ] && [ "$age" -le "$stop_dedupe_secs" ]; then
+          return 0
+        fi
+      fi
+      return 1
+    }
+
+    clear_reply_marker() {
+      local gen="$1"
+      if [ -n "$gen" ]; then
+        rm -f "$reply_marker_dir/$(safe_gen_name "$gen")"
+      fi
     }
 
     if [ "$#" -lt 1 ]; then
@@ -127,7 +175,13 @@ writeShellApplication {
         push_message
         ;;
       hook-stop)
-        cat >/dev/null || true
+        # Only notify when "agent replied" did not already cover this generation.
+        payload="$(cat || true)"
+        gen="$(printf '%s' "$payload" | jq -r '.generation_id // empty' 2>/dev/null || true)"
+        if reply_already_notified "$gen"; then
+          clear_reply_marker "$gen"
+          exit 0
+        fi
         message="Agent stopped"
         title="Cursor"
         push_message || true
@@ -138,6 +192,7 @@ writeShellApplication {
         # Not a reliable "needs input" signal — fires on every agent reply.
         payload="$(cat || true)"
         text="$(printf '%s' "$payload" | jq -r '.text // empty' 2>/dev/null || true)"
+        gen="$(printf '%s' "$payload" | jq -r '.generation_id // empty' 2>/dev/null || true)"
         if [ -z "$text" ]; then
           exit 0
         fi
@@ -146,7 +201,9 @@ writeShellApplication {
           exit 0
         fi
         title="Cursor · agent replied"
-        push_message || true
+        if push_message; then
+          mark_reply_sent "$gen"
+        fi
         exit 0
         ;;
       -h|--help|help)
