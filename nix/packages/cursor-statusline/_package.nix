@@ -1,4 +1,4 @@
-# Cursor CLI status line — model/repo left, context + subscription usage right.
+# Cursor CLI status line — context + subscription usage left, then model; repo below.
 # Reads StatusLinePayload JSON on stdin; optional plan usage via DashboardService
 # (cached under $XDG_CACHE_HOME/cursor-statusline-usage.json).
 {
@@ -28,7 +28,6 @@ let
       DIR=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
       VIM=$(echo "$input" | jq -r '.vim.mode // empty')
       WT=$(echo "$input" | jq -r '.worktree.name // empty')
-      WIDTH=$(echo "$input" | jq -r '.render_width_chars // 0')
 
       RESET=$'\033[0m'
       DIM=$'\033[90m'
@@ -122,11 +121,13 @@ let
         BRANCH=$(git -C "$DIR" branch --show-current 2>/dev/null)
       fi
 
-      # Left: model (+vim) • repo on branch
+      # Line 1: bars left, then model (+param +vim mode)
       MODEL_LABEL="$MODEL"
       [ -n "$PARAM" ] && MODEL_LABEL="$MODEL $PARAM"
       [ -n "$VIM" ] && MODEL_LABEL="$MODEL_LABEL $VIM"
+      MODE_FMT="''${CYAN}''${MODEL_LABEL}''${RESET}"
 
+      # Line 2: repo / branch / worktree
       if [ -n "$BRANCH" ]; then
         REPO_LABEL="''${REPO} on  ''${BRANCH}"
       else
@@ -134,37 +135,22 @@ let
       fi
       [ -n "$WT" ] && REPO_LABEL="''${REPO_LABEL} [''${WT}]"
 
-      LEFT_PLAIN="''${REPO_LABEL} ''${BULLET} ''${MODEL_LABEL}"
-      LEFT="''${DIM}''${REPO_LABEL}''${RESET} ''${DIM}''${BULLET}''${RESET} ''${CYAN}''${MODEL_LABEL}''${RESET}"
-
-      # Right: Context <bar> … • Usage <bar> …
-      CTX_PLAIN="Context ''${CTX_BAR} ''${TOK_LABEL} (''${PCT}%)"
       CTX_FMT="''${DIM}Context''${RESET} ''${CTX_COLOR}''${CTX_BAR} ''${TOK_LABEL} (''${PCT}%)''${RESET}"
-
-      RIGHT_PLAIN="$CTX_PLAIN"
-      RIGHT="$CTX_FMT"
+      BARS_FMT="$CTX_FMT"
 
       if [ -n "$SUB_USAGE" ] && [ -n "$SUB_CYCLE" ]; then
         [ "$SUB_CYCLE" -gt 100 ] 2>/dev/null && SUB_CYCLE=100
         [ "$SUB_CYCLE" -lt 0 ] 2>/dev/null && SUB_CYCLE=0
         SUB_BAR=$(make_bar "$SUB_USAGE" 10)
         SUB_COLOR=$(bar_color "$SUB_USAGE")
-        SUB_PLAIN="Usage ''${SUB_BAR} ''${SUB_USAGE}%/''${SUB_CYCLE}%"
         SUB_FMT="''${DIM}Usage''${RESET} ''${SUB_COLOR}''${SUB_BAR} ''${SUB_USAGE}%/''${SUB_CYCLE}%''${RESET}"
-        RIGHT_PLAIN="''${RIGHT_PLAIN} ''${BULLET} ''${SUB_PLAIN}"
-        RIGHT="''${RIGHT} ''${DIM}''${BULLET}''${RESET} ''${SUB_FMT}"
+        BARS_FMT="''${BARS_FMT} ''${DIM}''${BULLET}''${RESET} ''${SUB_FMT}"
       fi
 
-      if [ "$WIDTH" -gt 0 ] 2>/dev/null; then
-        LEFT_LEN=''${#LEFT_PLAIN}
-        RIGHT_LEN=''${#RIGHT_PLAIN}
-        PAD=$((WIDTH - LEFT_LEN - RIGHT_LEN))
-        [ "$PAD" -lt 1 ] && PAD=1
-        printf -v SPACES "%''${PAD}s" ""
-        printf "%b%s%b\n" "$LEFT" "$SPACES" "$RIGHT"
-      else
-        printf "%b  %b\n" "$LEFT" "$RIGHT"
-      fi
+      # bars • mode — left-aligned, no width padding
+      SEP_FMT=" ''${DIM}''${BULLET}''${RESET} "
+      printf "%b%b%b\n" "$BARS_FMT" "$SEP_FMT" "$MODE_FMT"
+      printf "%b\n" "''${DIM}''${REPO_LABEL}''${RESET}"
     '';
   };
 in
