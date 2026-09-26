@@ -1,0 +1,5 @@
+interface:
+  display_name: "To Follow-Up"
+  short_description: "Park out-of-scope decided work as tickets"
+policy:
+  allow_implicit_invocation: false
