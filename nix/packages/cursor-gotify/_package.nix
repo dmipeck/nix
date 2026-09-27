@@ -1,5 +1,5 @@
-# Minimal Gotify push CLI for Cursor agent lifecycle hooks.
-# Talks HTTP to a Gotify server (typically local); no agent judgment required.
+# Minimal Gotify push CLI for Cursor agent lifecycle hooks (stop / afterAgentResponse).
+# homeModules/cursor-gotify wires hook-stop and hook-after-agent-response independently.
 {
   lib,
   writeShellApplication,
