@@ -1,5 +1,7 @@
-# Cursor agent stop / reply → local Gotify push (deterministic hooks, not model-called).
-# stop is suppressed when afterAgentResponse already pushed for the same generation.
+# Cursor agent lifecycle → Gotify push (deterministic hooks, not model-called).
+# `stop`: optional "Agent stopped" on hook-stop (default on).
+# `afterAgentResponse`: optional truncated reply text (default on); when both run,
+# reply pushes suppress the matching stop notification for the same generation.
 {
   sopsLib,
   ...
@@ -33,20 +35,22 @@
       # Seed / merge payload; jq merge preserves other hooks.
       hooksMergeFile = jsonFormat.generate "cursor-gotify-hooks-merge.json" ({
         version = 1;
-        hooks = {
-          stop = [
-            {
-              command = stopHookCommand;
-            }
-          ];
-        }
-        // lib.optionalAttrs cfg.afterAgentResponse.enable {
-          afterAgentResponse = [
-            {
-              command = afterAgentResponseHookCommand;
-            }
-          ];
-        };
+        hooks =
+          { }
+          // lib.optionalAttrs cfg.stop.enable {
+            stop = [
+              {
+                command = stopHookCommand;
+              }
+            ];
+          }
+          // lib.optionalAttrs cfg.afterAgentResponse.enable {
+            afterAgentResponse = [
+              {
+                command = afterAgentResponseHookCommand;
+              }
+            ];
+          };
       });
     in
     {
@@ -87,6 +91,20 @@
           '';
         };
 
+        stop = {
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            default = true;
+            description = ''
+              Wire Cursor `stop` → Gotify with an "Agent stopped" notification.
+              Disable to keep only `afterAgentResponse` reply pushes (or silence
+              Gotify entirely when both are off). When enabled alongside
+              afterAgentResponse, reply pushes suppress stop for the same
+              generation.
+            '';
+          };
+        };
+
         afterAgentResponse = {
           enable = lib.mkOption {
             type = lib.types.bool;
@@ -94,8 +112,9 @@
             description = ''
               Wire Cursor `afterAgentResponse` → Gotify with truncated assistant
               text (heuristic context). Noisy: fires on every agent reply; does
-              not mean the agent needs input. When enabled, successful reply
-              pushes suppress the matching `stop` "Agent stopped" notification.
+              not mean the agent needs input. When enabled with stop, successful
+              reply pushes suppress the matching stop "Agent stopped"
+              notification.
             '';
           };
         };
@@ -116,7 +135,7 @@
         home.packages = [ cfg.package ];
 
         # Hook scripts Cursor invokes from ~/.cursor/hooks.json
-        home.file.".cursor/hooks/cursor-gotify-stop.sh" = {
+        home.file.".cursor/hooks/cursor-gotify-stop.sh" = lib.mkIf cfg.stop.enable {
           source = stopHookScript;
           executable = true;
         };
@@ -173,15 +192,22 @@
                   ${pkgs.coreutils}/bin/cp "$merge" "$hooks"
                 else
                   tmp="$(${pkgs.coreutils}/bin/mktemp)"
-              ${pkgs.jq}/bin/jq -s '
+              ${pkgs.jq}/bin/jq -s --arg stopCmd ${lib.escapeShellArg stopHookCommand} '
                 .[0] as $live | .[1] as $add
                 | $live
                 | .version = (.version // $add.version // 1)
                 | .hooks = (.hooks // {})
-                | .hooks.stop = (
-                    ((.hooks.stop // []) + ($add.hooks.stop // []))
-                    | unique_by(.command)
-                  )
+                | if ($add.hooks.stop // null) != null then
+                    .hooks.stop = (
+                      ((.hooks.stop // []) + ($add.hooks.stop // []))
+                      | unique_by(.command)
+                    )
+                  else
+                    .hooks.stop = (
+                      (.hooks.stop // [])
+                      | map(select(.command != $stopCmd))
+                    )
+                  end
                 | if ($add.hooks.afterAgentResponse // null) != null then
                     .hooks.afterAgentResponse = (
                       ((.hooks.afterAgentResponse // []) + ($add.hooks.afterAgentResponse // []))
