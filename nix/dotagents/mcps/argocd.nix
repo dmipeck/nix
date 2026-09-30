@@ -24,7 +24,7 @@ let
       inherit (finalAttrs) pname version src;
       pnpm = pkgs.pnpm;
       fetcherVersion = 4;
-      hash = "sha256-Y/4rr3joxtG9VBNflv1YOGAKmxjx+AP69sVvFOiuQFU=";
+      hash = "sha256-EFDw8RJ4IlLPHd9yMs+32pHJbW4ck6npwiz0tms1uTk=";
     };
 
     buildPhase = ''
