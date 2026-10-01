@@ -41,12 +41,11 @@ already decided; otherwise proceed with the defaults below.
 | Fast-forward merge | `merge_method` | `ff` |
 | Encourage squash commits | `squash_option` | `default_on` |
 | Automatic rebase prior to merge | `automatic_rebase_enabled` | `true` |
-| Pipelines must succeed | `only_allow_merge_if_pipeline_succeeds` | `true` **only when CI is configured** |
 
-CI is configured when the project has (or is about to gain) a root
-`.gitlab-ci.yml` / `.gitlab-ci.yaml`, or another committed pipeline config the
-agent is adding. No CI file and none planned → leave
-`only_allow_merge_if_pipeline_succeeds` unset/`false`.
+`only_allow_merge_if_pipeline_succeeds` (`Pipelines must succeed`): set `true`
+only when CI is configured. CI means the project has (or is about to gain) a
+root `.gitlab-ci.yml` / `.gitlab-ci.yaml`, or another committed pipeline config
+the agent is adding. No CI file and none planned → leave unset/`false`.
 
 ## Steps
 
