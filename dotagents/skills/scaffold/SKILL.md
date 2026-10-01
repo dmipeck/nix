@@ -13,33 +13,38 @@ not already a git repo, run `git init` first (pre-commit requires it).
 
 Before scaffolding, determine what the project actually is:
 
-1. **Glob for sources** — map files to languages: `*.nix` = Nix; `*.md` =
-   Markdown; `*.go` / `go.mod` = Go; `*.rs` / `Cargo.toml` = Rust; `*.py` /
-   `pyproject.toml` = Python; `*.ts` / `*.tsx` / `*.js` / `*.jsx` /
-   `package.json` = TypeScript or JavaScript; `*.sh` = Shell; `*.rb` /
-   `Gemfile` = Ruby. Check existing config like `.golangci.yml`,
-   `.eslintrc*`, or build definitions for hints about already-intended
-   tooling. Empty or nearly empty dir means the project is new — infer the
-   intended language from the directory name and any README.
-2. **Use the tool table** — for each detected language take its formatters,
-   linters and LSP from the table below.
-3. **Verify against nixpkgs** — confirm every tool exists in nixpkgs
+1. **Glob for sources** — map files to languages: `*.nix` = Nix; `*.go` /
+   `go.mod` = Go; `*.rs` / `Cargo.toml` = Rust; `*.py` / `pyproject.toml` =
+   Python; `*.ts` / `*.tsx` / `*.js` / `*.jsx` / `package.json` = TypeScript
+   or JavaScript; `*.sh` = Shell; `*.rb` / `Gemfile` = Ruby. Check existing
+   config like `.golangci.yml`, `.eslintrc*`, or build definitions for hints
+   about already-intended tooling. Empty or nearly empty dir means the
+   project is new — infer the intended language from the directory name and
+   any README.
+2. **Skip plain-text / documentation** — do **not** scaffold formatters,
+   linters, LSPs, or pre-commit hooks for plain-text or documentation
+   (e.g. Markdown `*.md`, reStructuredText, AsciiDoc, plain `*.txt`).
+   Detecting those files must not add tools. They are out of scope for this
+   scaffold.
+3. **Use the tool table** — for each detected *code* language take its
+   formatters, linters and LSP from the table below.
+4. **Verify against nixpkgs** — confirm every tool exists in nixpkgs
    (`nix search nixpkgs <tool>`) before adding it. Do not invent a tool from
    memory; the table lists only names verified against nixos-unstable.
-4. Ask the user for the project name if not obvious from the directory; confirm
+5. Ask the user for the project name if not obvious from the directory; confirm
    the detected language set and the tool list before writing files, but
    proceed with sensible defaults if the user has no preference.
 
 "Relevant tools" below always means the base Nix tooling (pre-commit,
 gitleaks, nixfmt, editorconfig-checker) plus every formatter, linter and LSP
-listed for the detected languages in the table.
+listed for the detected code languages in the table — never for docs or
+plain text.
 
 ## Tool table (2026 community defaults)
 
 | Language | Formatters | Linters | LSP |
 |---|---|---|---|
 | Nix | `nixfmt` | `statix`, `deadnix` | `nixd` (`nil` alt) |
-| Markdown | `markdownlint-cli2` | `markdownlint-cli2` | `marksman` |
 | Go | `gofmt` in `go`, `goimports` in `gotools` | `golangci-lint` | `gopls` |
 | Rust | `rustfmt`, `clippy` | `clippy` | `rust-analyzer` |
 | Python | `ruff` (format) | `ruff` (lint) | `pyright` (`basedpyright` alt) |
@@ -49,7 +54,8 @@ listed for the detected languages in the table.
 LSPs are editor-side: they belong in the devShell `PATH` only — never in
 pre-commit hooks. Formatters and linters get both a pre-commit hook and a
 devShell entry. For a language missing from the table, web-search its current
-community default, verify the nixpkgs package name, then add a row.
+community default, verify the nixpkgs package name, then add a row — except
+plain-text/documentation languages, which stay unlinted (do not add a row).
 
 ## What to create
 
@@ -99,8 +105,8 @@ portable.
             # Rust: clippy rust-analyzer rustfmt
             # Python: pyright ruff
             # TypeScript/JS: biome typescript-language-server
-            # Markdown: markdownlint-cli2 marksman
             # Shell: bash-language-server shellcheck shfmt
+            # (no Markdown / docs / plain-text tools — do not lint those)
           ];
         in
         {
@@ -150,11 +156,11 @@ repos:
         language: system
 ```
 
-For every language detected, append its formatters and linters as local
-`language: system` hooks (entry = the devShell binary, `files:` regex matching
-the language's extensions) and add the tools to the devShell too. LSPs are
-never hooked — they are editor-side and reach the editor through the
-devShell `PATH`.
+For every detected code language (never plain-text/docs), append its
+formatters and linters as local `language: system` hooks (entry = the
+devShell binary, `files:` regex matching the language's extensions) and add
+the tools to the devShell too. LSPs are never hooked — they are editor-side
+and reach the editor through the devShell `PATH`.
 
 ## .editorconfig
 
