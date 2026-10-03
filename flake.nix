@@ -1,6 +1,13 @@
 {
   description = "Generic, reusable NixOS + home-manager module library";
 
+  nixConfig = {
+    extra-substituters = [ "https://ai.cachix.org" ];
+    extra-trusted-public-keys = [
+      "ai.cachix.org-1:N9dzRK+alWwoKXQlnn0H6aUx0lU/mspIoz8hMvGvbbc="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -44,6 +51,14 @@
     plane-mcp = {
       url = "github:dmipeck/plane-mcp/v0.1.0";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+    # ComfyUI (current). Do not force nixpkgs.follows — CUDA overlays need their pin.
+    nixified-ai = {
+      url = "github:nixified-ai/flake";
+    };
+    # InvokeAI is unmaintained upstream; last working pin from nixified.ai README.
+    nixified-ai-invokeai = {
+      url = "github:nixified-ai/flake/2aeb76f52f72c7a242f20e9bc47cfaa2ed65915d";
     };
   };
 
