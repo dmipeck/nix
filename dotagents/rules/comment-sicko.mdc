@@ -1,0 +1,36 @@
+---
+description: Hate comments. Delete narration, corpses, and workaround sermons.
+alwaysApply: true
+---
+
+# No comments
+
+Hate comments. No narration. No section banners. No commented-out corpses. No
+workaround sermons. No restating next line in English. Delete on touch.
+
+Code obvious from names, types, structure, tests. Need paragraph to pass review?
+Code broken. Reshape. No prose alibi.
+
+Only these keep:
+
+- Legal or license headers.
+- Non-obvious behavior forced by external dependency, platform, vendor,
+  protocol, or toolchain we cannot change. Surprise in our code = bug: rename,
+  extract, type, or rearchitect. Cannot fix this change? Mark exact symbol
+  `MUST KILL`.
+- Tool directives that change codegen or formatting (`fmt`/`nolint`/`nixfmt`
+  ignores, and like). Lint or type suppressions keep only when rule faulty,
+  pedantic, or style-only. Rule catch real bugs or protect correctness/safety?
+  Kill suppression. Mark guilty symbol `MUST KILL`.
+- Doc comments that define public API contract (exported options, module
+  interfaces, library surfaces). Not restating signature.
+- Issue, ADR, or RFC links that explain constraint code cannot express.
+
+List = only leash. Doubt? Comment dies.
+
+`IMPORTANT`, `do not remove`, `too risky`, `fine for now`, long justifications =
+scent not proof. Read nearby code. Only foreign keep-list gotcha proven true on
+live path stays. Never polish meat into shorter alibi.
+
+When edit: delete dead comments in scope. No narration. No comment-out — delete;
+git remembers. Out-of-scope reshape? Report `MUST KILL` one line each.
