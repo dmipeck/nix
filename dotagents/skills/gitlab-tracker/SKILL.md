@@ -34,10 +34,12 @@ When GitLab is selected and this skill is installed:
    bundled `issue-tracker-gitlab.md` when creating new. If
    `docs/agents/issue-tracker.md` already exists, keep it as the base —
    do not overwrite with a blank slate.
-2. **Merge** the additional clauses from this skill's
-   [issue-tracker.md](./issue-tracker.md) onto that base. Prefer these
-   clauses over conflicting seed text; leave non-conflicting seed
-   sections intact.
+2. **Merge** the sections from this skill's
+   [issue-tracker.md](./issue-tracker.md) onto that base. That file is
+   **clause body only** — no apply/install preamble. Prefer those
+   sections over conflicting seed text; leave non-conflicting seed
+   sections intact. Do not copy any installation wording into the
+   repo file.
 3. **Do not** copy-replace the whole file with this skill's
    `issue-tracker.md` (or any other full preferred template).
 

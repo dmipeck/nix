@@ -1,13 +1,3 @@
-# Additional clauses (Gitea preferred)
-
-Apply these clauses **on top of** a Gitea-shaped base (or an existing
-`docs/agents/issue-tracker.md`). There is no upstream mattpocock Gitea
-template — setup should first seed Conventions for create / read /
-list / comment / labels / close / PRs (MCP-first, `tea` fallback) plus
-the "PRs as a request surface" flag, then merge this file. Where a
-clause conflicts with seed text, **this file wins**. Leave
-non-conflicting seed sections intact.
-
 ## Type map
 
 | Artifact | Gitea type | How to create |
@@ -25,7 +15,7 @@ Everything is an Issue — do not invent a separate work-item type.
 - Create the parent Issue first, then each child.
 - Parent and child must be in the same repository.
 
-## Tooling override
+## Tooling
 
 Drive operations through the **Gitea MCP server** when available; fall
 back to [`tea`](https://gitea.com/gitea/tea) only when an MCP tool is
@@ -33,17 +23,17 @@ missing or fails. Prefer MCP for create / read / list / comment /
 labels / close / PRs; use `tea api` for dependency edges until MCP
 gains dependency tools.
 
-## Publish / fetch overrides
-
-When a skill says "publish to the issue tracker":
+## When a skill says "publish to the issue tracker"
 
 - **Spec** / wayfinder map → Gitea **Issue**.
 - **Ticket** / wayfinder item → Gitea **Issue** whose description
   starts with `Part of #<parent>`. Apply `ready-for-agent` unless
   instructed otherwise.
 
-When a skill says "fetch the relevant ticket": open the Issue by
-index; read description, labels, comments, and dependency list.
+## When a skill says "fetch the relevant ticket"
+
+Open the Issue by index; read description, labels, comments, and
+dependency list.
 
 ## Blocking relationships (native dependencies only)
 

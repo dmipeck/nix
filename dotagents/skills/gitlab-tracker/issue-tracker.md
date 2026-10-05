@@ -1,13 +1,3 @@
-# Additional clauses (GitLab preferred)
-
-Apply these clauses **on top of** the seeded
-`issue-tracker-gitlab.md` template (or an existing
-`docs/agents/issue-tracker.md`). Where a clause conflicts with seed
-text, **this file wins**. Leave non-conflicting seed sections
-(Conventions basics, MR triage surface flag, etc.) intact.
-
-Deltas vs the upstream mattpocock GitLab template:
-
 ## Type map
 
 | Artifact | GitLab type | How to create |
@@ -28,9 +18,7 @@ Prefer `glab work-items` for typed work items.
   `hierarchyWidget.parentId` (parent = the Issue's work-item GID).
 - Task and parent must be in the same project.
 
-## Publish / fetch overrides
-
-When a skill says "publish to the issue tracker":
+## When a skill says "publish to the issue tracker"
 
 - **Spec** / wayfinder map → GitLab **Issue**.
 - **Ticket** / wayfinder item → GitLab **Task**, child of the parent
@@ -38,8 +26,10 @@ When a skill says "publish to the issue tracker":
   unless instructed otherwise.
 - Do **not** publish tickets as Issues or specs as Tasks.
 
-When a skill says "fetch the relevant ticket": open the Task (or Issue)
-by IID; read description, footnotes, and notes.
+## When a skill says "fetch the relevant ticket"
+
+Open the Task (or Issue) by IID; read description, footnotes, and
+notes.
 
 ## Blocking relationships (footnotes only)
 
@@ -65,8 +55,6 @@ A Task is unblocked when every referenced IID is closed, or the
 footnote is `none`. Parse only `[^blocked-by]`.
 
 ## Wayfinding operations
-
-Override the upstream wayfinding section:
 
 - **Map**: one **Issue** labelled `wayfinder:map`, holding Destination /
   Notes / Decisions-so-far / Fog. Prefer
