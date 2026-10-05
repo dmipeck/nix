@@ -1,0 +1,47 @@
+--- a/SKILL.md	2026-10-06 10:56:46.702969266 +1300
++++ b/SKILL.md	2026-10-06 10:56:47.280487300 +1300
+@@ -27,6 +27,8 @@
+ - `docs/agents/`: does this skill's prior output already exist?
+ - `.scratch/`: a sign that a local-markdown issue tracker convention is already in use
+ - Is the `triage` skill installed? (a `triage` skill folder alongside this one, or `triage` in your available skills.) This decides whether Section B runs at all.
++- Is the `gitlab-tracker` skill installed? (a `gitlab-tracker` skill folder alongside this one, or `gitlab-tracker` in your available skills.) When GitLab is chosen, this decides whether to merge preferred GitLab clauses onto the seed.
++- Is the `gitea-tracker` skill installed? (a `gitea-tracker` skill folder alongside this one, or `gitea-tracker` in your available skills.) When present, offer Gitea as a tracker option and, if chosen, merge that skill's preferred clauses onto a Gitea-shaped base.
+ - Monorepo signals: a `pnpm-workspace.yaml`, a `workspaces` field in `package.json`, or a populated `packages/*` with its own `src/`. These are present only in a genuinely large multi-package repo; their absence means single-context, which is almost every repo.
+ 
+ ### 2. Present findings and ask
+@@ -39,14 +41,15 @@
+ 
+ > Explainer: The "issue tracker" is where issues live for this repo. Skills like `to-tickets`, `triage`, and `to-spec` read from and write to it. They need to know whether to call `gh issue create`, write a markdown file under `.scratch/`, or follow some other workflow you describe. Pick the place you actually track work for this repo.
+ 
+-Default posture: these skills were designed for GitHub. If a `git remote` points at GitHub, propose that. If a `git remote` points at GitLab (`gitlab.com` or a self-hosted host), propose GitLab. Otherwise (or if the user prefers), offer:
++Default posture: these skills were designed for GitHub. If a `git remote` points at GitHub, propose that. If a `git remote` points at GitLab (`gitlab.com` or a self-hosted host), propose GitLab. If a `git remote` points at a Gitea host and `gitea-tracker` is installed, propose Gitea. Otherwise (or if the user prefers), offer:
+ 
+ - **GitHub**: issues live in the repo's GitHub Issues (uses the `gh` CLI)
+-- **GitLab**: issues live in the repo's GitLab Issues (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI)
++- **GitLab**: work items live in GitLab (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI). If `gitlab-tracker` is installed, merge that skill's preferred additional clauses onto the GitLab seed (specs/maps as Issues, tickets/wayfinder items as child Tasks, blocking as `[^blocked-by]` footnotes) — mention this in one line when recommending GitLab; do not ask a separate question.
++- **Gitea** (only if `gitea-tracker` is installed): issues live in Gitea (MCP first; [`tea`](https://gitea.com/gitea/tea) CLI fallback). Merge that skill's preferred additional clauses onto a Gitea-shaped base — mention this in one line when recommending Gitea; do not ask a separate question.
+ - **Local markdown**: issues live as files under `.scratch/<feature>/` in this repo (good for solo projects or repos without a remote)
+ - **Other** (Jira, Linear, etc.): ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
+ 
+-Record the choice in `docs/agents/issue-tracker.md`. The GitHub and GitLab templates carry a "PRs as a request surface" flag, defaulted **off**. Leave it off and don't raise it: a user who wants external PRs in the triage queue can flip the flag in the file later.
++Record the choice in `docs/agents/issue-tracker.md`. The GitHub and GitLab templates carry a "PRs as a request surface" flag, defaulted **off**. Leave it off and don't raise it: a user who wants external PRs in the triage queue can flip the flag in the file later. A Gitea-shaped base should carry the same flag shape for PRs.
+ 
+ **Section B: Triage label vocabulary.** Skip this section entirely if the `triage` skill isn't installed (exploration told you), since an uninstalled skill needs no labels.
+ 
+@@ -104,12 +107,14 @@
+ Then write the docs files using the seed templates in this skill folder as a starting point:
+ 
+ - [issue-tracker-github.md](./issue-tracker-github.md): GitHub issue tracker
+-- [issue-tracker-gitlab.md](./issue-tracker-gitlab.md): GitLab issue tracker
++- **GitLab + `gitlab-tracker` installed**: keep existing `docs/agents/issue-tracker.md` if present; otherwise seed from [issue-tracker-gitlab.md](./issue-tracker-gitlab.md). Then **merge** the additional clauses from the `gitlab-tracker` skill's `issue-tracker.md` (peer folder or installed skill path) onto that base — prefer those clauses over conflicting seed text; leave non-conflicting sections intact. Do **not** wholesale-copy the tracker skill's file over the seed.
++- [issue-tracker-gitlab.md](./issue-tracker-gitlab.md): GitLab fallback when `gitlab-tracker` is not installed
++- **Gitea + `gitea-tracker` installed**: keep existing `docs/agents/issue-tracker.md` if present; otherwise seed a Gitea-shaped base (Conventions for create/read/list/comment/labels/close/PRs — MCP first, `tea` fallback — plus the PRs-as-request-surface flag). Then **merge** the additional clauses from the `gitea-tracker` skill's `issue-tracker.md` the same way. Do **not** wholesale-copy the tracker skill's file over the seed.
+ - [issue-tracker-local.md](./issue-tracker-local.md): local-markdown issue tracker
+ - [triage-labels.md](./triage-labels.md): label mapping (only if `triage` is installed)
+ - [domain.md](./domain.md): domain doc consumer rules + layout
+ 
+-For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.
++For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description (then apply a matching `*-tracker` skill's clauses if one was chosen via Other).
+ 
+ ### 5. Done
+ 

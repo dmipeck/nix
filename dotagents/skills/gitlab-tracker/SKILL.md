@@ -1,22 +1,19 @@
 ---
 name: gitlab-tracker
 description: >-
-  Preferred GitLab issue-tracker conventions for the engineering skills.
-  Auto-discovered by /setup-matt-pocock-skills: when the git remote is GitLab
-  (or the user picks GitLab), copy this skill's issue-tracker.md to
-  docs/agents/issue-tracker.md. Specs/maps as Issues, tickets/wayfinder items
-  as child Tasks, blocking as description footnotes. Also use when publishing
-  specs/tickets to GitLab or running /wayfinder on a GitLab remote.
+  Use when GitLab is selected as issue tracker during
+  setup-matt-pocock-skills
 disable-model-invocation: true
 ---
 
 # GitLab Tracker (preferred)
 
-Canonical GitLab conventions for `/to-spec`, `/to-tickets`, `/wayfinder`, and
-`/triage`. `/setup-matt-pocock-skills` auto-discovers this skill and, when
-GitLab is chosen, copies [issue-tracker.md](./issue-tracker.md) to
-`docs/agents/issue-tracker.md` instead of the bundled generic GitLab
-template.
+Preferred GitLab conventions for `/to-spec`, `/to-tickets`, `/wayfinder`,
+and `/triage`. This skill does **not** replace
+`docs/agents/issue-tracker.md` wholesale. It supplies **additional
+clauses** in [issue-tracker.md](./issue-tracker.md) that
+`/setup-matt-pocock-skills` (and agents following it) merge onto the
+seeded or existing template.
 
 ## Discovery contract
 
@@ -26,11 +23,29 @@ template.
   or
 - `gitlab-tracker` appears in the agent's available skills
 
-When installed and the user picks GitLab, prefer this skill's
-`issue-tracker.md`. Do not ask a separate question — the preferred shape is
-the default for every GitLab project.
+When installed and the user picks GitLab, apply this skill's additional
+clauses automatically. Do not ask a separate conventions question.
 
-## Type map
+## What setup must do
+
+When GitLab is selected and this skill is installed:
+
+1. **Seed** `docs/agents/issue-tracker.md` from the setup skill's
+   bundled `issue-tracker-gitlab.md` when creating new. If
+   `docs/agents/issue-tracker.md` already exists, keep it as the base —
+   do not overwrite with a blank slate.
+2. **Merge** the additional clauses from this skill's
+   [issue-tracker.md](./issue-tracker.md) onto that base. Prefer these
+   clauses over conflicting seed text; leave non-conflicting seed
+   sections intact.
+3. **Do not** copy-replace the whole file with this skill's
+   `issue-tracker.md` (or any other full preferred template).
+
+## Convention knowledge (encoded by the clauses)
+
+Agents applying the clauses should know:
+
+### Type map
 
 | Artifact | GitLab work-item type | Hierarchy |
 |---|---|---|
@@ -39,47 +54,30 @@ the default for every GitLab project.
 | Ticket (`/to-tickets`) | **Task** | child of parent spec Issue |
 | Wayfinder item | **Task** (`wayfinder:<type>`) | child of map Issue |
 
-Never publish tickets or wayfinder items as Issues. Never publish specs or
-maps as Tasks.
+Never publish tickets or wayfinder items as Issues. Never publish specs
+or maps as Tasks.
 
-## Parent / child
+### Parent / child
 
 Always set the Task's **parent** to the owning Issue (GitLab hierarchy /
-Child items). Create the parent Issue first, then create each Task as a child
-of that Issue.
+Child items). Do **not** use `Part of #n` as the hierarchy signal.
+Create the parent Issue first, then each Task as a child. Prefer
+`glab work-items create --type …` when available.
 
-Prefer `glab work-items create --type …` when available. To nest a Task under
-an Issue, set the hierarchy parent (GraphQL `hierarchyWidget.parentId` if
-`glab` has no `--parent` flag yet). Tasks and their parent Issue must share
-the same project.
+### Blocking → footnotes only
 
-## Blocking relationships → footnotes only
-
-GitLab has no portable Free-tier `blocked-by` that every clone can rely on.
-**Do not** use:
-
-- `/blocked_by` quick actions
-- issue link types (`blocks` / `is_blocked_by` / `relates_to`) for blocking
-- a `Blocked by:` body section
-
-Record every blocking edge as a **markdown footnote** at the bottom of the
-Task description:
+**Do not** use `/blocked_by`, blocking issue links, or a `Blocked by:`
+body section. Record every blocking edge as:
 
 ```markdown
 [^blocked-by]: #12, #15
 ```
 
-No blockers:
-
-```markdown
-[^blocked-by]: none
-```
-
-A Task is unblocked when every `#n` in `[^blocked-by]` is closed (or the
-footnote is `none`). Parse only that footnote name; ignore other footnotes.
+No blockers: `[^blocked-by]: none`. A Task is unblocked when every `#n`
+is closed (or the footnote is `none`). Parse only that footnote name.
 
 ## After setup
 
-Engineering skills read `docs/agents/issue-tracker.md`. Edit that file (or
-re-run `/setup-matt-pocock-skills`) to change tracker behaviour; re-running
-this skill alone is unnecessary.
+Engineering skills read `docs/agents/issue-tracker.md`. Edit that file
+(or re-run `/setup-matt-pocock-skills`) to change tracker behaviour;
+re-running this skill alone is unnecessary.
