@@ -15,9 +15,9 @@ ready.
 
 ## 1. Worktree first
 
-Invoke the `worktree` skill (`/worktree`). Complete its create + setup
-before any task edits. Record `WORKTREE_PATH`. All later reads, edits,
-shell, and repo-local git for this task use that path only.
+Call the Skill tool with `worktree`. Complete create + setup before any
+task edits. Record `WORKTREE_PATH`. All later reads, edits, shell, and
+repo-local git for this task use that path only.
 
 ## 2. Draft MR/PR before starting work
 
