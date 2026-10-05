@@ -1,13 +1,11 @@
-_: {
-  flake.homeModules.cli-tools =
+{ ... }:
+
+{
+  flake.homeModules.openssl =
     { pkgs, ... }:
     {
       home.packages = with pkgs; [
-        jq
-        nodejs
         openssl
-        python3
-        uv
       ];
     };
 }
