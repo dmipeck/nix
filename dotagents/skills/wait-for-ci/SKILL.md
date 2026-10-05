@@ -49,15 +49,15 @@ loop onto local names:
 |---|---|---|
 | Run | workflow run | pipeline |
 | Unit | job (and check-run) | job |
-| Allowed to fail | `continue-on-error: true`, non-required check | `allow_failure: true` |
-| Aggregate | workflow conclusion / check suite | pipeline status |
+| Soft fail | continue-on-error / optional | `allow_failure` |
+| Aggregate | workflow / check suite | pipeline status |
 
 **GitHub (examples):**
 
 ```bash
 gh run list --commit <sha> --limit 5
 gh run view <run-id> --json status,conclusion,jobs,url
-# or: gh api repos/{owner}/{repo}/actions/runs/<run-id>/jobs
+# or: gh api .../actions/runs/<run-id>/jobs
 ```
 
 Treat a job as hard-failed when `conclusion` is `failure` (or
@@ -82,7 +82,7 @@ explicitly accepts that state.
 Keep the final reply short:
 
 - **OK** — all jobs done, no hard failures, aggregate status green.
-- **Failed** — first hard-failed job (name + link) and aggregate status if any.
+- **Failed** — first hard-failed job (name + link); aggregate if any.
 - **Superseded / timed out / blocked** — say which; list unfinished jobs when
   relevant.
 
