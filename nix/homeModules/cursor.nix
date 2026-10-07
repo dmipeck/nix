@@ -27,6 +27,7 @@ in
     let
       mcpServers = config.dotagents.mcpServers;
       jsonFormat = pkgs.formats.json { };
+      deployAuthoringFormat = config.dotagents.cursor.deployAuthoringFormat;
 
       # -----------------------------------------------------------------
       # MCP → ~/.cursor/mcp.json
@@ -215,8 +216,18 @@ in
       '';
     in
     {
+      options.dotagents.cursor.deployAuthoringFormat = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          When true, emit skills / agents / rules / mcp.json under ~/.cursor from
+          the DotAgents catalog. Set false when a Skills Repository checkout is
+          symlinked into ~/.cursor instead (see nix-private skills-repo module).
+        '';
+      };
+
       config = lib.mkMerge [
-        {
+        (lib.mkIf deployAuthoringFormat {
           home.file =
             skillFiles
             // agentFiles
@@ -224,7 +235,7 @@ in
             // {
               ".cursor/mcp.json".source = jsonFormat.generate "cursor-mcp.json" cursorMcp;
             };
-        }
+        })
 
         (lib.mkIf hasFileRefs {
           # Guarded per-var loads; sourced by sessionVariablesExtra, shells,
