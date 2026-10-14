@@ -79,20 +79,4 @@ in
         inherit font settings;
       };
     };
-
-  flake.homeModules.kittyNixGL =
-    { pkgs, config, ... }:
-    {
-      fonts.fontconfig.enable = true;
-
-      home.packages = [
-        pkgs.nerd-fonts.jetbrains-mono
-      ];
-
-      programs.kitty = {
-        enable = true;
-        package = config.lib.nixGL.wrap pkgs.kitty;
-        inherit font settings;
-      };
-    };
 }
