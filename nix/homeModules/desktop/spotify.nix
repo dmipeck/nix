@@ -8,12 +8,4 @@
         spotify
       ];
     };
-
-  flake.homeModules.spotifyNixGL =
-    { pkgs, config, ... }:
-    {
-      home.packages = with pkgs; [
-        (config.lib.nixGL.wrap spotify)
-      ];
-    };
 }

@@ -101,24 +101,4 @@ in
 
       xdg.mimeApps.associations.added = xdgAssociations;
     };
-
-  flake.homeModules.firefoxNixGL =
-    { config, pkgs, ... }:
-    let
-      firefoxWrapped = config.lib.nixGL.wrap pkgs.firefox;
-    in
-    {
-      programs.firefox = {
-        enable = true;
-        package = firefoxWrapped;
-        policies = firefoxPolicies;
-      };
-
-      home.sessionVariables = {
-        DEFAULT_BROWSER = "${firefoxWrapped}/bin/firefox";
-        BROWSER = "${firefoxWrapped}/bin/firefox";
-      };
-
-      xdg.mimeApps.associations.added = xdgAssociations;
-    };
 }
