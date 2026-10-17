@@ -59,7 +59,7 @@ let
   # Download URL embeds upstream product namespace + build id alongside the
   # version. Bump all three together when updating.
   downloadBase = "https://downloads.cursor.com/grokbot/stable";
-  buildId = "76ea13a663a8e41e1664246c174c22291f9a9301";
+  buildId = "52da656f56d317510ca65ad6af3d69a2cde461e0";
 
   # Shared libraries the bundled Chromium dlopen()s at runtime — autoPatchelf
   # cannot discover them from DT_NEEDED alone.
@@ -79,13 +79,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "grok-bot";
-  version = "0.63.0";
+  version = "0.70.2";
   # Upstream has used both Grok_Bot_<ver>.deb and grok-bot_<ver>_amd64.deb.
   debFile = "grok-bot_${finalAttrs.version}_amd64.deb";
 
   src = fetchurl {
     url = "${downloadBase}/${buildId}/linux/x64/${finalAttrs.debFile}";
-    hash = "sha256-aNicQRhjPP/UXBlg4nS9Fed2PDN4sRt8ekM+JEG7ypo=";
+    hash = "sha256-/3D8IXP5gnvhZIy+rznHwSEqP9myMmxQKL6KL9vvCQA=";
   };
 
   nativeBuildInputs = [
