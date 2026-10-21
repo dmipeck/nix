@@ -56,10 +56,6 @@
     nixified-ai = {
       url = "github:nixified-ai/flake";
     };
-    # InvokeAI is unmaintained upstream; last working pin from nixified.ai README.
-    nixified-ai-invokeai = {
-      url = "github:nixified-ai/flake/2aeb76f52f72c7a242f20e9bc47cfaa2ed65915d";
-    };
   };
 
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./nix);
