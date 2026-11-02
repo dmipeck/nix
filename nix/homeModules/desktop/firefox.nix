@@ -86,7 +86,7 @@ in
 
 {
   flake.homeModules.firefox =
-    { config, pkgs, ... }:
+    { config, ... }:
     {
       programs.firefox = {
         enable = true;
@@ -94,9 +94,10 @@ in
         configPath = "${config.xdg.configHome}/mozilla/firefox";
       };
 
+      # PATH `firefox`, not ${pkgs.firefox}: store path is unwrapped and skips MOZ_APP_DATA/configPath.
       home.sessionVariables = {
-        DEFAULT_BROWSER = "${pkgs.firefox}/bin/firefox";
-        BROWSER = "${pkgs.firefox}/bin/firefox";
+        DEFAULT_BROWSER = "firefox";
+        BROWSER = "firefox";
       };
 
       xdg.mimeApps.associations.added = xdgAssociations;
